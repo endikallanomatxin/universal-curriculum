@@ -7,8 +7,74 @@ body {
   margin: 0;
 }
 
-main {
+.site-header {
+  align-items: center;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+  display: flex;
+  justify-content: space-between;
+  padding: 1rem 2rem;
+}
+
+.site-header nav,
+.site-header form {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  margin: 0;
+}
+
+.page {
   margin: 0 auto;
   max-width: 64rem;
   padding: 4rem 2rem;
+}
+
+.narrow {
+  max-width: 36rem;
+}
+
+.auth-page {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 1.5rem;
+}
+
+.auth-form {
+  display: grid;
+  gap: 0.75rem;
+  max-width: 24rem;
+  width: 100%;
+}
+
+input,
+button {
+  font: inherit;
+  padding: 0.7rem 0.8rem;
+}
+
+button {
+  cursor: pointer;
+}
+
+.link-button {
+  background: none;
+  border: 0;
+  color: inherit;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.form-error {
+  color: #c33;
+}
+
+dt {
+  font-weight: 700;
+  margin-top: 1rem;
+}
+
+dd {
+  margin: 0.25rem 0 0;
 }

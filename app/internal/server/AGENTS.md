@@ -7,4 +7,5 @@
 - Parse and validate input before changing domain state.
 - Prefer server-rendered HTML and use HTMX for fragment updates.
 - Return explicit HTTP errors without terminating the server.
-
+- Authenticate through the session middleware and require CSRF tokens for
+  state-changing requests made by authenticated users.

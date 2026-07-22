@@ -8,10 +8,23 @@
   <link rel="stylesheet" href="/static/css/base.css">
 </head>
 <body>
-  <main>
+  <header class="site-header">
+    <a href="/">Universal Curriculum</a>
+    <nav aria-label="Account">
+      {{ if .User }}
+        <a href="/account">{{ .User.DisplayName }}</a>
+        <form action="/auth/logout" method="post">
+          <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+          <button class="link-button" type="submit">Log out</button>
+        </form>
+      {{ else }}
+        <a href="/auth/login">Log in</a>
+      {{ end }}
+    </nav>
+  </header>
+  <main class="page">
     <h1>Universal Curriculum</h1>
   </main>
 </body>
 </html>
 {{- end }}
-

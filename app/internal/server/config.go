@@ -4,19 +4,25 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"universal-curriculum/internal/models"
 )
 
 type Config struct {
-	Env            string
-	Port           string
-	StorageBackend string
-	UploadsFolder  string
-	DBHost         string
-	DBPort         string
-	DBUser         string
-	DBPassword     string
-	DBName         string
-	DBSSLMode      string
+	Env                    string
+	Port                   string
+	StorageBackend         string
+	UploadsFolder          string
+	BootstrapAdminEmail    string
+	BootstrapAdminPassword string
+	BootstrapAdminFullName string
+	BootstrapAdminAlias    string
+	DBHost                 string
+	DBPort                 string
+	DBUser                 string
+	DBPassword             string
+	DBName                 string
+	DBSSLMode              string
 }
 
 func LoadConfig() (Config, error) {
@@ -26,19 +32,26 @@ func LoadConfig() (Config, error) {
 	}
 
 	config := Config{
-		Env:            env,
-		Port:           getEnv("PORT", "8080"),
-		StorageBackend: getEnv("STORAGE_BACKEND", "local"),
-		UploadsFolder:  getUploadsFolder(env),
-		DBHost:         os.Getenv("DB_HOST"),
-		DBPort:         os.Getenv("DB_PORT"),
-		DBUser:         os.Getenv("DB_USER"),
-		DBPassword:     os.Getenv("DB_PASSWORD"),
-		DBName:         os.Getenv("DB_NAME"),
-		DBSSLMode:      getDBSSLMode(env),
+		Env:                    env,
+		Port:                   getEnv("PORT", "8080"),
+		StorageBackend:         getEnv("STORAGE_BACKEND", "local"),
+		UploadsFolder:          getUploadsFolder(env),
+		BootstrapAdminEmail:    models.NormalizeEmail(os.Getenv("BOOTSTRAP_ADMIN_EMAIL")),
+		BootstrapAdminPassword: os.Getenv("BOOTSTRAP_ADMIN_PASSWORD"),
+		BootstrapAdminFullName: getEnv("BOOTSTRAP_ADMIN_FULL_NAME", "Administrator"),
+		BootstrapAdminAlias:    os.Getenv("BOOTSTRAP_ADMIN_ALIAS"),
+		DBHost:                 os.Getenv("DB_HOST"),
+		DBPort:                 os.Getenv("DB_PORT"),
+		DBUser:                 os.Getenv("DB_USER"),
+		DBPassword:             os.Getenv("DB_PASSWORD"),
+		DBName:                 os.Getenv("DB_NAME"),
+		DBSSLMode:              getDBSSLMode(env),
 	}
 	if config.StorageBackend != "local" {
 		return Config{}, fmt.Errorf("unsupported STORAGE_BACKEND %q: only local is supported for now", config.StorageBackend)
+	}
+	if (config.BootstrapAdminEmail == "") != (config.BootstrapAdminPassword == "") {
+		return Config{}, fmt.Errorf("BOOTSTRAP_ADMIN_EMAIL and BOOTSTRAP_ADMIN_PASSWORD must be set together")
 	}
 
 	missing := make([]string, 0, 5)
@@ -54,6 +67,10 @@ func LoadConfig() (Config, error) {
 		return Config{}, fmt.Errorf("missing database configuration: %s", strings.Join(missing, ", "))
 	}
 	return config, nil
+}
+
+func (config Config) IsProd() bool {
+	return config.Env == "prod"
 }
 
 func getUploadsFolder(env string) string {

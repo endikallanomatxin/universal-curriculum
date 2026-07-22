@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"universal-curriculum/internal/db"
+	"universal-curriculum/internal/models"
 	"universal-curriculum/internal/services"
 )
 
@@ -44,6 +46,16 @@ func Setup() (*Server, error) {
 		Templates:   templates,
 		ObjectStore: services.NewLocalObjectStore(config.UploadsFolder),
 	}
+	if err := services.EnsureBootstrapAdmin(
+		database,
+		config.BootstrapAdminFullName,
+		config.BootstrapAdminAlias,
+		config.BootstrapAdminEmail,
+		config.BootstrapAdminPassword,
+	); err != nil {
+		_ = database.Close()
+		return nil, fmt.Errorf("ensure bootstrap administrator: %w", err)
+	}
 	server.Handler = server.routes()
 	return server, nil
 }
@@ -52,8 +64,12 @@ func (server *Server) routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", server.health)
 	mux.HandleFunc("GET /", server.index)
+	mux.HandleFunc("GET /auth/login", server.login)
+	mux.HandleFunc("POST /auth/login", server.login)
+	mux.HandleFunc("POST /auth/logout", server.logout)
+	mux.Handle("GET /account", requireUser(http.HandlerFunc(server.account)))
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
-	return mux
+	return server.maintainSession(mux)
 }
 
 func (server *Server) health(writer http.ResponseWriter, request *http.Request) {
@@ -66,9 +82,42 @@ func (server *Server) health(writer http.ResponseWriter, request *http.Request) 
 	writer.WriteHeader(http.StatusNoContent)
 }
 
-func (server *Server) index(writer http.ResponseWriter, _ *http.Request) {
-	if err := server.Templates.ExecuteTemplate(writer, "index.html", nil); err != nil {
-		http.Error(writer, "render page", http.StatusInternalServerError)
+type userPageData struct {
+	User      *models.User
+	CSRFToken string
+}
+
+func (server *Server) index(writer http.ResponseWriter, request *http.Request) {
+	server.renderUserPage(writer, request, "index.html")
+}
+
+func (server *Server) account(writer http.ResponseWriter, request *http.Request) {
+	server.renderUserPage(writer, request, "account.html")
+}
+
+func (server *Server) renderUserPage(writer http.ResponseWriter, request *http.Request, name string) {
+	data := userPageData{}
+	if userID, ok := services.SessionUserID(request); ok {
+		user, err := db.GetUserByID(server.Database, userID)
+		if err != nil {
+			http.Error(writer, "Load user", http.StatusInternalServerError)
+			return
+		}
+		data.User = user
+		data.CSRFToken, _ = services.SessionCSRFToken(request)
+	}
+	server.render(writer, name, data)
+}
+
+func (server *Server) render(writer http.ResponseWriter, name string, data any) {
+	server.renderStatus(writer, http.StatusOK, name, data)
+}
+
+func (server *Server) renderStatus(writer http.ResponseWriter, status int, name string, data any) {
+	writer.Header().Set("Content-Type", "text/html; charset=utf-8")
+	writer.WriteHeader(status)
+	if err := server.Templates.ExecuteTemplate(writer, name, data); err != nil {
+		log.Printf("render template %s: %v", name, err)
 	}
 }
 

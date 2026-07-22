@@ -9,6 +9,7 @@ Production is deployed to Render using `render.yaml`:
 - `/usr/local/bin/migrate up` before each deployment;
 - `/health` as the service health check;
 - database credentials supplied by Render.
+- initial administrator credentials supplied as secret Render values.
 
 Commits to the main branch trigger deployment after the Render Blueprint has
 been connected to the repository.
@@ -17,8 +18,12 @@ been connected to the repository.
 
 1. Create or sync a Render Blueprint from `render.yaml`.
 2. Connect the web service to the `main` branch.
-3. Keep database credentials managed by Render.
-4. Configure the public domain in Render when required.
+3. Set `BOOTSTRAP_ADMIN_FULL_NAME`, `BOOTSTRAP_ADMIN_EMAIL` and
+   `BOOTSTRAP_ADMIN_PASSWORD` to create the initial administrator. Optionally
+   set `BOOTSTRAP_ADMIN_ALIAS`. These values are idempotent and do not modify an
+   existing user.
+4. Keep database credentials managed by Render.
+5. Configure the public domain in Render when required.
 
 TLS termination and proxying are handled by Render, not by the application.
 The local storage backend is an implementation detail and can later be replaced

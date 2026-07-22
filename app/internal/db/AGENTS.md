@@ -7,4 +7,4 @@
   foreign keys.
 - Avoid indexes already provided by `PRIMARY KEY` or `UNIQUE`.
 - Wrap errors with enough context to identify the failed operation.
-
+- Store session tokens only as cryptographic hashes.

@@ -37,6 +37,16 @@ func TestLoadConfigRejectsUnsupportedStorageBackend(t *testing.T) {
 	}
 }
 
+func TestLoadConfigRequiresCompleteBootstrapCredentials(t *testing.T) {
+	setDatabaseEnvironment(t)
+	t.Setenv("BOOTSTRAP_ADMIN_EMAIL", "admin@example.com")
+
+	_, err := LoadConfig()
+	if err == nil || !strings.Contains(err.Error(), "must be set together") {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+}
+
 func TestLoadConfigReportsMissingDatabaseSettings(t *testing.T) {
 	t.Setenv("ENV", "dev")
 	for _, key := range []string{"DB_HOST", "DB_PORT", "DB_USER", "DB_PASSWORD", "DB_NAME"} {
@@ -56,6 +66,10 @@ func setDatabaseEnvironment(t *testing.T) {
 	t.Setenv("DB_SSLMODE", "")
 	t.Setenv("STORAGE_BACKEND", "")
 	t.Setenv("UPLOADS_FOLDER", "")
+	t.Setenv("BOOTSTRAP_ADMIN_EMAIL", "")
+	t.Setenv("BOOTSTRAP_ADMIN_PASSWORD", "")
+	t.Setenv("BOOTSTRAP_ADMIN_FULL_NAME", "")
+	t.Setenv("BOOTSTRAP_ADMIN_ALIAS", "")
 	t.Setenv("DB_HOST", "localhost")
 	t.Setenv("DB_PORT", "5432")
 	t.Setenv("DB_USER", "universal_curriculum")

@@ -1,0 +1,35 @@
+{{ define "account.html" -}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Account · Universal Curriculum</title>
+  <link rel="stylesheet" href="/static/css/base.css">
+</head>
+<body>
+  <header class="site-header">
+    <a href="/">Universal Curriculum</a>
+    <form action="/auth/logout" method="post">
+      <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+      <button class="link-button" type="submit">Log out</button>
+    </form>
+  </header>
+  <main class="page narrow">
+    <h1>Account</h1>
+    <dl>
+      <dt>Full name</dt>
+      <dd>{{ .User.FullName }}</dd>
+      {{ if .User.Alias }}
+        <dt>Alias</dt>
+        <dd>{{ .User.Alias }}</dd>
+      {{ end }}
+      <dt>Email</dt>
+      <dd>{{ .User.Email }}</dd>
+      <dt>Access</dt>
+      <dd>{{ if .User.IsAdmin }}Administrator{{ else }}Member{{ end }}</dd>
+    </dl>
+  </main>
+</body>
+</html>
+{{- end }}

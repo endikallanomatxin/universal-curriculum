@@ -32,6 +32,11 @@ podman compose -f compose.dev.yaml up --build
 The application is available at `http://localhost:8080`.
 Uploaded files persist in the Compose-managed `uploads` volume.
 
+The development administrator is `admin@example.com` with password
+`administrator`. Production credentials are configured as secret values in
+Render and only create the first administrator; subsequent starts do not reset
+the password.
+
 Apply migrations manually with:
 
 ```bash

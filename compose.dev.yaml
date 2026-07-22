@@ -18,6 +18,10 @@ services:
       DB_SSLMODE: disable
       STORAGE_BACKEND: local
       UPLOADS_FOLDER: /app/uploads
+      BOOTSTRAP_ADMIN_EMAIL: admin@example.com
+      BOOTSTRAP_ADMIN_PASSWORD: administrator
+      BOOTSTRAP_ADMIN_FULL_NAME: Administrator
+      BOOTSTRAP_ADMIN_ALIAS: admin
       ENV: dev
     volumes:
       - ./app:/app
