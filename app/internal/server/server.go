@@ -83,20 +83,22 @@ func (server *Server) health(writer http.ResponseWriter, request *http.Request) 
 }
 
 type userPageData struct {
-	User      *models.User
-	CSRFToken string
+	User           *models.User
+	CSRFToken      string
+	CurrentSection string
+	Home           bool
 }
 
 func (server *Server) index(writer http.ResponseWriter, request *http.Request) {
-	server.renderUserPage(writer, request, "index.html")
+	server.renderUserPage(writer, request, "index.html", "home", true)
 }
 
 func (server *Server) account(writer http.ResponseWriter, request *http.Request) {
-	server.renderUserPage(writer, request, "account.html")
+	server.renderUserPage(writer, request, "account.html", "account", false)
 }
 
-func (server *Server) renderUserPage(writer http.ResponseWriter, request *http.Request, name string) {
-	data := userPageData{}
+func (server *Server) renderUserPage(writer http.ResponseWriter, request *http.Request, name, currentSection string, home bool) {
+	data := userPageData{CurrentSection: currentSection, Home: home}
 	if userID, ok := services.SessionUserID(request); ok {
 		user, err := db.GetUserByID(server.Database, userID)
 		if err != nil {

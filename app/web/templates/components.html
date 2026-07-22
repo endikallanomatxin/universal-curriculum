@@ -1,0 +1,66 @@
+{{ define "document-head" -}}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ . }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded&display=block" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/shell.css">
+  <link rel="stylesheet" href="/static/css/components.css">
+{{- end }}
+
+{{ define "icon-account" -}}
+<span class="material-symbols-rounded primary-menu__icon" aria-hidden="true">person</span>
+{{- end }}
+
+{{ define "icon-logout" -}}
+<span class="material-symbols-rounded primary-menu__icon" aria-hidden="true">logout</span>
+{{- end }}
+
+{{ define "shell-link-attributes" }}hx-get="{{ . }}" hx-target="#app-shell" hx-select="#app-shell" hx-swap="outerHTML transition:true" hx-push-url="true"{{ end }}
+
+{{ define "primary-navigation" -}}
+<aside class="primary-navigation">
+  <div class="primary-navigation__inner">
+    <a class="brand" href="/" {{ template "shell-link-attributes" "/" }}>
+      <span>Universal Curriculum</span>
+    </a>
+
+    {{ if and .Home .User }}
+      <div class="navigation-introduction">
+        <p>Welcome, <strong>{{ .User.DisplayName }}</strong>.</p>
+      </div>
+    {{ end }}
+
+    <nav aria-label="Primary navigation">
+      <ul class="primary-menu">
+        <li class="{{ if .User }}primary-menu__account-item{{ else }}primary-menu__login-item{{ end }}">
+          {{ if .User }}
+            <a class="primary-menu__link primary-menu__link--account primary-menu__link--session-action" href="/account" {{ if eq .CurrentSection "account" }}aria-current="page"{{ end }} {{ template "shell-link-attributes" "/account" }}>
+              {{ template "icon-account" }}
+              <span class="primary-menu__label">Account</span>
+            </a>
+          {{ else }}
+            <a class="primary-menu__link primary-menu__link--account primary-menu__link--session-action" href="/auth/login">
+              {{ template "icon-account" }}
+              <span class="primary-menu__label">Log in</span>
+            </a>
+          {{ end }}
+        </li>
+        {{ if .User }}
+          <li class="primary-menu__logout-item">
+            <form class="menu-form" action="/auth/logout" method="post">
+              <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+              <button class="primary-menu__link primary-menu__link--logout primary-menu__link--session-action" type="submit">
+                {{ template "icon-logout" }}
+                <span class="primary-menu__label">Log out</span>
+              </button>
+            </form>
+          </li>
+        {{ end }}
+      </ul>
+    </nav>
+  </div>
+</aside>
+{{- end }}

@@ -1,80 +1,83 @@
 :root {
-  color-scheme: light dark;
-  font-family: system-ui, sans-serif;
+  color-scheme: light;
+  --color-ink: #2a2a2a;
+  --color-ink-strong: #17171b;
+  --color-muted: #6f6f72;
+  --color-surface: #ffffff;
+  --color-panel-start: #f7f7f7;
+  --color-panel-end: #f0f0f0;
+  --color-accent: #5a4ebf;
+  --color-danger: #c93341;
+  --radius-card: 1.5rem;
+  --radius-control: 999px;
+  --space-1: 0.5rem;
+  --space-2: 0.75rem;
+  --space-3: 1rem;
+  --space-4: 1.5rem;
+  --space-5: 2rem;
+  --space-6: 3rem;
+  --sidebar-width: clamp(14rem, 17vw, 17rem);
+  --motion-duration: 420ms;
+  --motion-easing: cubic-bezier(0.22, 1, 0.36, 1);
+  font-family: Montserrat, Inter, ui-sans-serif, system-ui, sans-serif;
+  font-synthesis: none;
+  line-height: 1.5;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--color-panel-end);
 }
 
 body {
+  background: var(--color-panel-start);
+  color: var(--color-ink);
   margin: 0;
+  min-width: 20rem;
 }
 
-.site-header {
-  align-items: center;
-  border-bottom: 1px solid color-mix(in srgb, currentColor 20%, transparent);
-  display: flex;
-  justify-content: space-between;
-  padding: 1rem 2rem;
+a {
+  color: inherit;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.2em;
 }
 
-.site-header nav,
-.site-header form {
-  align-items: center;
-  display: flex;
-  gap: 1rem;
-  margin: 0;
-}
-
-.page {
-  margin: 0 auto;
-  max-width: 64rem;
-  padding: 4rem 2rem;
-}
-
-.narrow {
-  max-width: 36rem;
-}
-
-.auth-page {
-  align-items: center;
-  display: flex;
-  justify-content: center;
-  min-height: 100vh;
-  padding: 1.5rem;
-}
-
-.auth-form {
-  display: grid;
-  gap: 0.75rem;
-  max-width: 24rem;
-  width: 100%;
-}
-
-input,
-button {
+button,
+input {
+  color: inherit;
   font: inherit;
-  padding: 0.7rem 0.8rem;
 }
 
 button {
   cursor: pointer;
 }
 
-.link-button {
-  background: none;
-  border: 0;
-  color: inherit;
-  padding: 0;
-  text-decoration: underline;
+:focus-visible {
+  outline: 0.2rem solid var(--color-accent);
+  outline-offset: 0.2rem;
 }
 
-.form-error {
-  color: #c33;
+.visually-hidden {
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
 }
 
-dt {
-  font-weight: 700;
-  margin-top: 1rem;
-}
-
-dd {
-  margin: 0.25rem 0 0;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }

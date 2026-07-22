@@ -1,30 +1,12 @@
 {{ define "index.html" -}}
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Universal Curriculum</title>
-  <link rel="stylesheet" href="/static/css/base.css">
-</head>
+<head>{{ template "document-head" "Universal Curriculum" }}</head>
 <body>
-  <header class="site-header">
-    <a href="/">Universal Curriculum</a>
-    <nav aria-label="Account">
-      {{ if .User }}
-        <a href="/account">{{ .User.DisplayName }}</a>
-        <form action="/auth/logout" method="post">
-          <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
-          <button class="link-button" type="submit">Log out</button>
-        </form>
-      {{ else }}
-        <a href="/auth/login">Log in</a>
-      {{ end }}
-    </nav>
-  </header>
-  <main class="page">
-    <h1>Universal Curriculum</h1>
-  </main>
+  <div class="app-shell app-shell--home" id="app-shell">
+    {{ template "primary-navigation" . }}
+  </div>
+  <script src="/static/js/htmx.min.js" defer></script>
 </body>
 </html>
 {{- end }}

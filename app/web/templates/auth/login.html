@@ -1,16 +1,11 @@
 {{ define "login.html" -}}
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Log in · Universal Curriculum</title>
-  <link rel="stylesheet" href="/static/css/base.css">
-</head>
+<head>{{ template "document-head" "Log in · Universal Curriculum" }}</head>
 <body>
   <main class="auth-page">
     <form class="auth-form" action="/auth/login" method="post">
-      <a href="/">Universal Curriculum</a>
+      <a class="brand" href="/">Universal Curriculum</a>
       <h1>Log in</h1>
       {{ if .Error }}<p class="form-error" role="alert">{{ .Error }}</p>{{ end }}
       <input type="hidden" name="next" value="{{ .Next }}">
@@ -18,7 +13,7 @@
       <input id="email" name="email" type="email" autocomplete="username" required autofocus>
       <label for="password">Password</label>
       <input id="password" name="password" type="password" autocomplete="current-password" required>
-      <button type="submit">Log in</button>
+      <button class="primary-button" type="submit">Log in</button>
     </form>
   </main>
 </body>
