@@ -1,0 +1,14 @@
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Go build and development output
+.gocache
+.gomodcache
+app/tmp/
+app/server
+app/migrate
+app/uploads/
+
+# Local environment
+.env

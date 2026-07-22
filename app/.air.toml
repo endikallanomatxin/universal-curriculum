@@ -1,0 +1,16 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+cmd = "go build -o tmp/server ./cmd/server"
+entrypoint = ["tmp/server"]
+include_ext = ["go", "html", "css", "js", "sql", "md", "mod", "sum"]
+exclude_dir = ["tmp", "uploads", ".git", "docs"]
+poll = true
+delay = 1000
+
+[log]
+time = true
+
+[misc]
+clean_on_exit = true
