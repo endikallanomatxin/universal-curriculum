@@ -38,7 +38,7 @@ func TestApplicationShellTemplates(t *testing.T) {
 				CurrentSection string
 				Home           bool
 			}{User: user, CurrentSection: "home", Home: true},
-			contains: []string{`id="app-shell"`, `class="app-shell app-shell--home"`, `>Account<`, `>Log out</span>`, `Material+Symbols+Rounded`},
+			contains: []string{`id="app-shell"`, `class="app-shell app-shell--home"`, `>Learn</span>`, `>book_5</span>`, `>Account<`, `>Log out</span>`, `Material+Symbols+Rounded`},
 		},
 		{
 			name: "account.html",
@@ -48,7 +48,7 @@ func TestApplicationShellTemplates(t *testing.T) {
 				CurrentSection string
 				Home           bool
 			}{User: user, CurrentSection: "account"},
-			contains: []string{`class="app-shell"`, `class="pane-stack"`, `hx-swap="outerHTML transition:true"`, `>person</span>`},
+			contains: []string{`class="app-shell"`, `class="pane-stack"`, `hx-target="#workspace"`, `hx-swap="outerHTML transition:true"`, `>person</span>`},
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {

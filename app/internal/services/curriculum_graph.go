@@ -1,0 +1,323 @@
+package services
+
+import (
+	"fmt"
+	"sort"
+	"strings"
+
+	"universal-curriculum/internal/models"
+)
+
+func BuildCurriculumGraphLayout(graph *models.CurriculumGraph) (*models.CurriculumGraphLayout, error) {
+	layout := &models.CurriculumGraphLayout{}
+	if graph == nil {
+		return layout, nil
+	}
+	for _, unit := range graph.Units {
+		layout.Nodes = append(layout.Nodes, models.CurriculumGraphNode{Unit: unit})
+	}
+	for _, dependency := range graph.Dependencies {
+		layout.Edges = append(layout.Edges, models.CurriculumGraphEdge{
+			PrerequisiteID: dependency.PrerequisiteID,
+			DependentID:    dependency.UnitID,
+		})
+	}
+	if err := topologicallyOrderCurriculum(layout); err != nil {
+		return nil, err
+	}
+	assignCurriculumGraphLanes(layout)
+	return layout, nil
+}
+
+func topologicallyOrderCurriculum(graph *models.CurriculumGraphLayout) error {
+	if graph == nil || len(graph.Nodes) < 2 {
+		return nil
+	}
+	nodesByID := make(map[int64]models.CurriculumGraphNode, len(graph.Nodes))
+	indegree := make(map[int64]int, len(graph.Nodes))
+	dependents := make(map[int64][]int64, len(graph.Nodes))
+	for _, node := range graph.Nodes {
+		nodesByID[node.ID] = node
+		indegree[node.ID] = 0
+	}
+	for _, edge := range graph.Edges {
+		if _, exists := nodesByID[edge.PrerequisiteID]; !exists {
+			continue
+		}
+		if _, exists := nodesByID[edge.DependentID]; !exists {
+			continue
+		}
+		indegree[edge.DependentID]++
+		dependents[edge.PrerequisiteID] = append(dependents[edge.PrerequisiteID], edge.DependentID)
+	}
+
+	available := make([]models.CurriculumGraphNode, 0, len(graph.Nodes))
+	for _, node := range graph.Nodes {
+		if indegree[node.ID] == 0 {
+			available = append(available, node)
+		}
+	}
+	sortCurriculumNodes(available)
+	ordered := make([]models.CurriculumGraphNode, 0, len(graph.Nodes))
+	for len(available) > 0 {
+		node := available[0]
+		available = available[1:]
+		ordered = append(ordered, node)
+		for _, dependentID := range dependents[node.ID] {
+			indegree[dependentID]--
+			if indegree[dependentID] == 0 {
+				available = append(available, nodesByID[dependentID])
+				sortCurriculumNodes(available)
+			}
+		}
+	}
+	if len(ordered) != len(graph.Nodes) {
+		return fmt.Errorf("%w: published curriculum", ErrDependencyCycle)
+	}
+	graph.Nodes = ordered
+	return nil
+}
+
+func sortCurriculumNodes(nodes []models.CurriculumGraphNode) {
+	sort.SliceStable(nodes, func(i, j int) bool {
+		left, right := strings.ToLower(nodes[i].Name), strings.ToLower(nodes[j].Name)
+		if left != right {
+			return left < right
+		}
+		return nodes[i].ID < nodes[j].ID
+	})
+}
+
+func assignCurriculumGraphLanes(graph *models.CurriculumGraphLayout) {
+	if graph == nil || len(graph.Edges) == 0 {
+		return
+	}
+	nodeIndexes := make(map[int64]int, len(graph.Nodes))
+	for index, node := range graph.Nodes {
+		nodeIndexes[node.ID] = index
+	}
+	sort.SliceStable(graph.Edges, func(i, j int) bool {
+		fromI, fromJ := nodeIndexes[graph.Edges[i].PrerequisiteID], nodeIndexes[graph.Edges[j].PrerequisiteID]
+		if fromI != fromJ {
+			return fromI < fromJ
+		}
+		toI, toJ := nodeIndexes[graph.Edges[i].DependentID], nodeIndexes[graph.Edges[j].DependentID]
+		if toI != toJ {
+			return toI < toJ
+		}
+		return graph.Edges[i].PrerequisiteID < graph.Edges[j].PrerequisiteID
+	})
+
+	laneEnds := make([]int, 0)
+	for index := range graph.Edges {
+		edge := &graph.Edges[index]
+		start, startExists := nodeIndexes[edge.PrerequisiteID]
+		end, endExists := nodeIndexes[edge.DependentID]
+		if !startExists || !endExists {
+			continue
+		}
+		lane := -1
+		for candidate, laneEnd := range laneEnds {
+			if laneEnd < start {
+				lane = candidate
+				break
+			}
+		}
+		if lane == -1 {
+			lane = len(laneEnds)
+			laneEnds = append(laneEnds, -1)
+		}
+		edge.Lane = float64(lane)
+		laneEnds[lane] = end
+	}
+	assignCurriculumNodeLanes(graph, nodeIndexes)
+	compactCurriculumGraphLanes(graph)
+}
+
+func assignCurriculumNodeLanes(graph *models.CurriculumGraphLayout, nodeIndexes map[int64]int) {
+	incoming := make(map[int64][]models.CurriculumGraphEdge, len(graph.Nodes))
+	outgoing := make(map[int64][]models.CurriculumGraphEdge, len(graph.Nodes))
+	for _, edge := range graph.Edges {
+		incoming[edge.DependentID] = append(incoming[edge.DependentID], edge)
+		outgoing[edge.PrerequisiteID] = append(outgoing[edge.PrerequisiteID], edge)
+	}
+	for index := range graph.Nodes {
+		node := &graph.Nodes[index]
+		edges := incoming[node.ID]
+		preferredLane := node.Lane
+		if len(edges) == 1 {
+			edge := edges[0]
+			source := &graph.Nodes[nodeIndexes[edge.PrerequisiteID]]
+			sourceEdges := outgoing[source.ID]
+			if len(sourceEdges) == 1 || isPrimaryCurriculumBranch(edge, sourceEdges, nodeIndexes) {
+				preferredLane = source.Lane
+			} else {
+				preferredLane = edge.Lane
+			}
+		} else if len(edges) > 1 {
+			chosen := edges[0]
+			for _, edge := range edges[1:] {
+				chosenIndex, edgeIndex := nodeIndexes[chosen.PrerequisiteID], nodeIndexes[edge.PrerequisiteID]
+				if edgeIndex > chosenIndex || edgeIndex == chosenIndex && edge.Lane < chosen.Lane {
+					chosen = edge
+				}
+			}
+			preferredLane = graph.Nodes[nodeIndexes[chosen.PrerequisiteID]].Lane
+		} else if edges := outgoing[node.ID]; len(edges) > 0 {
+			chosen := edges[0]
+			for _, edge := range edges[1:] {
+				chosenIndex, edgeIndex := nodeIndexes[chosen.DependentID], nodeIndexes[edge.DependentID]
+				if edgeIndex > chosenIndex || edgeIndex == chosenIndex && edge.Lane < chosen.Lane {
+					chosen = edge
+				}
+			}
+			preferredLane = chosen.Lane
+		}
+		node.Lane = preferredLane
+	}
+	avoidCurriculumNodeLaneCollisions(graph, nodeIndexes)
+}
+
+func avoidCurriculumNodeLaneCollisions(graph *models.CurriculumGraphLayout, nodeIndexes map[int64]int) {
+	incoming := make(map[int64][]models.CurriculumGraphEdge, len(graph.Nodes))
+	outgoing := make(map[int64][]models.CurriculumGraphEdge, len(graph.Nodes))
+	for _, edge := range graph.Edges {
+		incoming[edge.DependentID] = append(incoming[edge.DependentID], edge)
+		outgoing[edge.PrerequisiteID] = append(outgoing[edge.PrerequisiteID], edge)
+	}
+	for pass := 0; pass < len(graph.Nodes); pass++ {
+		changed := false
+		for nodeIndex := range graph.Nodes {
+			occupied := make(map[float64]bool)
+			for _, edge := range graph.Edges {
+				start := nodeIndexes[edge.PrerequisiteID]
+				end := nodeIndexes[edge.DependentID]
+				if start >= nodeIndex || nodeIndex >= end {
+					continue
+				}
+				lane := edge.Lane
+				if graph.Nodes[start].Lane == graph.Nodes[end].Lane {
+					lane = graph.Nodes[start].Lane
+				}
+				occupied[lane] = true
+			}
+			lane := graph.Nodes[nodeIndex].Lane
+			if !occupied[lane] {
+				continue
+			}
+			newLane := curriculumLaneBetweenNeighbours(lane, graph)
+			graph.Nodes[nodeIndex].Lane = newLane
+			moveCurriculumStraightDescendants(graph, nodeIndexes, incoming, outgoing, nodeIndex, lane, newLane)
+			changed = true
+		}
+		if !changed {
+			return
+		}
+	}
+}
+
+func moveCurriculumStraightDescendants(
+	graph *models.CurriculumGraphLayout,
+	nodeIndexes map[int64]int,
+	incoming, outgoing map[int64][]models.CurriculumGraphEdge,
+	nodeIndex int,
+	oldLane, newLane float64,
+) {
+	node := graph.Nodes[nodeIndex]
+	edges := outgoing[node.ID]
+	for _, edge := range edges {
+		dependentIndex := nodeIndexes[edge.DependentID]
+		dependent := &graph.Nodes[dependentIndex]
+		if len(incoming[dependent.ID]) != 1 || dependent.Lane != oldLane {
+			continue
+		}
+		if len(edges) != 1 && !isPrimaryCurriculumBranch(edge, edges, nodeIndexes) {
+			continue
+		}
+		dependent.Lane = newLane
+		moveCurriculumStraightDescendants(graph, nodeIndexes, incoming, outgoing, dependentIndex, oldLane, newLane)
+	}
+}
+
+func curriculumLaneBetweenNeighbours(lane float64, graph *models.CurriculumGraphLayout) float64 {
+	positions := make(map[float64]bool, len(graph.Nodes)+len(graph.Edges))
+	for _, node := range graph.Nodes {
+		positions[node.Lane] = true
+	}
+	for _, edge := range graph.Edges {
+		positions[edge.Lane] = true
+	}
+	ordered := sortedLanes(positions)
+	for index, position := range ordered {
+		if position != lane {
+			continue
+		}
+		if index > 0 {
+			return (ordered[index-1] + lane) / 2
+		}
+		if index+1 < len(ordered) {
+			return (lane + ordered[index+1]) / 2
+		}
+		return lane + 0.5
+	}
+	return lane
+}
+
+func isPrimaryCurriculumBranch(edge models.CurriculumGraphEdge, outgoing []models.CurriculumGraphEdge, nodeIndexes map[int64]int) bool {
+	primary := outgoing[0]
+	for _, candidate := range outgoing[1:] {
+		primaryIndex, candidateIndex := nodeIndexes[primary.DependentID], nodeIndexes[candidate.DependentID]
+		if candidateIndex > primaryIndex || candidateIndex == primaryIndex && candidate.Lane < primary.Lane {
+			primary = candidate
+		}
+	}
+	return primary.PrerequisiteID == edge.PrerequisiteID && primary.DependentID == edge.DependentID
+}
+
+func compactCurriculumGraphLanes(graph *models.CurriculumGraphLayout) {
+	nodeLaneUsed := make(map[float64]bool)
+	edgeLaneUsed := make(map[float64]bool)
+	nodeLanes := make(map[int64]float64, len(graph.Nodes))
+	for _, node := range graph.Nodes {
+		nodeLaneUsed[node.Lane] = true
+		nodeLanes[node.ID] = node.Lane
+	}
+	for _, edge := range graph.Edges {
+		if nodeLanes[edge.PrerequisiteID] != nodeLanes[edge.DependentID] {
+			edgeLaneUsed[edge.Lane] = true
+		}
+	}
+	nodeLanesInUse := sortedLanes(nodeLaneUsed)
+	edgeOnlyLanes := make([]float64, 0, len(edgeLaneUsed))
+	for lane := range edgeLaneUsed {
+		if !nodeLaneUsed[lane] {
+			edgeOnlyLanes = append(edgeOnlyLanes, lane)
+		}
+	}
+	sort.Float64s(edgeOnlyLanes)
+	orderedLanes := append(nodeLanesInUse, edgeOnlyLanes...)
+	compactLane := make(map[float64]float64, len(orderedLanes))
+	for lane, originalLane := range orderedLanes {
+		compactLane[originalLane] = float64(lane)
+	}
+	for index := range graph.Edges {
+		lane, exists := compactLane[graph.Edges[index].Lane]
+		if !exists {
+			lane = compactLane[nodeLanes[graph.Edges[index].PrerequisiteID]]
+		}
+		graph.Edges[index].Lane = lane
+	}
+	for index := range graph.Nodes {
+		graph.Nodes[index].Lane = compactLane[graph.Nodes[index].Lane]
+	}
+	graph.LaneCount = len(orderedLanes)
+}
+
+func sortedLanes(lanes map[float64]bool) []float64 {
+	result := make([]float64, 0, len(lanes))
+	for lane := range lanes {
+		result = append(result, lane)
+	}
+	sort.Float64s(result)
+	return result
+}

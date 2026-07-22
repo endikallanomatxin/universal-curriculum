@@ -1,6 +1,7 @@
 .app-shell {
   display: grid;
   grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  height: 100dvh;
   min-height: 100dvh;
   overflow: hidden;
 }
@@ -13,6 +14,7 @@
   background: linear-gradient(90deg, var(--color-panel-start), var(--color-panel-end));
   display: flex;
   flex-direction: column;
+  height: 100dvh;
   min-height: 100dvh;
   padding: var(--space-3);
   position: relative;
@@ -31,6 +33,7 @@
   flex-direction: column;
   gap: var(--space-5);
   min-height: 0;
+  min-width: 0;
   position: relative;
 }
 
@@ -80,10 +83,16 @@
   color: var(--color-ink-strong);
 }
 
+.app-shell:not(.app-shell--home) .navigation-introduction {
+  display: none;
+}
+
 .primary-menu {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: var(--space-3);
   height: 100%;
+  justify-content: flex-end;
   list-style: none;
   margin: 0;
   padding: 0;
@@ -133,25 +142,40 @@
   view-transition-name: logout-action;
 }
 
-.primary-menu__login-item,
-.primary-menu__logout-item {
-  bottom: 0;
-  left: 50%;
-  position: absolute;
-  transform: translateX(-50%);
+.primary-menu__link--curriculum {
+  view-transition-name: curriculum-navigation;
 }
 
-.primary-menu__account-item {
-  bottom: calc(3rem + var(--space-2));
-  left: 50%;
-  position: absolute;
-  transform: translateX(-50%);
+.primary-menu__link--learn {
+  view-transition-name: learn-navigation;
 }
 
+.primary-menu__learn-item,
+.primary-menu__admin-item,
 .primary-menu__account-item,
 .primary-menu__login-item,
 .primary-menu__logout-item {
+  align-self: center;
   width: 12rem;
+}
+
+.primary-menu__admin-item {
+  width: calc(var(--sidebar-width) - 2 * var(--space-3));
+}
+
+.primary-menu__admin-item,
+.primary-menu__account-item,
+.primary-menu__login-item {
+  margin-top: var(--space-4);
+}
+
+.primary-menu__admin-item .primary-menu__link {
+  gap: var(--space-1);
+  padding-inline: var(--space-1);
+}
+
+.primary-menu__admin-item .primary-menu__label {
+  font-size: 0.8rem;
 }
 
 .menu-form {
@@ -227,7 +251,7 @@ button.primary-menu__link {
   background: transparent;
   border-color: transparent;
   border-radius: var(--radius-control);
-  grid-template-columns: 2rem minmax(0, 1fr);
+  grid-template-columns: 1.5rem minmax(0, 1fr);
 }
 
 .app-shell:not(.app-shell--home) .primary-menu__link:hover {
@@ -236,6 +260,7 @@ button.primary-menu__link {
 
 .pane-stack {
   display: flex;
+  height: 100dvh;
   min-width: 0;
   overflow-x: auto;
   overscroll-behavior-inline: contain;
@@ -246,6 +271,7 @@ button.primary-menu__link {
   animation: pane-enter var(--motion-duration) var(--motion-easing) both;
   background: linear-gradient(90deg, var(--color-panel-start), var(--color-panel-end));
   flex: 1 0 min(100%, 42rem);
+  height: 100dvh;
   min-height: 100dvh;
   overflow-y: auto;
   padding: clamp(2rem, 5vw, 6rem);
@@ -283,6 +309,8 @@ button.primary-menu__link {
 ::view-transition-group(primary-navigation),
 ::view-transition-group(brand),
 ::view-transition-group(account-navigation),
+::view-transition-group(curriculum-navigation),
+::view-transition-group(learn-navigation),
 ::view-transition-group(logout-action),
 ::view-transition-group(pane-stack) {
   animation-duration: var(--motion-duration);
@@ -293,15 +321,18 @@ button.primary-menu__link {
   .app-shell,
   .app-shell--home {
     display: block;
+    height: auto;
     overflow: visible;
   }
 
   .primary-navigation {
+    height: auto;
     min-height: auto;
     padding: var(--space-3) var(--space-4);
   }
 
   .app-shell--home .primary-navigation {
+    height: 100dvh;
     min-height: 100dvh;
     padding: clamp(1.5rem, 7vw, 3rem);
   }
@@ -321,30 +352,41 @@ button.primary-menu__link {
     position: static;
   }
 
+  .app-shell:not(.app-shell--home) .primary-navigation nav {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
   .app-shell:not(.app-shell--home) .primary-menu {
     display: flex;
-    margin-left: auto;
+    flex-direction: row;
+    justify-content: flex-start;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    width: 100%;
+  }
+
+  .app-shell:not(.app-shell--home) .primary-menu > li {
+    flex: none;
   }
 
   .primary-menu {
     height: auto;
   }
 
-  .primary-menu__login-item,
-  .primary-menu__logout-item {
-    position: static;
-    transform: none;
-  }
-
-  .primary-menu__account-item {
-    position: static;
-    transform: none;
-  }
-
+  .primary-menu__learn-item,
+  .primary-menu__admin-item,
   .primary-menu__account-item,
   .primary-menu__login-item,
   .primary-menu__logout-item {
     width: auto;
+  }
+
+  .primary-menu__admin-item,
+  .primary-menu__account-item,
+  .primary-menu__login-item {
+    margin-top: 0;
   }
 
   .app-shell:not(.app-shell--home) .primary-menu__link {
@@ -361,11 +403,13 @@ button.primary-menu__link {
   }
 
   .app-shell--home .primary-menu {
-    grid-template-columns: 1fr;
+    flex-direction: column;
+    justify-content: flex-end;
     width: 100%;
   }
 
   .ui-pane {
+    height: auto;
     min-height: calc(100dvh - 5rem);
     padding: clamp(2rem, 8vw, 4rem) clamp(1.25rem, 6vw, 3rem);
   }

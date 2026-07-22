@@ -1,0 +1,169 @@
+.learn-view {
+  max-width: 72rem;
+}
+
+.learn-heading {
+  align-items: baseline;
+  display: flex;
+  gap: var(--space-4);
+  justify-content: space-between;
+}
+
+.learn-heading h1 {
+  margin-bottom: clamp(2rem, 7vh, 5rem);
+}
+
+.learn-heading > p {
+  color: var(--color-muted);
+  flex: none;
+  margin: 0;
+}
+
+.curriculum-graph {
+  --curriculum-graph-width: 1.25rem;
+  --curriculum-content-gap: 2px;
+  --curriculum-lane-spacing: 14px;
+  --curriculum-node-lane-offset: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-ink) 14%, transparent);
+  border-top: 1px solid color-mix(in srgb, var(--color-ink) 14%, transparent);
+  container: curriculum-graph / inline-size;
+}
+
+.curriculum-graph__layout {
+  isolation: isolate;
+  position: relative;
+}
+
+.curriculum-graph__svg {
+  height: 100%;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+  position: absolute;
+  width: 100%;
+  z-index: 3;
+}
+
+.curriculum-graph__arrow {
+  fill: var(--color-muted);
+}
+
+.curriculum-graph__arrow--highlighted {
+  fill: var(--color-accent);
+}
+
+.curriculum-graph__edge {
+  fill: none;
+  stroke: var(--color-muted);
+  stroke-width: 2;
+  transition: opacity 120ms ease, stroke 120ms ease, stroke-width 120ms ease;
+  vector-effect: non-scaling-stroke;
+}
+
+.curriculum-graph__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+}
+
+.curriculum-graph__item {
+  display: grid;
+  grid-template-columns: var(--curriculum-graph-width) minmax(0, 1fr);
+  transition: opacity 120ms ease;
+}
+
+.curriculum-graph__item + .curriculum-graph__item {
+  border-top: 1px solid color-mix(in srgb, var(--color-ink) 10%, transparent);
+}
+
+.curriculum-graph__anchor {
+  align-self: center;
+  background: currentColor;
+  border-radius: 50%;
+  color: var(--color-ink-strong);
+  grid-column: 1;
+  grid-row: 1;
+  height: 0.75rem;
+  justify-self: end;
+  margin-right: calc(var(--curriculum-content-gap) + (var(--curriculum-node-lane) + var(--curriculum-node-lane-offset)) * var(--curriculum-lane-spacing));
+  width: 0.75rem;
+  z-index: 4;
+}
+
+.curriculum-graph__row {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  display: grid;
+  font: inherit;
+  gap: 0.25rem;
+  grid-column: 1 / -1;
+  grid-row: 1;
+  min-width: 0;
+  padding: var(--space-3) var(--space-3) var(--space-3) calc(var(--curriculum-graph-width) + var(--space-3));
+  text-align: left;
+  transition: background 120ms ease;
+  z-index: 2;
+}
+
+.curriculum-graph__row:hover,
+.curriculum-graph__item.is-selected .curriculum-graph__row {
+  background: color-mix(in srgb, var(--color-surface) 72%, transparent);
+}
+
+.curriculum-graph__row:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.curriculum-graph__name {
+  font-weight: 700;
+}
+
+.curriculum-graph__description {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.curriculum-graph.is-filtering .curriculum-graph__item:not(.is-related),
+.curriculum-graph.is-filtering .curriculum-graph__edge:not(.is-related) {
+  opacity: 0.2;
+}
+
+.curriculum-graph__item.is-related .curriculum-graph__row {
+  background: color-mix(in srgb, var(--color-accent) 7%, transparent);
+}
+
+.curriculum-graph__edge.is-related {
+  stroke: var(--color-accent);
+  stroke-width: 3;
+}
+
+.learn-empty {
+  border-top: 1px solid color-mix(in srgb, var(--color-ink) 14%, transparent);
+  padding: var(--space-6) 0;
+}
+
+.learn-empty > .material-symbols-rounded {
+  font-size: 2rem;
+}
+
+.learn-empty h2,
+.learn-empty p {
+  margin: var(--space-2) 0 0;
+}
+
+.learn-empty p {
+  color: var(--color-muted);
+}
+
+@media (max-width: 42rem) {
+  .learn-heading {
+    align-items: start;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+}

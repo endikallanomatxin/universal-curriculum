@@ -1,0 +1,72 @@
+{{ define "learn.html" -}}
+<!doctype html>
+<html lang="en">
+<head>{{ template "document-head" "Learn · Universal Curriculum" }}</head>
+<body>
+  <div class="app-shell" id="app-shell">
+    {{ template "primary-navigation" . }}
+    <main class="pane-stack" id="workspace" data-shell-view="detail" data-document-title="Learn · Universal Curriculum">
+      <section class="ui-pane ui-pane--wide" aria-labelledby="learn-title">
+        <div class="ui-pane__inner learn-view">
+          <p class="ui-pane__eyebrow">Curriculum</p>
+          <div class="learn-heading">
+            <h1 id="learn-title">Learn</h1>
+            {{ if .Graph.Nodes }}
+              <p>{{ len .Graph.Nodes }} units <span aria-hidden="true">·</span> {{ len .Graph.Edges }} dependencies</p>
+            {{ end }}
+          </div>
+
+          {{ if .Graph.Nodes }}
+            <div class="curriculum-graph"
+                 data-curriculum-graph
+                 data-lane-count="{{ .Graph.LaneCount }}">
+              <p class="visually-hidden" id="curriculum-graph-description">Arrows go from each prerequisite to the units that depend on it. Select a unit to highlight its learning path.</p>
+              <div class="curriculum-graph__layout" aria-describedby="curriculum-graph-description">
+                <svg class="curriculum-graph__svg" aria-hidden="true">
+                  <defs>
+                    <marker id="curriculum-arrow" viewBox="0 0 10 10" markerWidth="9" markerHeight="9" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+                      <path class="curriculum-graph__arrow" d="M0,0 L10,5 L0,10 z"></path>
+                    </marker>
+                    <marker id="curriculum-arrow-highlighted" viewBox="0 0 10 10" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+                      <path class="curriculum-graph__arrow curriculum-graph__arrow--highlighted" d="M0,0 L10,5 L0,10 z"></path>
+                    </marker>
+                  </defs>
+                  <g data-curriculum-graph-paths
+                     data-arrow-marker="curriculum-arrow"
+                     data-highlighted-arrow-marker="curriculum-arrow-highlighted"></g>
+                </svg>
+                <ol class="curriculum-graph__list">
+                  {{ range .Graph.Nodes }}
+                    <li class="curriculum-graph__item"
+                        data-curriculum-node
+                        data-unit-id="{{ .ID }}"
+                        data-node-lane="{{ .Lane }}"
+                        style="--curriculum-node-lane:{{ .Lane }};">
+                      <span class="curriculum-graph__anchor" data-curriculum-anchor aria-hidden="true"></span>
+                      <button class="curriculum-graph__row" type="button">
+                        <span class="curriculum-graph__name">{{ .Name }}</span>
+                        <span class="curriculum-graph__description">{{ .Description }}</span>
+                      </button>
+                    </li>
+                  {{ end }}
+                </ol>
+                <div hidden>
+                  {{ range .Graph.Edges }}<span data-curriculum-edge data-prerequisite-id="{{ .PrerequisiteID }}" data-dependent-id="{{ .DependentID }}" data-lane="{{ .Lane }}"></span>{{ end }}
+                </div>
+              </div>
+            </div>
+          {{ else }}
+            <div class="learn-empty">
+              <span class="material-symbols-rounded" aria-hidden="true">book_5</span>
+              <h2>The curriculum is empty</h2>
+              <p>Units will appear here once they are published.</p>
+            </div>
+          {{ end }}
+        </div>
+      </section>
+    </main>
+  </div>
+  {{ template "shell-scripts" }}
+</body>
+</html>
+{{- end }}

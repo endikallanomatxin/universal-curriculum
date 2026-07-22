@@ -5,7 +5,7 @@
 <body>
   <div class="app-shell" id="app-shell">
     {{ template "primary-navigation" . }}
-    <main class="pane-stack" id="workspace">
+    <main class="pane-stack" id="workspace" data-shell-view="detail" data-document-title="Account · Universal Curriculum">
       <section class="ui-pane" aria-labelledby="account-title">
         <div class="ui-pane__inner">
           <p class="ui-pane__eyebrow">Settings</p>
@@ -36,7 +36,7 @@
       </section>
     </main>
   </div>
-  <script src="/static/js/htmx.min.js" defer></script>
+  {{ template "shell-scripts" }}
 </body>
 </html>
 {{- end }}

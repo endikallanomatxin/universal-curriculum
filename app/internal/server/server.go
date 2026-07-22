@@ -64,10 +64,16 @@ func (server *Server) routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", server.health)
 	mux.HandleFunc("GET /", server.index)
+	mux.HandleFunc("GET /learn", server.learn)
 	mux.HandleFunc("GET /auth/login", server.login)
 	mux.HandleFunc("POST /auth/login", server.login)
 	mux.HandleFunc("POST /auth/logout", server.logout)
 	mux.Handle("GET /account", requireUser(http.HandlerFunc(server.account)))
+	mux.Handle("GET /admin/curriculum", server.requireAdmin(http.HandlerFunc(server.adminCurriculum)))
+	mux.Handle("POST /admin/curriculum/units", server.requireAdmin(http.HandlerFunc(server.createCurriculumUnit)))
+	mux.Handle("POST /admin/curriculum/units/{id}/delete", server.requireAdmin(http.HandlerFunc(server.deleteCurriculumUnit)))
+	mux.Handle("POST /admin/curriculum/dependencies", server.requireAdmin(http.HandlerFunc(server.createUnitDependency)))
+	mux.Handle("POST /admin/curriculum/dependencies/delete", server.requireAdmin(http.HandlerFunc(server.deleteUnitDependency)))
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
 	return server.maintainSession(mux)
 }
@@ -98,17 +104,25 @@ func (server *Server) account(writer http.ResponseWriter, request *http.Request)
 }
 
 func (server *Server) renderUserPage(writer http.ResponseWriter, request *http.Request, name, currentSection string, home bool) {
+	data, err := server.loadUserPageData(request, currentSection, home)
+	if err != nil {
+		http.Error(writer, "Load user", http.StatusInternalServerError)
+		return
+	}
+	server.render(writer, name, data)
+}
+
+func (server *Server) loadUserPageData(request *http.Request, currentSection string, home bool) (userPageData, error) {
 	data := userPageData{CurrentSection: currentSection, Home: home}
 	if userID, ok := services.SessionUserID(request); ok {
 		user, err := db.GetUserByID(server.Database, userID)
 		if err != nil {
-			http.Error(writer, "Load user", http.StatusInternalServerError)
-			return
+			return data, err
 		}
 		data.User = user
 		data.CSRFToken, _ = services.SessionCSRFToken(request)
 	}
-	server.render(writer, name, data)
+	return data, nil
 }
 
 func (server *Server) render(writer http.ResponseWriter, name string, data any) {

@@ -5,9 +5,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded&display=block" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/css/base.css">
   <link rel="stylesheet" href="/static/css/shell.css">
   <link rel="stylesheet" href="/static/css/components.css">
+  <link rel="stylesheet" href="/static/css/curriculum.css">
+  <link rel="stylesheet" href="/static/css/learn.css">
 {{- end }}
 
 {{ define "icon-account" -}}
@@ -18,7 +21,15 @@
 <span class="material-symbols-rounded primary-menu__icon" aria-hidden="true">logout</span>
 {{- end }}
 
-{{ define "shell-link-attributes" }}hx-get="{{ . }}" hx-target="#app-shell" hx-select="#app-shell" hx-swap="outerHTML transition:true" hx-push-url="true"{{ end }}
+{{ define "icon-curriculum" -}}
+<span class="material-symbols-rounded primary-menu__icon" aria-hidden="true">design_services</span>
+{{- end }}
+
+{{ define "icon-learn" -}}
+<span class="material-symbols-rounded primary-menu__icon" aria-hidden="true">book_5</span>
+{{- end }}
+
+{{ define "shell-link-attributes" }}hx-get="{{ . }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true"{{ end }}
 
 {{ define "primary-navigation" -}}
 <aside class="primary-navigation">
@@ -27,7 +38,7 @@
       <span>Universal Curriculum</span>
     </a>
 
-    {{ if and .Home .User }}
+    {{ if .User }}
       <div class="navigation-introduction">
         <p>Welcome, <strong>{{ .User.DisplayName }}</strong>.</p>
       </div>
@@ -35,6 +46,20 @@
 
     <nav aria-label="Primary navigation">
       <ul class="primary-menu">
+        <li class="primary-menu__learn-item">
+          <a class="primary-menu__link primary-menu__link--learn primary-menu__link--session-action" href="/learn" {{ if eq .CurrentSection "learn" }}aria-current="page"{{ end }} {{ template "shell-link-attributes" "/learn" }}>
+            {{ template "icon-learn" }}
+            <span class="primary-menu__label">Learn</span>
+          </a>
+        </li>
+        {{ if and .User .User.IsAdmin }}
+          <li class="primary-menu__admin-item">
+            <a class="primary-menu__link primary-menu__link--curriculum primary-menu__link--session-action" href="/admin/curriculum" {{ if eq .CurrentSection "curriculum" }}aria-current="page"{{ end }} {{ template "shell-link-attributes" "/admin/curriculum" }}>
+              {{ template "icon-curriculum" }}
+              <span class="primary-menu__label">Curriculum<br>modification</span>
+            </a>
+          </li>
+        {{ end }}
         <li class="{{ if .User }}primary-menu__account-item{{ else }}primary-menu__login-item{{ end }}">
           {{ if .User }}
             <a class="primary-menu__link primary-menu__link--account primary-menu__link--session-action" href="/account" {{ if eq .CurrentSection "account" }}aria-current="page"{{ end }} {{ template "shell-link-attributes" "/account" }}>
@@ -63,4 +88,12 @@
     </nav>
   </div>
 </aside>
+{{- end }}
+
+{{ define "shell-scripts" -}}
+  <script src="/static/js/htmx.min.js" defer></script>
+  <script src="/static/js/shell.js" defer></script>
+  <script src="/static/js/autoresize.js" defer></script>
+  <script src="/static/js/panels.js" defer></script>
+  <script src="/static/js/curriculum_graph.js" defer></script>
 {{- end }}

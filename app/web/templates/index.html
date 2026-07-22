@@ -5,8 +5,9 @@
 <body>
   <div class="app-shell app-shell--home" id="app-shell">
     {{ template "primary-navigation" . }}
+    <main id="workspace" data-shell-view="home" data-document-title="Universal Curriculum" hidden></main>
   </div>
-  <script src="/static/js/htmx.min.js" defer></script>
+  {{ template "shell-scripts" }}
 </body>
 </html>
 {{- end }}
