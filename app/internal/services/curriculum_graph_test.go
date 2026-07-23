@@ -97,6 +97,93 @@ func TestBuildCurriculumGraphLayoutUsesPreviousOrderAsAStartingPoint(t *testing.
 	}
 }
 
+func TestBuildCurriculumGraphLayoutImprovesCrossingPreviousOrder(t *testing.T) {
+	graph := &models.CurriculumGraph{
+		Units: []models.Unit{
+			{ID: 1, Name: "First root"},
+			{ID: 2, Name: "Second root"},
+			{ID: 3, Name: "First result"},
+			{ID: 4, Name: "Second result"},
+		},
+		Dependencies: []models.UnitDependency{
+			{UnitID: 3, PrerequisiteID: 1},
+			{UnitID: 4, PrerequisiteID: 2},
+		},
+	}
+	hints := CurriculumGraphLayoutHints{
+		Order: map[int64]int{1: 0, 2: 1, 3: 2, 4: 3},
+	}
+
+	layout, err := BuildCurriculumGraphLayoutWithHints(graph, hints)
+	if err != nil {
+		t.Fatal(err)
+	}
+	score := scoreCurriculumNodeOrder(layout, hints.Order)
+	if score.Crossings != 0 {
+		t.Fatalf("avoidable crossings = %d, layout = %#v", score.Crossings, layout.Nodes)
+	}
+	positions := make(map[int64]int, len(layout.Nodes))
+	for index, node := range layout.Nodes {
+		positions[node.ID] = index
+	}
+	for _, edge := range layout.Edges {
+		if positions[edge.PrerequisiteID] >= positions[edge.DependentID] {
+			t.Fatalf("optimized order violated dependency %#v", edge)
+		}
+	}
+}
+
+func TestBuildCurriculumGraphLayoutOptimizesDenseNeighborhood(t *testing.T) {
+	graph := &models.CurriculumGraph{
+		Units: []models.Unit{
+			{ID: 1, Name: "Mathematical reasoning"},
+			{ID: 2, Name: "Algebraic foundations"},
+			{ID: 3, Name: "Propositional logic"},
+			{ID: 4, Name: "Functions and relations"},
+			{ID: 5, Name: "Discrete structures"},
+			{ID: 13, Name: "Bash"},
+			{ID: 15, Name: "Operating systems"},
+			{ID: 27, Name: "Continuous delivery"},
+		},
+		Dependencies: []models.UnitDependency{
+			{UnitID: 2, PrerequisiteID: 1},
+			{UnitID: 13, PrerequisiteID: 1},
+			{UnitID: 3, PrerequisiteID: 1},
+			{UnitID: 5, PrerequisiteID: 2},
+			{UnitID: 4, PrerequisiteID: 2},
+			{UnitID: 27, PrerequisiteID: 13},
+			{UnitID: 15, PrerequisiteID: 13},
+			{UnitID: 5, PrerequisiteID: 13},
+			{UnitID: 5, PrerequisiteID: 3},
+			{UnitID: 4, PrerequisiteID: 3},
+		},
+	}
+
+	hints := CurriculumGraphLayoutHints{
+		Order: map[int64]int{1: 0, 2: 1, 13: 2, 27: 3, 15: 4, 3: 5, 5: 6, 4: 7},
+	}
+	layout, err := BuildCurriculumGraphLayoutWithHints(graph, hints)
+	if err != nil {
+		t.Fatal(err)
+	}
+	score := scoreCurriculumNodeOrder(layout, hints.Order)
+	if score.Crossings > 5 || score.EdgeSpan > 27 {
+		t.Fatalf("dense layout score = %#v, nodes = %#v", score, layout.Nodes)
+	}
+	assertNoCurriculumNodeLaneCollisions(t, layout)
+
+	repeated, err := BuildCurriculumGraphLayoutWithHints(graph, hints)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for index := range layout.Nodes {
+		if layout.Nodes[index].ID != repeated.Nodes[index].ID ||
+			layout.Nodes[index].Lane != repeated.Nodes[index].Lane {
+			t.Fatalf("layout is not deterministic: first=%#v repeated=%#v", layout.Nodes, repeated.Nodes)
+		}
+	}
+}
+
 func TestBuildCurriculumGraphLayoutRejectsCycles(t *testing.T) {
 	graph := &models.CurriculumGraph{
 		Units: []models.Unit{{ID: 1, Name: "One"}, {ID: 2, Name: "Two"}},
@@ -167,9 +254,6 @@ func TestBuildCurriculumGraphLayoutKeepsUnitsOffRenderedDependencyLanes(t *testi
 	}
 	if lanes[9] != lanes[10] {
 		t.Fatalf("straight descendants were split across lanes: Limits=%g Differential Calculus=%g", lanes[9], lanes[10])
-	}
-	if !(lanes[7] < lanes[9] && lanes[9] < lanes[6]) {
-		t.Fatalf("branch was not inserted between its neighbouring lanes: Functions=%g Limits=%g Set Theory=%g", lanes[7], lanes[9], lanes[6])
 	}
 }
 

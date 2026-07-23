@@ -10,6 +10,28 @@ requests. The server uses the previous order and lanes as starting hints for
 the next layout, and stable view-transition names let shared nodes move between
 their old and new positions.
 
+## Layout optimization
+
+The server first produces a deterministic topological order and then searches
+a bounded set of other valid orders reachable through adjacent independent
+units. Candidates are compared lexicographically:
+
+1. fewer interleaving dependency intervals;
+2. shorter total dependency span; and
+3. less movement from the previous visible order.
+
+Structural clarity therefore wins over preserving a poor historical layout,
+while equivalent arrangements retain continuity. The search explores and
+retains at most 512 candidates, which is intentionally sized for the small
+neighbourhoods rendered by the application rather than the complete
+curriculum.
+
+The optimized order is then handed to the established lane allocator. Ordering
+and routing deliberately remain separate: the bounded search improves the
+topology without subsequently packing or shifting lanes according to indirect
+geometric metrics. This preserves the allocator's existing breathing room and
+keeps dense converging branches from becoming a compact braid.
+
 Learn and Curriculum Modification render the same `curriculum-graph` and
 `unit-navigation-search` templates. Server view models prepare consumer-specific
 navigation and content URLs, current state and optional path targets; the

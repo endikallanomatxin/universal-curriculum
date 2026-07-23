@@ -15,6 +15,7 @@ const (
 	curriculumDirectNeighborLimit = 4
 	curriculumSecondNeighborLimit = 4
 	curriculumCoPrerequisiteLimit = 3
+	curriculumOrderSearchLimit    = 512
 )
 
 type CurriculumGraphLayoutHints struct {
@@ -163,8 +164,152 @@ func BuildCurriculumGraphLayoutWithHints(graph *models.CurriculumGraph, hints Cu
 	if err := topologicallyOrderCurriculum(layout, hints.Order); err != nil {
 		return nil, err
 	}
+	improveCurriculumNodeOrder(layout, hints.Order)
 	assignCurriculumGraphLanes(layout, hints.Lanes)
 	return layout, nil
+}
+
+type curriculumOrderScore struct {
+	Crossings int
+	EdgeSpan  int
+	Movement  int
+}
+
+func improveCurriculumNodeOrder(graph *models.CurriculumGraphLayout, previousOrder map[int64]int) {
+	if graph == nil || len(graph.Nodes) < 2 || len(graph.Edges) == 0 {
+		return
+	}
+	directDependencies := make(map[[2]int64]bool, len(graph.Edges))
+	for _, edge := range graph.Edges {
+		directDependencies[[2]int64{edge.PrerequisiteID, edge.DependentID}] = true
+	}
+	type orderCandidate struct {
+		nodes []models.CurriculumGraphNode
+		score curriculumOrderScore
+		key   string
+	}
+	initialNodes := append([]models.CurriculumGraphNode(nil), graph.Nodes...)
+	initial := orderCandidate{
+		nodes: initialNodes,
+		score: scoreCurriculumNodes(initialNodes, graph.Edges, previousOrder),
+		key:   curriculumNodeOrderKey(initialNodes),
+	}
+	best := initial
+	pending := []orderCandidate{initial}
+	seen := map[string]bool{initial.key: true}
+	sortCandidates := func() {
+		sort.SliceStable(pending, func(i, j int) bool {
+			if pending[i].score != pending[j].score {
+				return pending[i].score.betterThan(pending[j].score)
+			}
+			return pending[i].key < pending[j].key
+		})
+	}
+	for explored := 0; explored < curriculumOrderSearchLimit && len(pending) > 0; explored++ {
+		sortCandidates()
+		current := pending[0]
+		pending = pending[1:]
+		if current.score.betterThan(best.score) {
+			best = current
+		}
+		for index := 0; index+1 < len(current.nodes); index++ {
+			left, right := current.nodes[index].ID, current.nodes[index+1].ID
+			if directDependencies[[2]int64{left, right}] {
+				continue
+			}
+			nodes := append([]models.CurriculumGraphNode(nil), current.nodes...)
+			nodes[index], nodes[index+1] = nodes[index+1], nodes[index]
+			key := curriculumNodeOrderKey(nodes)
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			pending = append(pending, orderCandidate{
+				nodes: nodes,
+				score: scoreCurriculumNodes(nodes, graph.Edges, previousOrder),
+				key:   key,
+			})
+		}
+		if len(pending) > curriculumOrderSearchLimit {
+			sortCandidates()
+			pending = pending[:curriculumOrderSearchLimit]
+		}
+	}
+	graph.Nodes = best.nodes
+}
+
+func scoreCurriculumNodeOrder(graph *models.CurriculumGraphLayout, previousOrder map[int64]int) curriculumOrderScore {
+	if graph == nil {
+		return curriculumOrderScore{}
+	}
+	return scoreCurriculumNodes(graph.Nodes, graph.Edges, previousOrder)
+}
+
+func scoreCurriculumNodes(
+	nodes []models.CurriculumGraphNode,
+	edges []models.CurriculumGraphEdge,
+	previousOrder map[int64]int,
+) curriculumOrderScore {
+	score := curriculumOrderScore{}
+	positions := make(map[int64]int, len(nodes))
+	for index, node := range nodes {
+		positions[node.ID] = index
+		if previous, exists := previousOrder[node.ID]; exists {
+			score.Movement += absoluteInt(index - previous)
+		}
+	}
+	for index, edge := range edges {
+		start, startExists := positions[edge.PrerequisiteID]
+		end, endExists := positions[edge.DependentID]
+		if !startExists || !endExists {
+			continue
+		}
+		score.EdgeSpan += end - start
+		for _, other := range edges[index+1:] {
+			otherStart, otherStartExists := positions[other.PrerequisiteID]
+			otherEnd, otherEndExists := positions[other.DependentID]
+			if !otherStartExists || !otherEndExists {
+				continue
+			}
+			if intervalsInterleave(start, end, otherStart, otherEnd) {
+				score.Crossings++
+			}
+		}
+	}
+	return score
+}
+
+func curriculumNodeOrderKey(nodes []models.CurriculumGraphNode) string {
+	var key strings.Builder
+	for index, node := range nodes {
+		if index > 0 {
+			key.WriteByte(',')
+		}
+		fmt.Fprintf(&key, "%d", node.ID)
+	}
+	return key.String()
+}
+
+func (score curriculumOrderScore) betterThan(other curriculumOrderScore) bool {
+	if score.Crossings != other.Crossings {
+		return score.Crossings < other.Crossings
+	}
+	if score.EdgeSpan != other.EdgeSpan {
+		return score.EdgeSpan < other.EdgeSpan
+	}
+	return score.Movement < other.Movement
+}
+
+func intervalsInterleave(leftStart, leftEnd, rightStart, rightEnd int) bool {
+	return leftStart < rightStart && rightStart < leftEnd && leftEnd < rightEnd ||
+		rightStart < leftStart && leftStart < rightEnd && rightEnd < leftEnd
+}
+
+func absoluteInt(value int) int {
+	if value < 0 {
+		return -value
+	}
+	return value
 }
 
 func topologicallyOrderCurriculum(graph *models.CurriculumGraphLayout, previousOrder map[int64]int) error {
