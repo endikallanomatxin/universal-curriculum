@@ -142,6 +142,40 @@ func TestPanelControllerDoesNotOwnCurriculumEditing(t *testing.T) {
 	}
 }
 
+func TestMobilePanelBreadcrumbsUseTheSharedLayoutContract(t *testing.T) {
+	layout, err := os.ReadFile("../../web/static/js/panel_layout.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, contract := range []string{
+		`matchMedia("(max-width: 42rem)")`,
+		`"[data-panel-breadcrumb]"`,
+		`mobilePanelBreadcrumbs`,
+		`layoutMobileGroup`,
+	} {
+		if !strings.Contains(string(layout), contract) {
+			t.Errorf("shared panel layout is missing mobile breadcrumb contract %q", contract)
+		}
+	}
+
+	for _, templatePath := range []string{
+		"../../web/templates/account.html",
+		"../../web/templates/admin-curriculum.html",
+		"../../web/templates/learn.html",
+	} {
+		template, err := os.ReadFile(templatePath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(template), "collapsed:0") {
+			t.Errorf("%s does not declare a zero-width panel mode", templatePath)
+		}
+		if !strings.Contains(string(template), "data-panel-breadcrumb=") {
+			t.Errorf("%s does not declare a mobile breadcrumb label", templatePath)
+		}
+	}
+}
+
 func TestNavigationCounterpartsHaveSharedTransitions(t *testing.T) {
 	stylesheet, err := os.ReadFile("../../web/static/css/shell.css")
 	if err != nil {

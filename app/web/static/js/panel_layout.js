@@ -61,7 +61,66 @@
     }).reverse();
   }
 
-  function layoutGroup(group) {
+  function selectModeAtWidth(definition, width) {
+    let selection = 0;
+    definition.modes.forEach(function (mode, index) {
+      if (mode.width <= width) selection = index;
+    });
+    return selection;
+  }
+
+  function roundedWidth(width) {
+    return Math.round(width * 1000) / 1000;
+  }
+
+  function setPanelGeometry(panel, width, mode) {
+    const widthValue = roundedWidth(width) + "rem";
+    let changed = false;
+    if (panel.style.getPropertyValue("--panel-width") !== widthValue) {
+      panel.style.setProperty("--panel-width", widthValue);
+      changed = true;
+    }
+    if (panel.dataset.panelMode !== mode) {
+      panel.dataset.panelMode = mode;
+      changed = true;
+    }
+    return changed;
+  }
+
+  function setGroupValue(group, name, value) {
+    const stringValue = String(roundedWidth(value));
+    if (group.dataset[name] === stringValue) return false;
+    group.dataset[name] = stringValue;
+    return true;
+  }
+
+  function layoutMobileGroup(group, definitions, available) {
+    const activeIndex = definitions.length - 1;
+    let changed = false;
+    definitions.forEach(function (definition, index) {
+      const width = index === activeIndex ? available : 0;
+      const selection = selectModeAtWidth(definition, width);
+      changed = setPanelGeometry(
+        definition.panel,
+        width,
+        definition.modes[selection].name
+      ) || changed;
+    });
+    const activeDefinition = definitions[activeIndex];
+    changed = setGroupValue(
+      group,
+      "panelChildrenRequiredWidth",
+      ownRequiredWidth(activeDefinition)
+    ) || changed;
+    changed = setGroupValue(
+      group,
+      "panelChildrenDesiredWidth",
+      ownDesiredWidth(activeDefinition)
+    ) || changed;
+    if (changed) group.dispatchEvent(new CustomEvent("panel-layout", { bubbles: true }));
+  }
+
+  function layoutGroup(group, mobile) {
     const panels = visiblePanels(group);
     if (!panels.length) return;
 
@@ -73,6 +132,14 @@
       return definition.modes.length > 0;
     });
     if (!definitions.length) return;
+    if (mobile) {
+      layoutMobileGroup(group, definitions, available);
+      return;
+    }
+    definitions.forEach(function (definition) {
+      const visibleModes = definition.modes.filter(function (mode) { return mode.width > 0; });
+      if (visibleModes.length) definition.modes = visibleModes;
+    });
 
     const selections = definitions.map(function () { return 0; });
     const allocation = allocationOrder(definitions);
@@ -148,25 +215,87 @@
       });
     }
 
+    let changed = false;
     definitions.forEach(function (definition, index) {
-      definition.panel.style.setProperty("--panel-width", widths[index] + "rem");
-      definition.panel.dataset.panelMode = definition.modes[selections[index]].name;
+      changed = setPanelGeometry(
+        definition.panel,
+        widths[index],
+        definition.modes[selections[index]].name
+      ) || changed;
     });
-    group.dataset.panelChildrenRequiredWidth = definitions.reduce(function (total, definition) {
+    changed = setGroupValue(group, "panelChildrenRequiredWidth", definitions.reduce(function (total, definition) {
       return total + ownRequiredWidth(definition);
-    }, 0);
-    group.dataset.panelChildrenDesiredWidth = definitions.reduce(function (total, definition) {
+    }, 0)) || changed;
+    changed = setGroupValue(group, "panelChildrenDesiredWidth", definitions.reduce(function (total, definition) {
       return total + ownDesiredWidth(definition);
-    }, 0);
-    group.style.setProperty("--panel-group-width", Math.max(used, available - spare) + "rem");
-    group.dispatchEvent(new CustomEvent("panel-layout", { bubbles: true }));
+    }, 0)) || changed;
+    if (changed) group.dispatchEvent(new CustomEvent("panel-layout", { bubbles: true }));
+  }
+
+  function mobileBreadcrumbItems(workspace) {
+    const items = [];
+    workspace.querySelectorAll("[data-panel-breadcrumb]").forEach(function (panel) {
+      if (panel.hidden || panel.classList.contains("is-closing")) return;
+      const label = (panel.dataset.panelBreadcrumb || "").trim();
+      if (label) items.push({ label: label, panel: panel });
+    });
+    return items;
+  }
+
+  function updateMobileBreadcrumbs(shell, mobile) {
+    const workspace = shell.querySelector("#workspace");
+    if (!workspace) return;
+    let trail = workspace.querySelector(":scope > [data-mobile-panel-breadcrumbs]");
+    if (!mobile) {
+      if (trail && !trail.hidden) trail.hidden = true;
+      return;
+    }
+    if (!trail) {
+      trail = document.createElement("nav");
+      trail.className = "mobile-panel-breadcrumbs";
+      trail.dataset.mobilePanelBreadcrumbs = "";
+      trail.setAttribute("aria-label", "Current location");
+      workspace.prepend(trail);
+    }
+    const items = mobileBreadcrumbItems(workspace);
+    const signature = items.map(function (item) { return item.label; }).join("\u001f");
+    if (trail.breadcrumbSignature === signature) {
+      const shouldHide = items.length === 0;
+      if (trail.hidden !== shouldHide) trail.hidden = shouldHide;
+      return;
+    }
+    trail.breadcrumbSignature = signature;
+    trail.replaceChildren();
+    items.forEach(function (item, index) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = item.label;
+      if (index === items.length - 1) button.setAttribute("aria-current", "page");
+      button.addEventListener("click", function () {
+        document.dispatchEvent(new CustomEvent("panel:navigate", {
+          detail: { panel: item.panel }
+        }));
+      });
+      trail.appendChild(button);
+    });
+    trail.hidden = items.length === 0;
   }
 
   function layoutFrom(root) {
+    const mobile = window.matchMedia("(max-width: 42rem)").matches;
     const groups = [];
     if (root.matches && root.matches("[data-panel-group]")) groups.push(root);
     root.querySelectorAll("[data-panel-group]").forEach(function (group) { groups.push(group); });
-    groups.reverse().forEach(layoutGroup);
+    groups.reverse().forEach(function (group) { layoutGroup(group, mobile); });
+    updateMobileBreadcrumbs(root, mobile);
+  }
+
+  function scheduleLayout(shell) {
+    if (shell.panelLayoutFrame) return;
+    shell.panelLayoutFrame = window.requestAnimationFrame(function () {
+      shell.panelLayoutFrame = null;
+      layoutFrom(shell);
+    });
   }
 
   function initializePanelLayout() {
@@ -185,9 +314,7 @@
     }
     if (shell.panelLayoutObserver) shell.panelLayoutObserver.disconnect();
 
-    const resizeObserver = new ResizeObserver(function () {
-      layoutFrom(shell);
-    });
+    const resizeObserver = new ResizeObserver(function () { scheduleLayout(shell); });
     shell.querySelectorAll("[data-panel-group]").forEach(function (group) {
       resizeObserver.observe(group);
       if (!group.panelLayoutScrollInitialized) {
@@ -196,7 +323,7 @@
           if (group.panelLayoutScrollFrame) return;
           group.panelLayoutScrollFrame = window.requestAnimationFrame(function () {
             group.panelLayoutScrollFrame = null;
-            layoutFrom(shell);
+            scheduleLayout(shell);
           });
         }, { passive: true });
       }
@@ -205,8 +332,18 @@
     shell.panelLayoutObserver = resizeObserver;
 
     if (!shell.panelVisibilityObserver) {
-      shell.panelVisibilityObserver = new MutationObserver(function () { layoutFrom(shell); });
-      shell.panelVisibilityObserver.observe(shell, { attributes: true, attributeFilter: ["hidden"], subtree: true });
+      shell.panelVisibilityObserver = new MutationObserver(function () { scheduleLayout(shell); });
+      shell.panelVisibilityObserver.observe(shell, {
+        attributes: true,
+        attributeFilter: ["hidden", "data-panel-breadcrumb"],
+        subtree: true
+      });
+    }
+    if (!shell.panelLayoutBreakpoint) {
+      shell.panelLayoutBreakpoint = window.matchMedia("(max-width: 42rem)");
+      shell.panelLayoutBreakpoint.addEventListener("change", function () {
+        scheduleLayout(shell);
+      });
     }
     layoutFrom(shell);
   }

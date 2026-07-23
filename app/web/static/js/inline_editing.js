@@ -3,8 +3,8 @@
 
   function initializeInlineEditors(root) {
     root.querySelectorAll("[data-inline-editor-trigger]").forEach(function (trigger) {
-      if (trigger.dataset.inlineEditorInitialized === "true") return;
-      trigger.dataset.inlineEditorInitialized = "true";
+      if (trigger.inlineEditorInitialized) return;
+      trigger.inlineEditorInitialized = true;
       const editor = document.getElementById(trigger.dataset.inlineEditorTrigger);
       if (!editor) return;
 

@@ -16,6 +16,9 @@
 
     form.action = pathID ? "/learn/paths/" + encodeURIComponent(pathID) : "/learn/paths";
     if (heading) heading.textContent = pathID ? "Edit path" : "New path";
+    panel.dataset.panelBreadcrumb = pathID
+      ? trigger.dataset.learningPathName || "Edit path"
+      : "New path";
     nameInput.value = pathID ? trigger.dataset.learningPathName || "" : "";
     descriptionInput.value = pathID ? trigger.dataset.learningPathDescription || "" : "";
     if (deleteForm) {

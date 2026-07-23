@@ -28,10 +28,34 @@
     });
   }
 
+  function closePanelsAfter(panel) {
+    const group = panel && panel.parentElement;
+    if (!group) return;
+    const panels = Array.from(group.children);
+    const panelIndex = panels.indexOf(panel);
+    let changed = false;
+    panels.forEach(function (candidate, index) {
+      if (index <= panelIndex || !candidate.matches("[data-layout-panel]") ||
+          candidate.hidden || candidate.classList.contains("is-closing")) return;
+      window.clearTimeout(candidate.closeTimer);
+      candidate.classList.remove("is-opening");
+      candidate.classList.add("is-closing");
+      if (candidate.activeTrigger) {
+        candidate.activeTrigger.setAttribute("aria-expanded", "false");
+      }
+      candidate.closeTimer = window.setTimeout(function () {
+        candidate.hidden = true;
+        candidate.classList.remove("is-closing");
+      }, 280);
+      changed = true;
+    });
+    if (changed && window.panelLayout) window.panelLayout.refresh();
+  }
+
   function initializePanels(root) {
     root.querySelectorAll("[data-open-panel]").forEach(function (trigger) {
-      if (trigger.dataset.panelInitialized === "true") return;
-      trigger.dataset.panelInitialized = "true";
+      if (trigger.panelInitialized) return;
+      trigger.panelInitialized = true;
       trigger.addEventListener("click", function () {
         const panel = document.getElementById(trigger.dataset.openPanel);
         if (!panel) return;
@@ -61,8 +85,8 @@
 
     root.querySelectorAll("[data-nested-panel]").forEach(function (panel) {
       const close = panel.querySelector("[data-close-panel]");
-      if (!close || close.dataset.panelInitialized === "true") return;
-      close.dataset.panelInitialized = "true";
+      if (!close || close.panelInitialized) return;
+      close.panelInitialized = true;
       close.addEventListener("click", function () {
         const trigger = panel.activeTrigger || document.querySelector('[data-open-panel="' + panel.id + '"]');
         panel.classList.add("is-closing");
@@ -87,5 +111,8 @@
   });
   document.addEventListener("htmx:load", function (event) {
     initializePanels(event.detail.elt || document);
+  });
+  document.addEventListener("panel:navigate", function (event) {
+    closePanelsAfter(event.detail && event.detail.panel);
   });
 })();

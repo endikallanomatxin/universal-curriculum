@@ -6,8 +6,8 @@
   }
 
   function initializeUnitPicker(picker) {
-    if (picker.dataset.unitPickerInitialized === "true") return;
-    picker.dataset.unitPickerInitialized = "true";
+    if (picker.unitPickerInitialized) return;
+    picker.unitPickerInitialized = true;
     const input = picker.querySelector("[data-unit-picker-input]");
     const results = picker.querySelector("[data-unit-picker-results]");
     const empty = picker.querySelector("[data-unit-picker-empty]");

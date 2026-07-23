@@ -6,7 +6,8 @@
   <div class="app-shell" id="app-shell" data-panel-group>
     {{ template "primary-navigation" . }}
     <main class="pane-stack" id="workspace" data-shell-view="detail" data-document-title="Curriculum modification · Universal Curriculum" data-layout-panel data-panel-modes="mobile:20 content:34 wide:46" data-panel-required-mode="content" data-panel-fill data-panel-group>
-      <section class="ui-pane ui-pane--wide" aria-labelledby="curriculum-title" data-layout-panel data-panel-modes="breadcrumb:4 mobile:20 content:34 wide:46" data-panel-required-mode="mobile" data-panel-fill>
+      <nav class="mobile-panel-breadcrumbs" data-mobile-panel-breadcrumbs aria-label="Current location" hidden></nav>
+      <section class="ui-pane ui-pane--wide" aria-labelledby="curriculum-title" data-layout-panel data-panel-modes="collapsed:0 breadcrumb:4 mobile:20 content:34 wide:46" data-panel-required-mode="mobile" data-panel-fill data-panel-breadcrumb="Curriculum modification">
         <div class="ui-pane__inner curriculum-editor" id="curriculum-editor">
           <header class="curriculum-editor__header">
             <h1 class="curriculum-editor__title" id="curriculum-title">Curriculum modification</h1>
@@ -105,7 +106,7 @@
       </section>
 
       {{ with .ContentUnit }}
-        <section class="ui-pane ui-pane--wide unit-content-pane" data-nested-panel data-layout-panel data-panel-modes="breadcrumb:4 mobile:20 content:32 wide:42" data-panel-required-mode="mobile" data-panel-fill aria-labelledby="admin-unit-content-title">
+        <section class="ui-pane ui-pane--wide unit-content-pane" data-nested-panel data-layout-panel data-panel-modes="collapsed:0 breadcrumb:4 mobile:20 content:32 wide:42" data-panel-required-mode="mobile" data-panel-fill data-panel-breadcrumb="{{ .Name }}" aria-labelledby="admin-unit-content-title">
           <article class="ui-pane__inner unit-content" data-inline-editing>
             <header class="nested-panel__header">
               <div>
@@ -157,7 +158,7 @@
       {{ end }}
 
       {{ if .ActiveProposal }}
-        <section class="ui-pane ui-pane--form" id="proposal-details-panel" data-nested-panel data-layout-panel data-panel-modes="compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-max="34" hidden aria-labelledby="proposal-details-title">
+        <section class="ui-pane ui-pane--form" id="proposal-details-panel" data-nested-panel data-layout-panel data-panel-modes="collapsed:0 compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-max="34" data-panel-breadcrumb="Proposal details" hidden aria-labelledby="proposal-details-title">
           <div class="ui-pane__inner nested-panel">
             <header class="nested-panel__header">
               <div>
@@ -199,7 +200,7 @@
         </section>
       {{ end }}
 
-      <section class="ui-pane ui-pane--form" id="proposal-history-panel" data-nested-panel data-layout-panel data-panel-modes="compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-max="34" hidden aria-labelledby="proposal-history-title">
+      <section class="ui-pane ui-pane--form" id="proposal-history-panel" data-nested-panel data-layout-panel data-panel-modes="collapsed:0 compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-max="34" data-panel-breadcrumb="History" hidden aria-labelledby="proposal-history-title">
         <div class="ui-pane__inner nested-panel">
           <header class="nested-panel__header">
             <div>
@@ -237,7 +238,7 @@
         </div>
       </section>
 
-      <section class="ui-pane ui-pane--form" id="new-proposal-panel" data-nested-panel data-layout-panel data-panel-modes="compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-max="34" hidden aria-labelledby="create-proposal-title">
+      <section class="ui-pane ui-pane--form" id="new-proposal-panel" data-nested-panel data-layout-panel data-panel-modes="collapsed:0 compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-max="34" data-panel-breadcrumb="New proposal" hidden aria-labelledby="create-proposal-title">
         <div class="ui-pane__inner nested-panel">
           <header class="nested-panel__header">
             <div>
@@ -260,7 +261,7 @@
         </div>
       </section>
 
-      <section class="ui-pane ui-pane--form" id="new-unit-panel" data-nested-panel data-layout-panel data-panel-modes="compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-max="34" hidden aria-labelledby="create-unit-title">
+      <section class="ui-pane ui-pane--form" id="new-unit-panel" data-nested-panel data-layout-panel data-panel-modes="collapsed:0 compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-max="34" data-panel-breadcrumb="New unit" hidden aria-labelledby="create-unit-title">
         <div class="ui-pane__inner nested-panel">
           <header class="nested-panel__header">
             <div>
@@ -285,7 +286,7 @@
         </div>
       </section>
 
-      <section class="ui-pane ui-pane--form" id="edit-dependencies-panel" data-nested-panel data-layout-panel data-panel-modes="compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-max="34" hidden aria-labelledby="edit-dependencies-title">
+      <section class="ui-pane ui-pane--form" id="edit-dependencies-panel" data-nested-panel data-layout-panel data-panel-modes="collapsed:0 compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-max="34" data-panel-breadcrumb="Dependencies" hidden aria-labelledby="edit-dependencies-title">
         <div class="ui-pane__inner nested-panel">
           <header class="nested-panel__header">
             <div>

@@ -4,8 +4,8 @@
   const svgNamespace = "http://www.w3.org/2000/svg";
 
   function initializeCurriculumGraph(root) {
-    if (!root || root.dataset.curriculumGraphInitialized === "true") return;
-    root.dataset.curriculumGraphInitialized = "true";
+    if (!root || root.curriculumGraphInitialized) return;
+    root.curriculumGraphInitialized = true;
 
     const layout = root.querySelector(".curriculum-graph__layout");
     const svg = root.querySelector(".curriculum-graph__svg");
@@ -324,8 +324,8 @@
   }
 
   function initializeGraphSearch(search) {
-    if (!search || search.dataset.graphSearchInitialized === "true") return;
-    search.dataset.graphSearchInitialized = "true";
+    if (!search || search.graphSearchInitialized) return;
+    search.graphSearchInitialized = true;
     const input = search.querySelector("[data-graph-search-input]");
     const results = search.querySelector("[data-graph-search-results]");
     const options = Array.from(search.querySelectorAll("[data-graph-search-option]"));

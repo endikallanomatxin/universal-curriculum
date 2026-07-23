@@ -18,11 +18,16 @@ Every layout participant declares ordered width modes in rem through
    `data-panel-max`; and
 5. lets `data-panel-fill` absorb otherwise unused space.
 
-A zero-width mode is an emergency mode. It is not used as a normal donor mode
-while a non-zero mode can still be retained. `data-panel-required-mode`
+A zero-width mode is reserved for the narrow mobile composition and does not
+participate in normal desktop and tablet negotiation. `data-panel-required-mode`
 identifies the smallest mode that should normally remain usable, but a pane to
 its right can block lower-priority expansions when its own required mode does
 not fit.
+
+Content and form panes declare that emergency state explicitly as
+`collapsed:0`. They also expose a concise contextual label through
+`data-panel-breadcrumb`; the label describes the pane's current subject rather
+than its generic type whenever that subject is known.
 
 Groups marked with `data-panel-group` expose the sum of their visible
 children's required and desired widths to their parent. Layout therefore runs
@@ -45,6 +50,20 @@ presentations. Content panes that cannot remain useful at narrow widths may
 declare a breadcrumb mode. A breadcrumb retains the current contextual title
 vertically while removing the rest of the pane content. Its vertical offset
 must leave the mobile navigation launcher unobstructed.
+
+At `42rem` and below, the allocator switches to the mobile composition: only
+the rightmost visible pane in each group receives width and every pane to its
+left uses its zero-width mode. The workspace turns the visible panes'
+`data-panel-breadcrumb` labels into one lightweight trail fixed across its top.
+This replaces vertical breadcrumb panes on phones without duplicating page
+markup or domain-specific layout logic. Opening, closing and replacing panes
+rebuilds the trail automatically. Each trail segment is actionable: selecting
+an earlier segment closes the panels to its right through the shared panel
+controller and promotes that context back to the full mobile viewport.
+The empty trail container is rendered with every workspace so its insertion
+does not alter the new View Transition snapshot. Named transition descendants
+inside zero-width panes are suppressed: a graph that becomes contextual should
+fade in place rather than interpolate toward its reflowed, hidden geometry.
 
 ## Pane operations
 
@@ -80,9 +99,22 @@ View Transitions over imperative animation sequences.
 Motion must degrade to an immediate, correct layout when View Transitions are
 unavailable and respect `prefers-reduced-motion`.
 
+## History restoration
+
+HTMX history snapshots serialize DOM attributes but not JavaScript listeners or
+element properties. Controller initialization guards therefore live as
+properties on the actual DOM node; they must not use `data-*-initialized`
+attributes. A restored node receives fresh listeners, while repeated
+initialization of the same live node remains idempotent. Generated controls
+such as mobile breadcrumbs follow the same rule for their render signatures.
+
 ## Recalculation
 
 The shared layout observes group and shell size with `ResizeObserver`, pane
 visibility with `MutationObserver`, and scroll-driven changes on the next
 animation frame. HTMX swaps reinitialize the observers and trigger a complete
-inner-to-outer negotiation.
+inner-to-outer negotiation. Observer callbacks are coalesced into one animation
+frame, and the allocator only writes geometry or breadcrumb markup when its
+resolved value changed. The mobile media query also requests a layout directly
+when the breakpoint changes. These constraints prevent layout writes from
+feeding an unbounded resize loop.

@@ -13,8 +13,8 @@
   function initializeMobileMenu() {
     const navigation = document.querySelector(".primary-navigation");
     const toggle = navigation && navigation.querySelector("[data-mobile-menu-toggle]");
-    if (!navigation || !toggle || toggle.dataset.menuInitialized === "true") return;
-    toggle.dataset.menuInitialized = "true";
+    if (!navigation || !toggle || toggle.menuInitialized) return;
+    toggle.menuInitialized = true;
     toggle.addEventListener("click", function () {
       setMobileMenu(!navigation.classList.contains("is-mobile-menu-open"));
     });

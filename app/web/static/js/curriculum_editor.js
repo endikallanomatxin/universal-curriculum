@@ -12,6 +12,7 @@
     if (dependentInput) dependentInput.value = trigger.dataset.dependentId;
     if (removeDependentInput) removeDependentInput.value = trigger.dataset.dependentId;
     if (dependentName) dependentName.textContent = trigger.dataset.dependentName;
+    panel.dataset.panelBreadcrumb = trigger.dataset.dependentName || "Dependencies";
     if (picker && picker.unitPicker) {
       picker.unitPicker.configure({
         selectedIDs: (trigger.dataset.prerequisiteIds || "").split(",").filter(Boolean),
