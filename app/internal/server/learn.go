@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"universal-curriculum/internal/db"
 	"universal-curriculum/internal/models"
@@ -51,7 +52,7 @@ func (server *Server) learn(writer http.ResponseWriter, request *http.Request) {
 		http.Error(writer, "Unable to navigate curriculum", http.StatusInternalServerError)
 		return
 	}
-	graph, err := services.BuildCurriculumGraphLayout(neighborhood)
+	graph, err := services.BuildCurriculumGraphLayoutWithHints(neighborhood, curriculumLayoutHints(request))
 	if err != nil {
 		log.Printf("lay out learn curriculum: %v", err)
 		http.Error(writer, "Unable to lay out curriculum", http.StatusInternalServerError)
@@ -65,4 +66,34 @@ func (server *Server) learn(writer http.ResponseWriter, request *http.Request) {
 		TotalUnits:        len(curriculum.Units),
 		TotalDependencies: len(curriculum.Dependencies),
 	})
+}
+
+func curriculumLayoutHints(request *http.Request) services.CurriculumGraphLayoutHints {
+	hints := services.CurriculumGraphLayoutHints{
+		Order: make(map[int64]int),
+		Lanes: make(map[int64]float64),
+	}
+	for index, rawID := range strings.Split(request.URL.Query().Get("layout_order"), ",") {
+		if index >= 200 || rawID == "" {
+			break
+		}
+		if id, err := strconv.ParseInt(rawID, 10, 64); err == nil && id > 0 {
+			hints.Order[id] = index
+		}
+	}
+	for index, entry := range strings.Split(request.URL.Query().Get("layout_lanes"), ",") {
+		if index >= 200 || entry == "" {
+			break
+		}
+		parts := strings.SplitN(entry, ":", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		id, idErr := strconv.ParseInt(parts[0], 10, 64)
+		lane, laneErr := strconv.ParseFloat(parts[1], 64)
+		if idErr == nil && laneErr == nil && id > 0 && lane >= 0 && lane < 200 {
+			hints.Lanes[id] = lane
+		}
+	}
+	return hints
 }

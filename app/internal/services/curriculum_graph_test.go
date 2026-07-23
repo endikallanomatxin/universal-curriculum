@@ -69,6 +69,34 @@ func TestBuildCurriculumGraphLayoutKeepsConnectedBranchesTogether(t *testing.T) 
 	}
 }
 
+func TestBuildCurriculumGraphLayoutUsesPreviousOrderAsAStartingPoint(t *testing.T) {
+	graph := &models.CurriculumGraph{
+		Units: []models.Unit{
+			{ID: 1, Name: "Root"},
+			{ID: 2, Name: "Alpha child"},
+			{ID: 3, Name: "Beta child"},
+		},
+		Dependencies: []models.UnitDependency{
+			{UnitID: 2, PrerequisiteID: 1},
+			{UnitID: 3, PrerequisiteID: 1},
+		},
+	}
+
+	layout, err := BuildCurriculumGraphLayoutWithHints(graph, CurriculumGraphLayoutHints{
+		Order: map[int64]int{1: 0, 3: 1, 2: 2},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := []int64{layout.Nodes[0].ID, layout.Nodes[1].ID, layout.Nodes[2].ID}
+	want := []int64{1, 3, 2}
+	for index := range want {
+		if got[index] != want[index] {
+			t.Fatalf("node order = %v, want %v", got, want)
+		}
+	}
+}
+
 func TestBuildCurriculumGraphLayoutRejectsCycles(t *testing.T) {
 	graph := &models.CurriculumGraph{
 		Units: []models.Unit{{ID: 1, Name: "One"}, {ID: 2, Name: "Two"}},
@@ -234,5 +262,82 @@ func TestCurriculumNeighborhoodTruncatesWideBranches(t *testing.T) {
 	if len(boundaries) != 1 || boundaries[0].UnitID != focusID ||
 		boundaries[0].Direction != "dependents" || boundaries[0].Count != 2 {
 		t.Fatalf("unexpected truncation boundary: %#v", boundaries)
+	}
+}
+
+func TestCurriculumNeighborhoodIncludesForwardCoPrerequisitesButNotUpstreamSiblings(t *testing.T) {
+	graph := &models.CurriculumGraph{
+		Units: []models.Unit{
+			{ID: 1, Name: "Shared foundation"},
+			{ID: 2, Name: "Focus"},
+			{ID: 3, Name: "Upstream sibling"},
+			{ID: 4, Name: "Other requirement"},
+			{ID: 5, Name: "Immediate next unit"},
+		},
+		Dependencies: []models.UnitDependency{
+			{UnitID: 2, PrerequisiteID: 1},
+			{UnitID: 3, PrerequisiteID: 1},
+			{UnitID: 5, PrerequisiteID: 2},
+			{UnitID: 5, PrerequisiteID: 4},
+		},
+	}
+
+	focusID := int64(2)
+	neighborhood, _, _, err := CurriculumNeighborhood(graph, &focusID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	visible := make(map[int64]bool)
+	for _, unit := range neighborhood.Units {
+		visible[unit.ID] = true
+	}
+	for _, expected := range []int64{1, 2, 4, 5} {
+		if !visible[expected] {
+			t.Fatalf("expected unit %d in neighborhood: %#v", expected, neighborhood.Units)
+		}
+	}
+	if visible[3] {
+		t.Fatalf("upstream sibling leaked into neighborhood: %#v", neighborhood.Units)
+	}
+}
+
+func TestCurriculumNeighborhoodUsesTwoUpstreamAndThreeDownstreamLevels(t *testing.T) {
+	graph := &models.CurriculumGraph{
+		Units: []models.Unit{
+			{ID: 1, Name: "Third upstream"},
+			{ID: 2, Name: "Second upstream"},
+			{ID: 3, Name: "First upstream"},
+			{ID: 4, Name: "Focus"},
+			{ID: 5, Name: "First downstream"},
+			{ID: 6, Name: "Second downstream"},
+			{ID: 7, Name: "Third downstream"},
+			{ID: 8, Name: "Fourth downstream"},
+		},
+	}
+	for id := int64(2); id <= 8; id++ {
+		graph.Dependencies = append(graph.Dependencies, models.UnitDependency{
+			UnitID: id, PrerequisiteID: id - 1,
+		})
+	}
+
+	focusID := int64(4)
+	neighborhood, _, boundaries, err := CurriculumNeighborhood(graph, &focusID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	visible := make(map[int64]bool)
+	for _, unit := range neighborhood.Units {
+		visible[unit.ID] = true
+	}
+	for _, expected := range []int64{2, 3, 4, 5, 6, 7} {
+		if !visible[expected] {
+			t.Fatalf("expected unit %d in neighborhood: %#v", expected, neighborhood.Units)
+		}
+	}
+	if visible[1] || visible[8] {
+		t.Fatalf("neighborhood exceeded its directional horizon: %#v", neighborhood.Units)
+	}
+	if len(boundaries) != 2 {
+		t.Fatalf("expected boundaries at both horizons, got %#v", boundaries)
 	}
 }

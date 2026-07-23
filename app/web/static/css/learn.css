@@ -199,13 +199,55 @@
   opacity: 0.2;
 }
 
-.curriculum-graph__item.is-related .curriculum-graph__row {
-  background: color-mix(in srgb, var(--color-accent) 7%, transparent);
+.curriculum-graph__item[data-relation-distance="0"] .curriculum-graph__row {
+  background: color-mix(in srgb, var(--color-accent) 15%, transparent);
+}
+
+.curriculum-graph__item[data-relation-distance="1"] .curriculum-graph__row {
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+}
+
+.curriculum-graph__item[data-relation-distance="2"] .curriculum-graph__row {
+  background: color-mix(in srgb, var(--color-accent) 6%, transparent);
+}
+
+.curriculum-graph__item[data-relation-distance="3"] .curriculum-graph__row,
+.curriculum-graph__item[data-relation-distance="4"] .curriculum-graph__row {
+  background: color-mix(in srgb, var(--color-accent) 3%, transparent);
 }
 
 .curriculum-graph__edge.is-related {
   stroke: var(--color-accent);
   stroke-width: 3;
+}
+
+.curriculum-graph__edge.is-related[data-relation-distance="1"] {
+  opacity: 0.78;
+  stroke-width: 2.6;
+}
+
+.curriculum-graph__edge.is-related[data-relation-distance="2"] {
+  opacity: 0.58;
+  stroke-width: 2.3;
+}
+
+.curriculum-graph__edge.is-related[data-relation-distance="3"],
+.curriculum-graph__edge.is-related[data-relation-distance="4"] {
+  opacity: 0.38;
+  stroke-width: 2;
+}
+
+.curriculum-graph__boundary-count.is-related[data-relation-distance="1"] {
+  opacity: 0.78;
+}
+
+.curriculum-graph__boundary-count.is-related[data-relation-distance="2"] {
+  opacity: 0.58;
+}
+
+.curriculum-graph__boundary-count.is-related[data-relation-distance="3"],
+.curriculum-graph__boundary-count.is-related[data-relation-distance="4"] {
+  opacity: 0.38;
 }
 
 .learn-empty {

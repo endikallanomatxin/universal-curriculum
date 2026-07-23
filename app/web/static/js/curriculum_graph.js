@@ -211,44 +211,69 @@
     }
 
     function collectRelations(unitID) {
-      const relatedNodes = new Set([unitID]);
-      const relatedEdges = new Set();
-      function visit(startID, adjacency, nextKey) {
-        const pending = [startID];
+      const nodeDistances = new Map([[unitID, 0]]);
+      const edgeDistances = new Map();
+      function visit(adjacency, nextKey) {
+        const distances = new Map([[unitID, 0]]);
+        const pending = [unitID];
         while (pending.length) {
-          const currentID = pending.pop();
+          const currentID = pending.shift();
+          const currentDistance = distances.get(currentID);
           (adjacency.get(currentID) || []).forEach(function (edge) {
-            relatedEdges.add(edge.prerequisiteID + ":" + edge.dependentID);
+            const key = edge.prerequisiteID + ":" + edge.dependentID;
+            const knownEdgeDistance = edgeDistances.get(key);
+            if (knownEdgeDistance === undefined || currentDistance < knownEdgeDistance) {
+              edgeDistances.set(key, currentDistance);
+            }
             const nextID = edge[nextKey];
-            if (!relatedNodes.has(nextID)) {
-              relatedNodes.add(nextID);
+            const nextDistance = currentDistance + 1;
+            const knownDirectionDistance = distances.get(nextID);
+            if (knownDirectionDistance === undefined || nextDistance < knownDirectionDistance) {
+              distances.set(nextID, nextDistance);
               pending.push(nextID);
+            }
+            const knownNodeDistance = nodeDistances.get(nextID);
+            if (knownNodeDistance === undefined || nextDistance < knownNodeDistance) {
+              nodeDistances.set(nextID, nextDistance);
             }
           });
         }
       }
-      visit(unitID, incoming, "prerequisiteID");
-      visit(unitID, outgoing, "dependentID");
-      return { nodes: relatedNodes, edges: relatedEdges };
+      visit(incoming, "prerequisiteID");
+      visit(outgoing, "dependentID");
+      return { nodes: nodeDistances, edges: edgeDistances };
     }
 
     function applyHighlight(unitID) {
       const selected = unitID && nodes.has(unitID);
-      const relations = selected ? collectRelations(unitID) : { nodes: new Set(), edges: new Set() };
+      const relations = selected ? collectRelations(unitID) : { nodes: new Map(), edges: new Map() };
       root.classList.toggle("is-filtering", Boolean(selected));
       nodes.forEach(function (item, id) {
-        item.classList.toggle("is-related", Boolean(selected) && relations.nodes.has(id));
+        const distance = relations.nodes.get(id);
+        item.classList.toggle("is-related", distance !== undefined);
+        if (distance === undefined) delete item.dataset.relationDistance;
+        else item.dataset.relationDistance = String(Math.min(distance, 4));
       });
       renderedPaths.forEach(function (rendered) {
         if (rendered.boundary) {
-          const related = rendered.boundary.unitID === unitID;
+          const distance = relations.nodes.get(rendered.boundary.unitID);
+          const related = distance !== undefined;
           rendered.path.classList.toggle("is-related", related);
-          if (rendered.count) rendered.count.classList.toggle("is-related", related);
+          if (related) rendered.path.dataset.relationDistance = String(Math.min(distance, 4));
+          else delete rendered.path.dataset.relationDistance;
+          if (rendered.count) {
+            rendered.count.classList.toggle("is-related", related);
+            if (related) rendered.count.dataset.relationDistance = String(Math.min(distance, 4));
+            else delete rendered.count.dataset.relationDistance;
+          }
           return;
         }
         const key = rendered.edge.prerequisiteID + ":" + rendered.edge.dependentID;
-        const related = relations.edges.has(key);
+        const distance = relations.edges.get(key);
+        const related = distance !== undefined;
         rendered.path.classList.toggle("is-related", related);
+        if (related) rendered.path.dataset.relationDistance = String(Math.min(distance, 4));
+        else delete rendered.path.dataset.relationDistance;
         rendered.path.setAttribute("marker-end", "url(#" +
           (related ? pathLayer.dataset.highlightedArrowMarker : pathLayer.dataset.arrowMarker) + ")");
       });
@@ -305,4 +330,16 @@
 
   document.addEventListener("DOMContentLoaded", function () { initializeAll(document); });
   document.addEventListener("htmx:load", function (event) { initializeAll(event.detail.elt || document); });
+  document.addEventListener("htmx:configRequest", function (event) {
+    const trigger = event.detail.elt;
+    const explorer = trigger && trigger.closest && trigger.closest("#curriculum-explorer");
+    if (!explorer) return;
+    const nodes = Array.from(explorer.querySelectorAll("[data-curriculum-node]"));
+    event.detail.parameters.layout_order = nodes.map(function (node) {
+      return node.dataset.unitId;
+    }).join(",");
+    event.detail.parameters.layout_lanes = nodes.map(function (node) {
+      return node.dataset.unitId + ":" + (Number(node.dataset.nodeLane) || 0);
+    }).join(",");
+  });
 })();

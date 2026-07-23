@@ -14,8 +14,13 @@ var ErrCurriculumUnitNotFound = errors.New("curriculum unit not found")
 const (
 	curriculumDirectNeighborLimit = 5
 	curriculumSecondNeighborLimit = 5
-	curriculumStrictSiblingLimit  = 3
+	curriculumCoPrerequisiteLimit = 3
 )
+
+type CurriculumGraphLayoutHints struct {
+	Order map[int64]int
+	Lanes map[int64]float64
+}
 
 func CurriculumNeighborhood(graph *models.CurriculumGraph, focusID *int64) (*models.CurriculumGraph, *models.Unit, []models.CurriculumGraphBoundary, error) {
 	neighborhood := &models.CurriculumGraph{}
@@ -52,19 +57,20 @@ func CurriculumNeighborhood(graph *models.CurriculumGraph, focusID *int64) (*mod
 		directPrerequisites := includeCurriculumNeighbors(included, prerequisites[unit.ID], curriculumDirectNeighborLimit)
 		directDependents := includeCurriculumNeighbors(included, dependents[unit.ID], curriculumDirectNeighborLimit)
 		includeSecondCurriculumNeighbors(included, directPrerequisites, prerequisites, curriculumSecondNeighborLimit)
-		includeSecondCurriculumNeighbors(included, directDependents, dependents, curriculumSecondNeighborLimit)
+		secondDependents := includeSecondCurriculumNeighbors(included, directDependents, dependents, curriculumSecondNeighborLimit)
+		includeSecondCurriculumNeighbors(included, secondDependents, dependents, curriculumSecondNeighborLimit)
 
-		strictSiblings := make(map[int64]bool)
-		for _, prerequisiteID := range prerequisites[unit.ID] {
-			for _, siblingID := range dependents[prerequisiteID] {
-				if siblingID != unit.ID && !included[siblingID] {
-					strictSiblings[siblingID] = true
+		coPrerequisites := make(map[int64]bool)
+		for _, dependentID := range directDependents {
+			for _, prerequisiteID := range prerequisites[dependentID] {
+				if prerequisiteID != unit.ID && !included[prerequisiteID] {
+					coPrerequisites[prerequisiteID] = true
 				}
 			}
 		}
-		if len(strictSiblings) <= curriculumStrictSiblingLimit {
+		if len(coPrerequisites) <= curriculumCoPrerequisiteLimit {
 			for _, candidate := range graph.Units {
-				if strictSiblings[candidate.ID] {
+				if coPrerequisites[candidate.ID] {
 					included[candidate.ID] = true
 				}
 			}
@@ -109,7 +115,8 @@ func includeCurriculumNeighbors(included map[int64]bool, candidates []int64, lim
 	return selected
 }
 
-func includeSecondCurriculumNeighbors(included map[int64]bool, first []int64, adjacency map[int64][]int64, limit int) {
+func includeSecondCurriculumNeighbors(included map[int64]bool, first []int64, adjacency map[int64][]int64, limit int) []int64 {
+	selected := make([]int64, 0, limit)
 	added := 0
 	for _, firstID := range first {
 		for _, candidateID := range adjacency[firstID] {
@@ -117,12 +124,14 @@ func includeSecondCurriculumNeighbors(included map[int64]bool, first []int64, ad
 				continue
 			}
 			included[candidateID] = true
+			selected = append(selected, candidateID)
 			added++
 			if added == limit {
-				return
+				return selected
 			}
 		}
 	}
+	return selected
 }
 
 func countHiddenCurriculumNeighbors(candidates []int64, included map[int64]bool) int {
@@ -136,6 +145,10 @@ func countHiddenCurriculumNeighbors(candidates []int64, included map[int64]bool)
 }
 
 func BuildCurriculumGraphLayout(graph *models.CurriculumGraph) (*models.CurriculumGraphLayout, error) {
+	return BuildCurriculumGraphLayoutWithHints(graph, CurriculumGraphLayoutHints{})
+}
+
+func BuildCurriculumGraphLayoutWithHints(graph *models.CurriculumGraph, hints CurriculumGraphLayoutHints) (*models.CurriculumGraphLayout, error) {
 	layout := &models.CurriculumGraphLayout{}
 	if graph == nil {
 		return layout, nil
@@ -149,14 +162,14 @@ func BuildCurriculumGraphLayout(graph *models.CurriculumGraph) (*models.Curricul
 			DependentID:    dependency.UnitID,
 		})
 	}
-	if err := topologicallyOrderCurriculum(layout); err != nil {
+	if err := topologicallyOrderCurriculum(layout, hints.Order); err != nil {
 		return nil, err
 	}
-	assignCurriculumGraphLanes(layout)
+	assignCurriculumGraphLanes(layout, hints.Lanes)
 	return layout, nil
 }
 
-func topologicallyOrderCurriculum(graph *models.CurriculumGraphLayout) error {
+func topologicallyOrderCurriculum(graph *models.CurriculumGraphLayout, previousOrder map[int64]int) error {
 	if graph == nil || len(graph.Nodes) < 2 {
 		return nil
 	}
@@ -190,7 +203,7 @@ func topologicallyOrderCurriculum(graph *models.CurriculumGraphLayout) error {
 	ordered := make([]models.CurriculumGraphNode, 0, len(graph.Nodes))
 	positions := make(map[int64]int, len(graph.Nodes))
 	for len(available) > 0 {
-		sortCurriculumTraversalCandidates(available, ordered, positions, prerequisites)
+		sortCurriculumTraversalCandidates(available, ordered, positions, prerequisites, previousOrder)
 		node := available[0]
 		available = available[1:]
 		positions[node.ID] = len(ordered)
@@ -214,6 +227,7 @@ func sortCurriculumTraversalCandidates(
 	ordered []models.CurriculumGraphNode,
 	positions map[int64]int,
 	prerequisites map[int64][]int64,
+	previousOrder map[int64]int,
 ) {
 	if len(nodes) < 2 {
 		return
@@ -240,6 +254,14 @@ func sortCurriculumTraversalCandidates(
 		return false
 	}
 	sort.SliceStable(nodes, func(i, j int) bool {
+		leftPrevious, leftExisted := previousOrder[nodes[i].ID]
+		rightPrevious, rightExisted := previousOrder[nodes[j].ID]
+		if leftExisted != rightExisted {
+			return leftExisted
+		}
+		if leftExisted && leftPrevious != rightPrevious {
+			return leftPrevious < rightPrevious
+		}
 		leftContinues := previousID != 0 && dependsOnPrevious(nodes[i].ID)
 		rightContinues := previousID != 0 && dependsOnPrevious(nodes[j].ID)
 		if leftContinues != rightContinues {
@@ -267,7 +289,7 @@ func sortCurriculumNodes(nodes []models.CurriculumGraphNode) {
 	})
 }
 
-func assignCurriculumGraphLanes(graph *models.CurriculumGraphLayout) {
+func assignCurriculumGraphLanes(graph *models.CurriculumGraphLayout, previousLanes map[int64]float64) {
 	if graph == nil || len(graph.Edges) == 0 {
 		return
 	}
@@ -310,6 +332,14 @@ func assignCurriculumGraphLanes(graph *models.CurriculumGraphLayout) {
 		laneEnds[lane] = end
 	}
 	assignCurriculumNodeLanes(graph, nodeIndexes)
+	if len(previousLanes) > 0 {
+		for index := range graph.Nodes {
+			if lane, exists := previousLanes[graph.Nodes[index].ID]; exists {
+				graph.Nodes[index].Lane = lane
+			}
+		}
+		avoidCurriculumNodeLaneCollisions(graph, nodeIndexes)
+	}
 	compactCurriculumGraphLanes(graph)
 }
 
