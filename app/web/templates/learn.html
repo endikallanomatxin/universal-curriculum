@@ -5,89 +5,174 @@
 <body>
   <div class="app-shell" id="app-shell" data-panel-group>
     {{ template "primary-navigation" . }}
-    <main class="pane-stack" id="workspace" data-shell-view="detail" data-document-title="Learn · Universal Curriculum" data-layout-panel data-panel-modes="mobile:20 content:30 wide:42" data-panel-required-mode="content" data-panel-fill data-panel-group>
-      <section class="ui-pane ui-pane--wide" aria-labelledby="learn-title" data-layout-panel data-panel-modes="breadcrumb:4 mobile:20 content:30 wide:42" data-panel-required-mode="mobile" data-panel-fill>
-        <div class="ui-pane__inner learn-view">
-          <p class="ui-pane__eyebrow">Curriculum</p>
-          <div class="learn-heading">
-            <div><h1 id="learn-title">Learn</h1><p>Move through the curriculum one neighbourhood at a time.</p></div>
-            <p>{{ .TotalUnits }} units <span aria-hidden="true">·</span> {{ .TotalDependencies }} dependencies</p>
-          </div>
+    <main class="pane-stack" id="workspace" data-shell-view="detail" data-document-title="Learn · Universal Curriculum" data-layout-panel data-panel-modes="mobile:20 content:34 wide:46" data-panel-required-mode="content" data-panel-fill data-panel-group>
+      <section class="ui-pane learning-paths-pane" aria-labelledby="learning-paths-title" data-layout-panel data-panel-modes="mobile:20 content:24 wide:28" data-panel-required-mode="mobile" data-panel-max="28">
+        <div class="ui-pane__inner learning-paths">
+          <header class="learning-paths__header">
+            <div>
+              <p class="ui-pane__eyebrow">Learn</p>
+              <h1 id="learning-paths-title">Paths</h1>
+            </div>
+          </header>
+          <p class="learning-paths__introduction">Choose a goal-focused view of the curriculum.</p>
 
-          <section class="curriculum-explorer" id="curriculum-explorer" aria-live="polite">
-          {{ if .Graph.Nodes }}
-            <nav class="learn-navigation" aria-label="Curriculum navigation">
-              {{ if .FocusedUnit }}
-                <button class="editor-action" type="button" hx-get="/learn" hx-target="#curriculum-explorer" hx-select="#curriculum-explorer" hx-swap="outerHTML transition:true">
-                  <span class="material-symbols-rounded" aria-hidden="true">arrow_back</span>
-                  Starting points
+          <div class="learning-path-list">
+            <a class="learning-path-card {{ if .ExploreAll }}is-selected{{ end }}" href="/learn?path=all" hx-get="/learn?path=all" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true">
+              <span class="material-symbols-rounded" aria-hidden="true">conversion_path</span>
+              <span><strong>Explore full curriculum</strong><small>Start from every entry point</small></span>
+            </a>
+            {{ range .Paths }}
+              {{ $path := . }}
+              <article class="learning-path-card {{ with $.SelectedPath }}{{ if eq .ID $path.ID }}is-selected{{ end }}{{ end }}">
+                <a href="/learn?path={{ .ID }}" hx-get="/learn?path={{ .ID }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true">
+                  <span class="material-symbols-rounded" aria-hidden="true">route</span>
+                  <span>
+                    <strong>{{ .Name }}</strong>
+                    <small>{{ .UnitCount }} target {{ if eq .UnitCount 1 }}unit{{ else }}units{{ end }}</small>
+                  </span>
+                </a>
+                <button class="icon-button" type="button"
+                        data-open-panel="learning-path-editor-panel"
+                        data-learning-path-id="{{ .ID }}"
+                        data-learning-path-name="{{ .Name }}"
+                        data-learning-path-description="{{ .Description }}"
+                        data-learning-path-units="{{ range .Units }}{{ .ID }},{{ end }}"
+                        aria-controls="learning-path-editor-panel"
+                        aria-expanded="false"
+                        aria-label="Edit {{ .Name }}">
+                  <span class="material-symbols-rounded" aria-hidden="true">edit</span>
                 </button>
-                <p>Showing this unit’s direct prerequisites and the units it unlocks.</p>
-              {{ else }}
-                <p>Choose a unit with no prerequisites to explore what comes next.</p>
-              {{ end }}
-            </nav>
-            <div class="curriculum-graph"
-                 data-curriculum-graph
-                 data-focused-unit-id="{{ with .FocusedUnit }}{{ .ID }}{{ end }}"
-                 data-lane-count="{{ .Graph.LaneCount }}">
-              <p class="visually-hidden" id="curriculum-graph-description">Arrows go from each prerequisite to the units that depend on it. Hover or focus a unit to highlight its visible relationships. Follow a unit link to navigate to its neighbourhood.</p>
-              <div class="curriculum-graph__layout" aria-describedby="curriculum-graph-description">
-                <svg class="curriculum-graph__svg" aria-hidden="true">
-                  <defs>
-                    <marker id="curriculum-arrow" viewBox="0 0 10 10" markerWidth="9" markerHeight="9" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse">
-                      <path class="curriculum-graph__arrow" d="M0,0 L10,5 L0,10 z"></path>
-                    </marker>
-                    <marker id="curriculum-arrow-highlighted" viewBox="0 0 10 10" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse">
-                      <path class="curriculum-graph__arrow curriculum-graph__arrow--highlighted" d="M0,0 L10,5 L0,10 z"></path>
-                    </marker>
-                    <marker id="curriculum-arrow-boundary" viewBox="0 0 10 10" markerWidth="8" markerHeight="8" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse">
-                      <path class="curriculum-graph__arrow curriculum-graph__arrow--boundary" d="M0,0 L10,5 L0,10 z"></path>
-                    </marker>
-                  </defs>
-                  <g data-curriculum-graph-paths
-                     data-arrow-marker="curriculum-arrow"
-                     data-highlighted-arrow-marker="curriculum-arrow-highlighted"
-                     data-boundary-arrow-marker="curriculum-arrow-boundary"></g>
-                </svg>
-                <ol class="curriculum-graph__list">
-                  {{ $focused := .FocusedUnit }}
-                  {{ range .Graph.Nodes }}
-                    {{ $node := . }}
-                    <li class="curriculum-graph__item"
-                        data-curriculum-node
-                        data-unit-id="{{ .ID }}"
-                        data-node-lane="{{ .Lane }}"
-                        style="--curriculum-node-lane:{{ .Lane }}; view-transition-name:curriculum-unit-{{ .ID }};">
-                      <span class="curriculum-graph__anchor" data-curriculum-anchor aria-hidden="true"></span>
-                      <a class="curriculum-graph__row"
-                         href="/learn?unit={{ .ID }}"
-                         hx-get="/learn?unit={{ .ID }}"
-                         hx-target="#curriculum-explorer"
-                         hx-select="#curriculum-explorer"
-                         hx-swap="outerHTML transition:true"
-                        {{ with $focused }}{{ if eq .ID $node.ID }}aria-current="page"{{ end }}{{ end }}>
-                        <span class="curriculum-graph__name">{{ .Name }}</span>
-                      </a>
-                    </li>
-                  {{ end }}
-                </ol>
-                <div hidden>
-                  {{ range .Graph.Edges }}<span data-curriculum-edge data-prerequisite-id="{{ .PrerequisiteID }}" data-dependent-id="{{ .DependentID }}" data-lane="{{ .Lane }}"></span>{{ end }}
-                  {{ range .Graph.Boundaries }}<span data-curriculum-boundary data-unit-id="{{ .UnitID }}" data-direction="{{ .Direction }}" data-count="{{ .Count }}"></span>{{ end }}
-                </div>
-              </div>
-            </div>
+              </article>
+            {{ end }}
+          </div>
+          {{ if .User }}
+            <button class="learning-paths__create" type="button" data-open-panel="learning-path-editor-panel" data-new-learning-path aria-controls="learning-path-editor-panel" aria-expanded="false">
+              <span class="material-symbols-rounded" aria-hidden="true">add</span>
+              New learning path
+            </button>
           {{ else }}
-            <div class="learn-empty">
-              <span class="material-symbols-rounded" aria-hidden="true">book_5</span>
-              <h2>The curriculum is empty</h2>
-              <p>Units will appear here once they are published.</p>
-            </div>
+            <a class="learning-paths__signin" href="/auth/login">Log in to create personal paths</a>
           {{ end }}
-          </section>
         </div>
       </section>
+
+      {{ if .ShowGraph }}
+        <section class="ui-pane ui-pane--wide" aria-labelledby="learn-graph-title" data-nested-panel data-layout-panel data-panel-modes="breadcrumb:4 mobile:20 content:34 wide:46" data-panel-required-mode="mobile" data-panel-fill>
+          <div class="ui-pane__inner learn-view">
+            <div class="learn-heading">
+              <div>
+                <p class="ui-pane__eyebrow">Learning path</p>
+                <h1 id="learn-graph-title">{{ with .SelectedPath }}{{ .Name }}{{ else }}Full curriculum{{ end }}</h1>
+                {{ with .SelectedPath }}{{ if .Description }}<p>{{ .Description }}</p>{{ end }}{{ end }}
+              </div>
+              <p>{{ len .Graph.Nodes }} units in view</p>
+            </div>
+
+            <section class="curriculum-explorer" id="curriculum-explorer" aria-live="polite">
+              {{ if .Graph.Nodes }}
+                <nav class="learn-navigation" aria-label="Curriculum navigation">
+                  {{ if .FocusedUnit }}
+                    {{ if .SelectedPath }}
+                      <button class="editor-action" type="button" hx-get="/learn?path={{ .SelectedPath.ID }}" hx-target="#curriculum-explorer" hx-select="#curriculum-explorer" hx-swap="outerHTML transition:true">
+                    {{ else }}
+                      <button class="editor-action" type="button" hx-get="/learn?path=all" hx-target="#curriculum-explorer" hx-select="#curriculum-explorer" hx-swap="outerHTML transition:true">
+                    {{ end }}
+                      <span class="material-symbols-rounded" aria-hidden="true">zoom_out_map</span>
+                      Entire path
+                    </button>
+                    <p>Showing the local neighbourhood within this path.</p>
+                  {{ else if .SelectedPath }}
+                    <p>Only units leading to the selected targets are shown.</p>
+                  {{ else }}
+                    <p>Choose an entry point to explore its neighbourhood.</p>
+                  {{ end }}
+                </nav>
+                <div class="curriculum-graph" data-curriculum-graph data-focused-unit-id="{{ with .FocusedUnit }}{{ .ID }}{{ end }}" data-lane-count="{{ .Graph.LaneCount }}">
+                  <p class="visually-hidden" id="curriculum-graph-description">Arrows go from each prerequisite to the units that depend on it. Hover or focus a unit to highlight its path.</p>
+                  <div class="curriculum-graph__layout" aria-describedby="curriculum-graph-description">
+                    <svg class="curriculum-graph__svg" aria-hidden="true">
+                      <defs>
+                        <marker id="curriculum-arrow" viewBox="0 0 10 10" markerWidth="9" markerHeight="9" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path class="curriculum-graph__arrow" d="M0,0 L10,5 L0,10 z"></path></marker>
+                        <marker id="curriculum-arrow-highlighted" viewBox="0 0 10 10" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path class="curriculum-graph__arrow curriculum-graph__arrow--highlighted" d="M0,0 L10,5 L0,10 z"></path></marker>
+                        <marker id="curriculum-arrow-boundary" viewBox="0 0 10 10" markerWidth="8" markerHeight="8" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path class="curriculum-graph__arrow curriculum-graph__arrow--boundary" d="M0,0 L10,5 L0,10 z"></path></marker>
+                      </defs>
+                      <g data-curriculum-graph-paths data-arrow-marker="curriculum-arrow" data-highlighted-arrow-marker="curriculum-arrow-highlighted" data-boundary-arrow-marker="curriculum-arrow-boundary"></g>
+                    </svg>
+                    <ol class="curriculum-graph__list">
+                      {{ $focused := .FocusedUnit }}
+                      {{ $selectedPath := .SelectedPath }}
+                      {{ range .Graph.Nodes }}
+                        {{ $node := . }}
+                        <li class="curriculum-graph__item {{ if index $.TargetUnitIDs .ID }}is-path-target{{ end }}" data-curriculum-node data-unit-id="{{ .ID }}" data-node-lane="{{ .Lane }}" style="--curriculum-node-lane:{{ .Lane }}; view-transition-name:curriculum-unit-{{ .ID }};">
+                          <span class="curriculum-graph__anchor" data-curriculum-anchor aria-hidden="true"></span>
+                          {{ if $selectedPath }}
+                            <a class="curriculum-graph__row" href="/learn?path={{ $selectedPath.ID }}&unit={{ .ID }}" hx-get="/learn?path={{ $selectedPath.ID }}&unit={{ .ID }}" hx-target="#curriculum-explorer" hx-select="#curriculum-explorer" hx-swap="outerHTML transition:true" {{ with $focused }}{{ if eq .ID $node.ID }}aria-current="page"{{ end }}{{ end }}>
+                          {{ else }}
+                            <a class="curriculum-graph__row" href="/learn?path=all&unit={{ .ID }}" hx-get="/learn?path=all&unit={{ .ID }}" hx-target="#curriculum-explorer" hx-select="#curriculum-explorer" hx-swap="outerHTML transition:true" {{ with $focused }}{{ if eq .ID $node.ID }}aria-current="page"{{ end }}{{ end }}>
+                          {{ end }}
+                            <span class="curriculum-graph__name">{{ .Name }}</span>
+                            {{ if index $.TargetUnitIDs .ID }}<span class="curriculum-graph__target-label">Path target</span>{{ end }}
+                          </a>
+                        </li>
+                      {{ end }}
+                    </ol>
+                    <div hidden>
+                      {{ range .Graph.Edges }}<span data-curriculum-edge data-prerequisite-id="{{ .PrerequisiteID }}" data-dependent-id="{{ .DependentID }}" data-lane="{{ .Lane }}"></span>{{ end }}
+                      {{ range .Graph.Boundaries }}<span data-curriculum-boundary data-unit-id="{{ .UnitID }}" data-direction="{{ .Direction }}" data-count="{{ .Count }}"></span>{{ end }}
+                    </div>
+                  </div>
+                </div>
+              {{ else }}
+                <div class="learn-empty"><span class="material-symbols-rounded" aria-hidden="true">route</span><h2>This path has no visible units</h2><p>Edit it and select at least one target.</p></div>
+              {{ end }}
+            </section>
+          </div>
+        </section>
+      {{ end }}
+
+      {{ if .User }}
+        <section class="ui-pane ui-pane--form" id="learning-path-editor-panel" data-nested-panel data-layout-panel data-panel-modes="compact:18 form:34" data-panel-required-mode="form" data-panel-fill hidden aria-labelledby="learning-path-editor-title">
+          <div class="ui-pane__inner nested-panel">
+            <header class="nested-panel__header">
+              <div><p class="ui-pane__eyebrow">Learn</p><h1 id="learning-path-editor-title" data-learning-path-editor-title>New path</h1></div>
+              <button class="icon-button nested-panel__close" type="button" data-close-panel aria-label="Close learning path editor"><span class="material-symbols-rounded" aria-hidden="true">close</span></button>
+            </header>
+            <form class="editor-form editor-form--panel learning-path-form" action="/learn/paths" method="post" data-learning-path-form>
+              <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+              <label for="learning-path-name">Name</label>
+              <input id="learning-path-name" name="name" required maxlength="200" data-learning-path-name>
+              <label for="learning-path-description">Description</label>
+              <textarea id="learning-path-description" name="description" rows="3" maxlength="1000" data-autoresize data-learning-path-description></textarea>
+              <section class="dependency-editor learning-path-targets" aria-labelledby="learning-path-targets-title">
+                <div class="section-heading">
+                  <div><p class="section-heading__eyebrow">Current selection</p><h2 id="learning-path-targets-title">Target units</h2></div>
+                  <span data-selected-unit-count>0 selected</span>
+                </div>
+                <div class="dependency-editor__current" data-learning-path-current-targets></div>
+              </section>
+              <label for="learning-path-unit-search">Add target unit</label>
+              <div class="unit-search" data-learning-path-unit-search>
+                <span class="material-symbols-rounded unit-search__icon" aria-hidden="true">search</span>
+                <input id="learning-path-unit-search" type="search" placeholder="Search units" autocomplete="off" data-learning-path-unit-search-input aria-controls="learning-path-unit-results" aria-expanded="false">
+                <div class="unit-search__results" id="learning-path-unit-results" data-learning-path-unit-results hidden>
+                  {{ range .AllUnits }}
+                    <button type="button" data-learning-path-unit-option data-unit-id="{{ .ID }}" data-unit-name="{{ .Name }}" data-unit-description="{{ .Description }}">
+                      <strong>{{ .Name }}</strong>
+                      <span>{{ .Description }}</span>
+                    </button>
+                  {{ end }}
+                  <p class="unit-search__empty" data-learning-path-unit-empty hidden>No matching units.</p>
+                </div>
+              </div>
+              <button class="primary-button" type="submit">Save learning path</button>
+            </form>
+            <form action="" method="post" data-learning-path-delete-form hidden onsubmit="return confirm('Delete this learning path?')">
+              <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+              <button class="editor-action proposal-details__delete" type="submit"><span class="material-symbols-rounded" aria-hidden="true">delete</span>Delete path</button>
+            </form>
+          </div>
+        </section>
+      {{ end }}
     </main>
   </div>
   {{ template "shell-scripts" }}
