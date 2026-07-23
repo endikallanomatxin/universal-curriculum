@@ -14,6 +14,12 @@
     })) {
       modes.push({ name: "children-required", width: childrenRequiredWidth });
     }
+    const childrenDesiredWidth = Number(panel.dataset.panelChildrenDesiredWidth);
+    if (Number.isFinite(childrenDesiredWidth) && !modes.some(function (mode) {
+      return mode.width === childrenDesiredWidth;
+    })) {
+      modes.push({ name: "children-desired", width: childrenDesiredWidth });
+    }
     return modes.sort(function (a, b) {
       return a.width - b.width;
     });
@@ -24,13 +30,35 @@
     const mode = definition.modes.find(function (candidate) {
       return candidate.name === requiredMode;
     });
-    return mode ? mode.width : definition.modes[0].width;
+    const childrenRequiredWidth = Number(definition.panel.dataset.panelChildrenRequiredWidth);
+    return Math.max(
+      mode ? mode.width : definition.modes[0].width,
+      Number.isFinite(childrenRequiredWidth) ? childrenRequiredWidth : 0
+    );
+  }
+
+  function ownDesiredWidth(definition) {
+    const declaredMaximum = Number(definition.panel.dataset.panelMax);
+    const ownMaximum = Number.isFinite(declaredMaximum)
+      ? declaredMaximum
+      : definition.modes[definition.modes.length - 1].width;
+    const childrenDesiredWidth = Number(definition.panel.dataset.panelChildrenDesiredWidth);
+    return Math.max(
+      ownMaximum,
+      Number.isFinite(childrenDesiredWidth) ? childrenDesiredWidth : 0
+    );
   }
 
   function visiblePanels(group) {
     return Array.from(group.children).filter(function (child) {
       return child.matches("[data-layout-panel]") && !child.hidden && !child.classList.contains("is-closing");
     });
+  }
+
+  function allocationOrder(definitions) {
+    return definitions.map(function (_, index) {
+      return index;
+    }).reverse();
   }
 
   function layoutGroup(group) {
@@ -47,23 +75,40 @@
     if (!definitions.length) return;
 
     const selections = definitions.map(function () { return 0; });
+    const allocation = allocationOrder(definitions);
     let used = definitions.reduce(function (total, definition) {
       return total + definition.modes[0].width;
     }, 0);
 
-    let aPanelNeedsSpace = false;
-    for (let index = definitions.length - 1; index >= 0; index -= 1) {
-      if (aPanelNeedsSpace) break;
+    let requiredSpaceExhausted = false;
+    for (let allocationIndex = 0; allocationIndex < allocation.length; allocationIndex += 1) {
+      if (requiredSpaceExhausted) break;
+      const index = allocation[allocationIndex];
       const definition = definitions[index];
-      const childrenRequiredWidth = Number(definition.panel.dataset.panelChildrenRequiredWidth);
-      const requiredWidth = Math.max(
-        ownRequiredWidth(definition),
-        Number.isFinite(childrenRequiredWidth) ? childrenRequiredWidth : 0
-      );
+      const requiredWidth = ownRequiredWidth(definition);
       for (let modeIndex = 1; modeIndex < definition.modes.length; modeIndex += 1) {
+        const mode = definition.modes[modeIndex];
+        if (mode.width > requiredWidth) break;
+        const increase = mode.width - definition.modes[selections[index]].width;
+        if (used + increase > available) {
+          requiredSpaceExhausted = true;
+          break;
+        }
+        selections[index] = modeIndex;
+        used += increase;
+      }
+    }
+
+    let higherPriorityPanelWantsSpace = false;
+    for (let allocationIndex = 0; allocationIndex < allocation.length; allocationIndex += 1) {
+      if (requiredSpaceExhausted || higherPriorityPanelWantsSpace) break;
+      const index = allocation[allocationIndex];
+      const definition = definitions[index];
+      const desiredWidth = ownDesiredWidth(definition);
+      for (let modeIndex = selections[index] + 1; modeIndex < definition.modes.length; modeIndex += 1) {
         const increase = definition.modes[modeIndex].width - definition.modes[selections[index]].width;
         if (used + increase > available) {
-          aPanelNeedsSpace = definition.modes[modeIndex].width <= requiredWidth;
+          higherPriorityPanelWantsSpace = definition.modes[modeIndex].width <= desiredWidth;
           break;
         }
         selections[index] = modeIndex;
@@ -75,7 +120,8 @@
     const widths = definitions.map(function (definition, index) {
       return definition.modes[selections[index]].width;
     });
-    for (let index = definitions.length - 1; index >= 0 && spare > 0; index -= 1) {
+    for (let allocationIndex = 0; allocationIndex < allocation.length && spare > 0; allocationIndex += 1) {
+      const index = allocation[allocationIndex];
       const definition = definitions[index];
       const panel = definition.panel;
       let maximum = definition.modes[definition.modes.length - 1].width;
@@ -96,6 +142,9 @@
     });
     group.dataset.panelChildrenRequiredWidth = definitions.reduce(function (total, definition) {
       return total + ownRequiredWidth(definition);
+    }, 0);
+    group.dataset.panelChildrenDesiredWidth = definitions.reduce(function (total, definition) {
+      return total + ownDesiredWidth(definition);
     }, 0);
     group.style.setProperty("--panel-group-width", Math.max(used, available - spare) + "rem");
     group.dispatchEvent(new CustomEvent("panel-layout", { bubbles: true }));
@@ -118,6 +167,7 @@
       });
       shell.querySelectorAll("[data-panel-group]").forEach(function (group) {
         group.style.removeProperty("--panel-group-width");
+        delete group.dataset.panelChildrenDesiredWidth;
       });
       return;
     }

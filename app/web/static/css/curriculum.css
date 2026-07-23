@@ -51,6 +51,12 @@
   background: color-mix(in srgb, var(--color-surface) 65%, transparent);
 }
 
+.editor-action:disabled,
+.unit-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .editor-action .material-symbols-rounded,
 .unit-action .material-symbols-rounded {
   font-size: 1.1rem;
@@ -72,6 +78,134 @@
   display: grid;
   gap: clamp(2rem, 5vw, 5rem);
   grid-template-columns: minmax(0, 1fr);
+}
+
+.proposal-history {
+  border-bottom: 1px solid color-mix(in srgb, var(--color-ink) 12%, transparent);
+  border-top: 1px solid color-mix(in srgb, var(--color-ink) 12%, transparent);
+  margin-bottom: var(--space-6);
+  padding: var(--space-4) 0;
+}
+
+.proposal-history .section-heading {
+  align-items: center;
+}
+
+.proposal-editor {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  margin-bottom: var(--space-3);
+}
+
+.proposal-editor label {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.proposal-list__actions {
+  align-items: center;
+  display: flex !important;
+  gap: var(--space-2);
+}
+
+.proposal-workspace__actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+.proposal-list--panel {
+  margin-top: var(--space-4);
+}
+
+.proposal-details {
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0 0 var(--space-5);
+}
+
+.proposal-details div {
+  border-bottom: 1px solid color-mix(in srgb, var(--color-ink) 10%, transparent);
+  padding-bottom: var(--space-2);
+}
+
+.proposal-details dt {
+  color: var(--color-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.proposal-details dd {
+  color: var(--color-ink-strong);
+  margin: 0.2rem 0 0;
+}
+
+.proposal-details__actions {
+  align-items: center;
+  border-top: 1px solid color-mix(in srgb, var(--color-ink) 12%, transparent);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: space-between;
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+}
+
+.proposal-details__delete {
+  color: var(--color-danger);
+}
+
+.proposal-change-list {
+  background: color-mix(in srgb, var(--color-surface) 65%, transparent);
+  border-radius: var(--radius-control);
+  margin-bottom: var(--space-3);
+  padding: 0 var(--space-3);
+}
+
+.proposal-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.proposal-list li {
+  align-items: center;
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+  padding: var(--space-2) 0;
+}
+
+.proposal-list li + li {
+  border-top: 1px solid color-mix(in srgb, var(--color-ink) 8%, transparent);
+}
+
+.proposal-list li > div {
+  display: grid;
+  min-width: 0;
+}
+
+.proposal-list strong {
+  overflow-wrap: anywhere;
+}
+
+.proposal-list li > div span,
+.proposal-history__empty {
+  color: var(--color-muted);
+  font-size: 0.78rem;
+}
+
+.proposal-status {
+  color: var(--color-muted);
+  flex: none;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
 .section-heading {
@@ -139,6 +273,12 @@
   display: flex;
   flex: none;
   gap: var(--space-1);
+}
+
+@container curriculum-editor (max-width: 42rem) {
+  .proposal-editor {
+    grid-template-columns: 1fr;
+  }
 }
 
 .unit-action {

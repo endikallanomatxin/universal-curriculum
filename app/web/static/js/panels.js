@@ -21,6 +21,16 @@
             option.disabled = option.value === trigger.dataset.dependentId || existingPrerequisites.includes(option.value);
           });
         }
+        if (trigger.dataset.unitId) {
+          const form = panel.querySelector("[data-unit-edit-form]");
+          const heading = panel.querySelector("[data-unit-heading]");
+          const name = panel.querySelector("[data-unit-name-input]");
+          const description = panel.querySelector("[data-unit-description-input]");
+          if (form) form.action = "/admin/curriculum/units/" + encodeURIComponent(trigger.dataset.unitId);
+          if (heading) heading.textContent = trigger.dataset.unitName;
+          if (name) name.value = trigger.dataset.unitName;
+          if (description) description.value = trigger.dataset.unitDescription;
+        }
         panel.classList.add("is-opening");
         panel.hidden = false;
         trigger.setAttribute("aria-expanded", "true");

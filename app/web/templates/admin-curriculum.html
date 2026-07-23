@@ -19,14 +19,71 @@
                 <span aria-hidden="true">·</span>
                 <strong>{{ len .Dependencies }}</strong> dependencies
               </p>
-              <button class="editor-action" type="button" data-open-panel="new-unit-panel" aria-controls="new-unit-panel" aria-expanded="false">
-                <span class="material-symbols-rounded" aria-hidden="true">add</span>
-                Add unit
-              </button>
+              {{ if .ActiveProposal }}
+                <button class="editor-action" type="button" data-open-panel="new-unit-panel" aria-controls="new-unit-panel" aria-expanded="false">
+                  <span class="material-symbols-rounded" aria-hidden="true">add</span>
+                  Add unit change
+                </button>
+              {{ end }}
             </div>
           </header>
 
           {{ if .Error }}<p class="form-error curriculum-editor__error" role="alert">{{ .Error }}</p>{{ end }}
+
+          <section class="proposal-history" aria-labelledby="proposal-workspace-title">
+            {{ if .ActiveProposal }}
+              <div class="section-heading">
+                <div>
+                  <p class="section-heading__eyebrow">Working proposal</p>
+                  <h2 id="proposal-workspace-title">{{ .ActiveProposal.Title }}</h2>
+                </div>
+                <div class="proposal-workspace__actions">
+                  <button class="editor-action" type="button" data-open-panel="proposal-details-panel" aria-controls="proposal-details-panel" aria-expanded="false">
+                    <span class="material-symbols-rounded" aria-hidden="true">description</span>
+                    Proposal details
+                  </button>
+                  <button class="editor-action" type="button" data-open-panel="proposal-history-panel" aria-controls="proposal-history-panel" aria-expanded="false">
+                    <span class="material-symbols-rounded" aria-hidden="true">history</span>
+                    History
+                  </button>
+                </div>
+              </div>
+              {{ if .ActiveProposal.Changes }}
+                <ol class="proposal-list proposal-change-list">
+                  {{ range .ActiveProposal.Changes }}
+                    <li>
+                      <div>
+                        <strong>{{ if eq .Kind "create_unit" }}Create unit{{ else if eq .Kind "update_unit" }}Edit unit{{ else if eq .Kind "delete_unit" }}Delete unit{{ else if eq .Kind "add_dependency" }}Add prerequisite{{ else }}Remove prerequisite{{ end }}</strong>
+                        <span>{{ if .UnitName }}{{ .UnitName }}{{ else }}Unit #{{ .UnitID }}{{ end }}</span>
+                      </div>
+                      <form action="/admin/curriculum/proposals/{{ $.ActiveProposal.ID }}/changes/{{ .ID }}/delete" method="post">
+                        <input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}">
+                        <button class="icon-button icon-button--danger" type="submit" aria-label="Remove proposed change"><span class="material-symbols-rounded" aria-hidden="true">close</span></button>
+                      </form>
+                    </li>
+                  {{ end }}
+                </ol>
+              {{ else }}<p class="proposal-history__empty">This draft has no changes yet.</p>{{ end }}
+            {{ else }}
+              <div class="section-heading">
+                <div>
+                  <p class="section-heading__eyebrow">Working proposal</p>
+                  <h2 id="proposal-workspace-title">No draft selected</h2>
+                </div>
+                <div class="proposal-workspace__actions">
+                  <button class="editor-action" type="button" data-open-panel="proposal-history-panel" aria-controls="proposal-history-panel" aria-expanded="false">
+                    <span class="material-symbols-rounded" aria-hidden="true">history</span>
+                    History
+                  </button>
+                  <button class="editor-action" type="button" data-open-panel="new-proposal-panel" aria-controls="new-proposal-panel" aria-expanded="false">
+                    <span class="material-symbols-rounded" aria-hidden="true">add</span>
+                    New proposal
+                  </button>
+                </div>
+              </div>
+              <p class="proposal-history__empty">Select an existing draft below or create one to start collecting curriculum changes.</p>
+            {{ end }}
+          </section>
 
           <div class="curriculum-editor__layout">
             <section class="curriculum-units" aria-labelledby="units-title">
@@ -64,20 +121,29 @@
                             <p>{{ .Description }}</p>
                           </div>
                           <div class="unit-row__actions">
-                            <button class="unit-action" type="button" data-open-panel="new-dependency-panel" data-dependent-id="{{ .ID }}" data-dependent-name="{{ .Name }}" data-prerequisite-ids="{{ range .Prerequisites }}{{ .ID }},{{ end }}" aria-controls="new-dependency-panel" aria-expanded="false">
-                              <span class="material-symbols-rounded" aria-hidden="true">add</span>
-                              Add prerequisite
-                            </button>
-                            <form action="/admin/curriculum/units/{{ .ID }}/delete" method="post" onsubmit="return confirm('Delete {{ .Name }}?')">
+                            {{ if $.ActiveProposal }}
+                              <button class="unit-action" type="button" data-open-panel="edit-unit-panel" data-unit-id="{{ .ID }}" data-unit-name="{{ .Name }}" data-unit-description="{{ .Description }}" aria-controls="edit-unit-panel" aria-expanded="false">
+                                <span class="material-symbols-rounded" aria-hidden="true">edit</span>
+                                Edit
+                              </button>
+                            {{ end }}
+                            {{ if $.ActiveProposal }}
+                              <button class="unit-action" type="button" data-open-panel="new-dependency-panel" data-dependent-id="{{ .ID }}" data-dependent-name="{{ .Name }}" data-prerequisite-ids="{{ range .Prerequisites }}{{ .ID }},{{ end }}" aria-controls="new-dependency-panel" aria-expanded="false">
+                                <span class="material-symbols-rounded" aria-hidden="true">add</span>
+                                Propose prerequisite
+                              </button>
+                            {{ end }}
+                            {{ if $.ActiveProposal }}<form action="/admin/curriculum/units/{{ .ID }}/delete" method="post" onsubmit="return confirm('Add deletion of {{ .Name }} to this proposal?')">
                               <input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}">
-                              <button class="icon-button icon-button--danger" type="submit" aria-label="Delete {{ .Name }}" {{ if .Dependents }}disabled title="Remove dependent relationships first"{{ end }}>
+                              <input type="hidden" name="proposal_id" value="{{ $.ActiveProposal.ID }}">
+                              <button class="icon-button icon-button--danger" type="submit" aria-label="Propose deleting {{ .Name }}" {{ if .Dependents }}disabled title="Remove dependent relationships first"{{ end }}>
                                 <span class="material-symbols-rounded" aria-hidden="true">delete</span>
                               </button>
-                            </form>
+                            </form>{{ end }}
                           </div>
                         </header>
 
-                        {{ if .Prerequisites }}
+                        {{ if and $.ActiveProposal .Prerequisites }}
                           <dl class="unit-relations">
                             <div class="unit-relations__group">
                               <dt>Requires</dt>
@@ -87,10 +153,13 @@
                                     <input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}">
                                     <input type="hidden" name="unit_id" value="{{ $unit.ID }}">
                                     <input type="hidden" name="prerequisite_id" value="{{ .ID }}">
+                                    {{ if $.ActiveProposal }}<input type="hidden" name="proposal_id" value="{{ $.ActiveProposal.ID }}">{{ end }}
                                     <span>{{ .Name }}</span>
-                                    <button type="submit" aria-label="Remove {{ .Name }} as a prerequisite of {{ $unit.Name }}">
-                                      <span class="material-symbols-rounded" aria-hidden="true">close</span>
-                                    </button>
+                                    {{ if $.ActiveProposal }}
+                                      <button type="submit" aria-label="Propose removing {{ .Name }} as a prerequisite of {{ $unit.Name }}">
+                                        <span class="material-symbols-rounded" aria-hidden="true">close</span>
+                                      </button>
+                                    {{ end }}
                                   </form>
                                 {{ end }}
                               </dd>
@@ -119,6 +188,110 @@
         </div>
       </section>
 
+      {{ if .ActiveProposal }}
+        <section class="ui-pane ui-pane--form" id="proposal-details-panel" data-nested-panel data-layout-panel data-panel-modes="compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-max="34" hidden aria-labelledby="proposal-details-title">
+          <div class="ui-pane__inner nested-panel">
+            <header class="nested-panel__header">
+              <div>
+                <p class="ui-pane__eyebrow">Working proposal</p>
+                <h1 id="proposal-details-title">Proposal details</h1>
+              </div>
+              <button class="icon-button nested-panel__close" type="button" data-close-panel aria-label="Close proposal details">
+                <span class="material-symbols-rounded" aria-hidden="true">close</span>
+              </button>
+            </header>
+            <dl class="proposal-details">
+              <div><dt>Status</dt><dd>{{ .ActiveProposal.Status }}</dd></div>
+              <div><dt>Author</dt><dd>{{ .ActiveProposal.AuthorName }}</dd></div>
+              <div><dt>Base version</dt><dd>v{{ .ActiveProposal.BaseVersion }}</dd></div>
+              <div><dt>Changes</dt><dd>{{ len .ActiveProposal.Changes }}</dd></div>
+            </dl>
+            <form class="editor-form editor-form--panel" action="/admin/curriculum/proposals/{{ .ActiveProposal.ID }}" method="post">
+              <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+              <label for="working-proposal-title">Title</label>
+              <input id="working-proposal-title" name="title" value="{{ .ActiveProposal.Title }}" required maxlength="200">
+              <label for="working-proposal-rationale">Purpose</label>
+              <textarea id="working-proposal-rationale" name="rationale" required rows="4" maxlength="1000" data-autoresize>{{ .ActiveProposal.Rationale }}</textarea>
+              <button class="primary-button" type="submit">Save proposal</button>
+            </form>
+            <div class="proposal-details__actions">
+              <form action="/admin/curriculum/proposals/{{ .ActiveProposal.ID }}/publish" method="post">
+                <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+                <button class="primary-button" type="submit">Publish {{ len .ActiveProposal.Changes }} changes</button>
+              </form>
+              <form action="/admin/curriculum/proposals/{{ .ActiveProposal.ID }}/delete" method="post" onsubmit="return confirm('Delete this draft proposal?')">
+                <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+                <button class="editor-action proposal-details__delete" type="submit">
+                  <span class="material-symbols-rounded" aria-hidden="true">delete</span>
+                  Delete draft
+                </button>
+              </form>
+            </div>
+          </div>
+        </section>
+      {{ end }}
+
+      <section class="ui-pane ui-pane--form" id="proposal-history-panel" data-nested-panel data-layout-panel data-panel-modes="compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-max="34" hidden aria-labelledby="proposal-history-title">
+        <div class="ui-pane__inner nested-panel">
+          <header class="nested-panel__header">
+            <div>
+              <p class="ui-pane__eyebrow">Curriculum modification</p>
+              <h1 id="proposal-history-title">Proposal history</h1>
+            </div>
+            <button class="icon-button nested-panel__close" type="button" data-close-panel aria-label="Close proposal history">
+              <span class="material-symbols-rounded" aria-hidden="true">close</span>
+            </button>
+          </header>
+          <p class="nested-panel__introduction">Select a draft to continue working or inspect the latest published versions.</p>
+          {{ if .Proposals }}
+            <ol class="proposal-list proposal-list--panel">
+              {{ range .Proposals }}
+                <li>
+                  <div>
+                    <strong>{{ if eq .Status "draft" }}<a href="/admin/curriculum?proposal={{ .ID }}">{{ .Title }}</a>{{ else }}{{ .Title }}{{ end }}</strong>
+                    <span>{{ if .PublishedVersion }}v{{ .PublishedVersion }} · {{ end }}{{ .AuthorName }}</span>
+                  </div>
+                  <div class="proposal-list__actions">
+                    <span class="proposal-status">{{ .Status }}</span>
+                    {{ if .CanRevert }}
+                      <form action="/admin/curriculum/proposals/{{ .ID }}/revert" method="post">
+                        <input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}">
+                        <button class="editor-action" type="submit"><span class="material-symbols-rounded" aria-hidden="true">undo</span>Revert</button>
+                      </form>
+                    {{ end }}
+                  </div>
+                </li>
+              {{ end }}
+            </ol>
+          {{ else }}
+            <p class="proposal-history__empty">No proposals have been created yet.</p>
+          {{ end }}
+        </div>
+      </section>
+
+      <section class="ui-pane ui-pane--form" id="new-proposal-panel" data-nested-panel data-layout-panel data-panel-modes="compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-max="34" hidden aria-labelledby="create-proposal-title">
+        <div class="ui-pane__inner nested-panel">
+          <header class="nested-panel__header">
+            <div>
+              <p class="ui-pane__eyebrow">Curriculum modification</p>
+              <h1 id="create-proposal-title">New proposal</h1>
+            </div>
+            <button class="icon-button nested-panel__close" type="button" data-close-panel aria-label="Close new proposal panel">
+              <span class="material-symbols-rounded" aria-hidden="true">close</span>
+            </button>
+          </header>
+          <p class="nested-panel__introduction">Create a focused workspace. Its changes will remain isolated until you publish the proposal.</p>
+          <form class="editor-form editor-form--panel" action="/admin/curriculum/proposals" method="post">
+            <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+            <label for="proposal-title">Title</label>
+            <input id="proposal-title" name="title" required maxlength="200" autocomplete="off" placeholder="Improve algebra foundations">
+            <label for="proposal-rationale">Purpose</label>
+            <textarea id="proposal-rationale" name="rationale" required rows="4" maxlength="1000" data-autoresize placeholder="Explain why these changes belong together"></textarea>
+            <button class="primary-button" type="submit">Create proposal</button>
+          </form>
+        </div>
+      </section>
+
       <section class="ui-pane ui-pane--form" id="new-unit-panel" data-nested-panel data-layout-panel data-panel-modes="compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-max="34" hidden aria-labelledby="create-unit-title">
         <div class="ui-pane__inner nested-panel">
           <header class="nested-panel__header">
@@ -130,17 +303,44 @@
               <span class="material-symbols-rounded" aria-hidden="true">close</span>
             </button>
           </header>
-          <p class="nested-panel__introduction">Define one teachable concept. Dependencies can be connected after the unit is created.</p>
+          <p class="nested-panel__introduction">Add one teachable concept to the selected draft. The published curriculum will not change until the proposal is published.</p>
           <form class="editor-form editor-form--panel" action="/admin/curriculum/units" method="post">
             <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+            {{ if .ActiveProposal }}<input type="hidden" name="proposal_id" value="{{ .ActiveProposal.ID }}">{{ end }}
             <label for="unit-name">Name</label>
             <input id="unit-name" name="name" required maxlength="200" autocomplete="off">
             <label for="unit-description">Short description</label>
             <textarea id="unit-description" name="description" required rows="2" maxlength="1000" data-autoresize></textarea>
-            <button class="primary-button" type="submit">Create unit</button>
+            <button class="primary-button" type="submit" {{ if not .ActiveProposal }}disabled{{ end }}>Add to proposal</button>
           </form>
         </div>
       </section>
+
+      {{ if .ActiveProposal }}
+        <section class="ui-pane ui-pane--form" id="edit-unit-panel" data-nested-panel data-layout-panel data-panel-modes="compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-max="34" hidden aria-labelledby="edit-unit-title">
+          <div class="ui-pane__inner nested-panel">
+            <header class="nested-panel__header">
+              <div>
+                <p class="ui-pane__eyebrow">Proposed unit change</p>
+                <h1 id="edit-unit-title" data-unit-heading>Edit unit</h1>
+              </div>
+              <button class="icon-button nested-panel__close" type="button" data-close-panel aria-label="Close unit editor">
+                <span class="material-symbols-rounded" aria-hidden="true">close</span>
+              </button>
+            </header>
+            <p class="nested-panel__introduction">Add changes to this unit to the selected proposal. The published unit remains unchanged until publication.</p>
+            <form class="editor-form editor-form--panel" action="" method="post" data-unit-edit-form>
+              <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+              <input type="hidden" name="proposal_id" value="{{ .ActiveProposal.ID }}">
+              <label for="edit-unit-name">Name</label>
+              <input id="edit-unit-name" name="name" required maxlength="200" data-unit-name-input>
+              <label for="edit-unit-description">Description</label>
+              <textarea id="edit-unit-description" name="description" required rows="4" maxlength="1000" data-autoresize data-unit-description-input></textarea>
+              <button class="primary-button" type="submit">Add edit to proposal</button>
+            </form>
+          </div>
+        </section>
+      {{ end }}
 
       <section class="ui-pane ui-pane--form" id="new-dependency-panel" data-nested-panel data-layout-panel data-panel-modes="compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-max="34" hidden aria-labelledby="create-dependency-title">
         <div class="ui-pane__inner nested-panel">
@@ -153,16 +353,17 @@
               <span class="material-symbols-rounded" aria-hidden="true">close</span>
             </button>
           </header>
-          <p class="nested-panel__introduction">Choose the unit that must be learned first.</p>
+          <p class="nested-panel__introduction">Add the prerequisite to the selected draft. It will remain isolated until the proposal is published.</p>
           <form class="editor-form editor-form--panel" action="/admin/curriculum/dependencies" method="post">
             <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+            {{ if .ActiveProposal }}<input type="hidden" name="proposal_id" value="{{ .ActiveProposal.ID }}">{{ end }}
             <input type="hidden" name="unit_id" value="" data-dependent-input>
             <label for="prerequisite-unit">Prerequisite</label>
             <select id="prerequisite-unit" name="prerequisite_id" required>
               <option value="">Select a prerequisite</option>
               {{ range .Units }}<option value="{{ .ID }}">{{ .Name }}</option>{{ end }}
             </select>
-            <button class="primary-button" type="submit">Add prerequisite</button>
+            <button class="primary-button" type="submit" {{ if not .ActiveProposal }}disabled{{ end }}>Add to proposal</button>
           </form>
         </div>
       </section>

@@ -21,10 +21,12 @@ type curriculumUnitView struct {
 
 type adminCurriculumPageData struct {
 	userPageData
-	Units        []curriculumUnitView
-	Dependencies []models.UnitDependency
-	Graph        *models.CurriculumGraphLayout
-	Error        string
+	Units          []curriculumUnitView
+	Dependencies   []models.UnitDependency
+	Graph          *models.CurriculumGraphLayout
+	Proposals      []models.CurriculumProposal
+	ActiveProposal *models.CurriculumProposal
+	Error          string
 }
 
 func (server *Server) adminCurriculum(writer http.ResponseWriter, request *http.Request) {
@@ -35,8 +37,16 @@ func (server *Server) createCurriculumUnit(writer http.ResponseWriter, request *
 	if !server.parseAdminMutation(writer, request) {
 		return
 	}
-	_, err := services.CreateCurriculumUnit(
+	authorID, _ := services.SessionUserID(request)
+	proposalID, err := parsePositiveID(request.FormValue("proposal_id"))
+	if err != nil {
+		server.renderCurriculumMutationError(writer, request, services.ErrProposalNotFound)
+		return
+	}
+	_, err = services.CreateCurriculumUnit(
 		server.Database,
+		authorID,
+		proposalID,
 		request.FormValue("name"),
 		request.FormValue("description"),
 	)
@@ -44,7 +54,29 @@ func (server *Server) createCurriculumUnit(writer http.ResponseWriter, request *
 		server.renderCurriculumMutationError(writer, request, err)
 		return
 	}
-	http.Redirect(writer, request, "/admin/curriculum", http.StatusSeeOther)
+	redirectToProposal(writer, request, proposalID)
+}
+
+func (server *Server) updateCurriculumUnit(writer http.ResponseWriter, request *http.Request) {
+	if !server.parseAdminMutation(writer, request) {
+		return
+	}
+	unitID, err := parsePositiveID(request.PathValue("id"))
+	if err != nil {
+		http.Error(writer, "Invalid unit ID", http.StatusBadRequest)
+		return
+	}
+	proposalID, err := parsePositiveID(request.FormValue("proposal_id"))
+	if err != nil {
+		server.renderCurriculumMutationError(writer, request, services.ErrProposalNotFound)
+		return
+	}
+	authorID, _ := services.SessionUserID(request)
+	if err := services.UpdateCurriculumUnit(server.Database, authorID, proposalID, unitID, request.FormValue("name"), request.FormValue("description")); err != nil {
+		server.renderCurriculumMutationError(writer, request, err)
+		return
+	}
+	redirectToProposal(writer, request, proposalID)
 }
 
 func (server *Server) deleteCurriculumUnit(writer http.ResponseWriter, request *http.Request) {
@@ -56,11 +88,17 @@ func (server *Server) deleteCurriculumUnit(writer http.ResponseWriter, request *
 		http.Error(writer, "Invalid unit ID", http.StatusBadRequest)
 		return
 	}
-	if err := services.DeleteCurriculumUnit(server.Database, unitID); err != nil {
+	authorID, _ := services.SessionUserID(request)
+	proposalID, err := parsePositiveID(request.FormValue("proposal_id"))
+	if err != nil {
+		server.renderCurriculumMutationError(writer, request, services.ErrProposalNotFound)
+		return
+	}
+	if err := services.DeleteCurriculumUnit(server.Database, authorID, proposalID, unitID); err != nil {
 		server.renderCurriculumMutationError(writer, request, err)
 		return
 	}
-	http.Redirect(writer, request, "/admin/curriculum", http.StatusSeeOther)
+	redirectToProposal(writer, request, proposalID)
 }
 
 func (server *Server) createUnitDependency(writer http.ResponseWriter, request *http.Request) {
@@ -73,11 +111,17 @@ func (server *Server) createUnitDependency(writer http.ResponseWriter, request *
 		http.Error(writer, "Invalid dependency", http.StatusBadRequest)
 		return
 	}
-	if err := services.AddUnitDependency(server.Database, unitID, prerequisiteID); err != nil {
+	authorID, _ := services.SessionUserID(request)
+	proposalID, err := parsePositiveID(request.FormValue("proposal_id"))
+	if err != nil {
+		server.renderCurriculumMutationError(writer, request, services.ErrProposalNotFound)
+		return
+	}
+	if err := services.AddUnitDependency(server.Database, authorID, proposalID, unitID, prerequisiteID); err != nil {
 		server.renderCurriculumMutationError(writer, request, err)
 		return
 	}
-	http.Redirect(writer, request, "/admin/curriculum", http.StatusSeeOther)
+	redirectToProposal(writer, request, proposalID)
 }
 
 func (server *Server) deleteUnitDependency(writer http.ResponseWriter, request *http.Request) {
@@ -90,7 +134,112 @@ func (server *Server) deleteUnitDependency(writer http.ResponseWriter, request *
 		http.Error(writer, "Invalid dependency", http.StatusBadRequest)
 		return
 	}
-	if err := services.RemoveUnitDependency(server.Database, unitID, prerequisiteID); err != nil {
+	authorID, _ := services.SessionUserID(request)
+	proposalID, err := parsePositiveID(request.FormValue("proposal_id"))
+	if err != nil {
+		server.renderCurriculumMutationError(writer, request, services.ErrProposalNotFound)
+		return
+	}
+	if err := services.RemoveUnitDependency(server.Database, authorID, proposalID, unitID, prerequisiteID); err != nil {
+		server.renderCurriculumMutationError(writer, request, err)
+		return
+	}
+	redirectToProposal(writer, request, proposalID)
+}
+
+func (server *Server) createCurriculumProposal(writer http.ResponseWriter, request *http.Request) {
+	if !server.parseAdminMutation(writer, request) {
+		return
+	}
+	authorID, _ := services.SessionUserID(request)
+	proposal, err := services.CreateCurriculumProposal(server.Database, authorID, request.FormValue("title"), request.FormValue("rationale"))
+	if err != nil {
+		server.renderCurriculumMutationError(writer, request, err)
+		return
+	}
+	redirectToProposal(writer, request, proposal.ID)
+}
+
+func (server *Server) updateCurriculumProposal(writer http.ResponseWriter, request *http.Request) {
+	if !server.parseAdminMutation(writer, request) {
+		return
+	}
+	proposalID, err := parsePositiveID(request.PathValue("id"))
+	if err != nil {
+		http.Error(writer, "Invalid proposal ID", http.StatusBadRequest)
+		return
+	}
+	authorID, _ := services.SessionUserID(request)
+	if err := services.UpdateCurriculumProposal(server.Database, authorID, proposalID, request.FormValue("title"), request.FormValue("rationale")); err != nil {
+		server.renderCurriculumMutationError(writer, request, err)
+		return
+	}
+	redirectToProposal(writer, request, proposalID)
+}
+
+func (server *Server) deleteCurriculumProposal(writer http.ResponseWriter, request *http.Request) {
+	if !server.parseAdminMutation(writer, request) {
+		return
+	}
+	proposalID, err := parsePositiveID(request.PathValue("id"))
+	if err != nil {
+		http.Error(writer, "Invalid proposal ID", http.StatusBadRequest)
+		return
+	}
+	authorID, _ := services.SessionUserID(request)
+	if err := services.DeleteCurriculumProposal(server.Database, authorID, proposalID); err != nil {
+		server.renderCurriculumMutationError(writer, request, err)
+		return
+	}
+	http.Redirect(writer, request, "/admin/curriculum", http.StatusSeeOther)
+}
+
+func (server *Server) publishCurriculumProposal(writer http.ResponseWriter, request *http.Request) {
+	if !server.parseAdminMutation(writer, request) {
+		return
+	}
+	proposalID, err := parsePositiveID(request.PathValue("id"))
+	if err != nil {
+		http.Error(writer, "Invalid proposal ID", http.StatusBadRequest)
+		return
+	}
+	authorID, _ := services.SessionUserID(request)
+	if err := services.PublishCurriculumProposal(server.Database, authorID, proposalID); err != nil {
+		server.renderCurriculumMutationError(writer, request, err)
+		return
+	}
+	http.Redirect(writer, request, "/admin/curriculum", http.StatusSeeOther)
+}
+
+func (server *Server) deleteCurriculumProposalChange(writer http.ResponseWriter, request *http.Request) {
+	if !server.parseAdminMutation(writer, request) {
+		return
+	}
+	proposalID, proposalErr := parsePositiveID(request.PathValue("id"))
+	changeID, changeErr := parsePositiveID(request.PathValue("changeID"))
+	if proposalErr != nil || changeErr != nil {
+		http.Error(writer, "Invalid proposal change", http.StatusBadRequest)
+		return
+	}
+	authorID, _ := services.SessionUserID(request)
+	if err := services.DeleteCurriculumProposalChange(server.Database, authorID, proposalID, changeID); err != nil {
+		server.renderCurriculumMutationError(writer, request, err)
+		return
+	}
+	redirectToProposal(writer, request, proposalID)
+}
+
+func (server *Server) revertCurriculumProposal(writer http.ResponseWriter, request *http.Request) {
+	if !server.parseAdminMutation(writer, request) {
+		return
+	}
+	proposalID, err := parsePositiveID(request.PathValue("id"))
+	if err != nil {
+		http.Error(writer, "Invalid proposal ID", http.StatusBadRequest)
+		return
+	}
+	authorID, _ := services.SessionUserID(request)
+	if err := services.RevertCurriculumProposal(server.Database, authorID, proposalID); err != nil {
 		server.renderCurriculumMutationError(writer, request, err)
 		return
 	}
@@ -135,6 +284,18 @@ func curriculumErrorResponse(err error) (string, int) {
 		return "That dependency no longer exists.", http.StatusNotFound
 	case errors.Is(err, services.ErrDependencyCycle):
 		return "That dependency would create a cycle.", http.StatusConflict
+	case errors.Is(err, services.ErrNoProposalToRevert):
+		return "There is no published proposal to revert.", http.StatusConflict
+	case errors.Is(err, services.ErrProposalNotFound):
+		return "Select an editable draft proposal first.", http.StatusNotFound
+	case errors.Is(err, services.ErrProposalTitleRequired):
+		return "A proposal title is required.", http.StatusBadRequest
+	case errors.Is(err, services.ErrProposalRationaleRequired):
+		return "Explain the purpose of the proposal.", http.StatusBadRequest
+	case errors.Is(err, services.ErrProposalEmpty):
+		return "Add at least one proposed change before publishing.", http.StatusBadRequest
+	case errors.Is(err, services.ErrProposalOutdated):
+		return "This draft was based on an older curriculum version. Create a fresh proposal.", http.StatusConflict
 	default:
 		return "Unable to modify the curriculum.", http.StatusInternalServerError
 	}
@@ -160,16 +321,48 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 		http.Error(writer, "Unable to lay out curriculum", http.StatusInternalServerError)
 		return
 	}
+	proposals, err := db.ListCurriculumProposals(server.Database, 8)
+	if err != nil {
+		log.Printf("load curriculum proposals: %v", err)
+		http.Error(writer, "Unable to load curriculum proposals", http.StatusInternalServerError)
+		return
+	}
+	for index := range proposals {
+		if proposals[index].Status == "accepted" && proposals[index].AuthorID != nil {
+			proposals[index].CanRevert = true
+			break
+		}
+	}
+	var activeProposal *models.CurriculumProposal
+	if proposalValue := request.URL.Query().Get("proposal"); proposalValue != "" {
+		if proposalID, parseErr := parsePositiveID(proposalValue); parseErr == nil {
+			activeProposal, err = db.GetCurriculumProposal(server.Database, proposalID)
+			if err != nil {
+				log.Printf("load active curriculum proposal: %v", err)
+				http.Error(writer, "Unable to load curriculum proposal", http.StatusInternalServerError)
+				return
+			}
+			if activeProposal != nil && (activeProposal.Status != "draft" || activeProposal.AuthorID == nil || *activeProposal.AuthorID != userID) {
+				activeProposal = nil
+			}
+		}
+	}
 	data := adminCurriculumPageData{
 		userPageData: userPageData{
 			User: user, CSRFToken: sessionCSRFToken(request), CurrentSection: "curriculum",
 		},
-		Dependencies: graph.Dependencies,
-		Graph:        layout,
-		Error:        message,
+		Dependencies:   graph.Dependencies,
+		Graph:          layout,
+		Proposals:      proposals,
+		ActiveProposal: activeProposal,
+		Error:          message,
 	}
 	data.Units = curriculumUnitViews(graph, layout)
 	server.renderStatus(writer, status, "admin-curriculum.html", data)
+}
+
+func redirectToProposal(writer http.ResponseWriter, request *http.Request, proposalID int64) {
+	http.Redirect(writer, request, "/admin/curriculum?proposal="+strconv.FormatInt(proposalID, 10), http.StatusSeeOther)
 }
 
 func curriculumUnitViews(graph *models.CurriculumGraph, layout *models.CurriculumGraphLayout) []curriculumUnitView {

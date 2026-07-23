@@ -62,17 +62,42 @@ func GetCurriculumGraph(database *sql.DB) (*models.CurriculumGraph, error) {
 	return graph, nil
 }
 
-func CreateUnit(database *sql.DB, name, description string) (*models.Unit, error) {
+func GetUnit(q curriculumExecutor, unitID int64) (*models.Unit, error) {
 	var unit models.Unit
-	err := database.QueryRow(`
-		INSERT INTO units (name, description)
-		VALUES ($1, $2)
-		RETURNING id, name, description, created_at, updated_at
-	`, name, description).Scan(&unit.ID, &unit.Name, &unit.Description, &unit.CreatedAt, &unit.UpdatedAt)
+	err := q.QueryRow(`
+		SELECT id, name, description, created_at, updated_at
+		FROM units
+		WHERE id = $1
+	`, unitID).Scan(&unit.ID, &unit.Name, &unit.Description, &unit.CreatedAt, &unit.UpdatedAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
 	if err != nil {
-		return nil, fmt.Errorf("create curriculum unit: %w", err)
+		return nil, fmt.Errorf("get curriculum unit: %w", err)
 	}
 	return &unit, nil
+}
+
+func UnitPrerequisiteIDs(q curriculumExecutor, unitID int64) ([]int64, error) {
+	rows, err := q.Query(`
+		SELECT prerequisite_id
+		FROM unit_dependencies
+		WHERE unit_id = $1
+		ORDER BY prerequisite_id
+	`, unitID)
+	if err != nil {
+		return nil, fmt.Errorf("list unit prerequisite ids: %w", err)
+	}
+	defer rows.Close()
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("scan unit prerequisite id: %w", err)
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
 }
 
 func LockCurriculumGraph(tx *sql.Tx) error {
@@ -80,14 +105,6 @@ func LockCurriculumGraph(tx *sql.Tx) error {
 		return fmt.Errorf("lock curriculum graph: %w", err)
 	}
 	return nil
-}
-
-func UnitExists(q curriculumExecutor, unitID int64) (bool, error) {
-	var exists bool
-	if err := q.QueryRow(`SELECT EXISTS (SELECT 1 FROM units WHERE id = $1)`, unitID).Scan(&exists); err != nil {
-		return false, fmt.Errorf("check curriculum unit: %w", err)
-	}
-	return exists, nil
 }
 
 func UnitDependentNames(q curriculumExecutor, prerequisiteID int64) ([]string, error) {
@@ -116,18 +133,6 @@ func UnitDependentNames(q curriculumExecutor, prerequisiteID int64) ([]string, e
 	return names, nil
 }
 
-func DeleteUnit(q curriculumExecutor, unitID int64) (bool, error) {
-	result, err := q.Exec(`DELETE FROM units WHERE id = $1`, unitID)
-	if err != nil {
-		return false, fmt.Errorf("delete curriculum unit: %w", err)
-	}
-	deleted, err := result.RowsAffected()
-	if err != nil {
-		return false, fmt.Errorf("count deleted curriculum units: %w", err)
-	}
-	return deleted != 0, nil
-}
-
 func DependencyCreatesCycle(q curriculumExecutor, unitID, prerequisiteID int64) (bool, error) {
 	if unitID == prerequisiteID {
 		return true, nil
@@ -151,33 +156,15 @@ func DependencyCreatesCycle(q curriculumExecutor, unitID, prerequisiteID int64) 
 	return createsCycle, nil
 }
 
-func CreateUnitDependency(q curriculumExecutor, unitID, prerequisiteID int64) (bool, error) {
-	result, err := q.Exec(`
-		INSERT INTO unit_dependencies (unit_id, prerequisite_id)
-		VALUES ($1, $2)
-		ON CONFLICT DO NOTHING
-	`, unitID, prerequisiteID)
-	if err != nil {
-		return false, fmt.Errorf("create unit dependency: %w", err)
+func DependencyExists(q curriculumExecutor, unitID, prerequisiteID int64) (bool, error) {
+	var exists bool
+	if err := q.QueryRow(`
+		SELECT EXISTS (
+			SELECT 1 FROM unit_dependencies
+			WHERE unit_id = $1 AND prerequisite_id = $2
+		)
+	`, unitID, prerequisiteID).Scan(&exists); err != nil {
+		return false, fmt.Errorf("check curriculum dependency: %w", err)
 	}
-	created, err := result.RowsAffected()
-	if err != nil {
-		return false, fmt.Errorf("count created unit dependencies: %w", err)
-	}
-	return created != 0, nil
-}
-
-func DeleteUnitDependency(q curriculumExecutor, unitID, prerequisiteID int64) (bool, error) {
-	result, err := q.Exec(`
-		DELETE FROM unit_dependencies
-		WHERE unit_id = $1 AND prerequisite_id = $2
-	`, unitID, prerequisiteID)
-	if err != nil {
-		return false, fmt.Errorf("delete unit dependency: %w", err)
-	}
-	deleted, err := result.RowsAffected()
-	if err != nil {
-		return false, fmt.Errorf("count deleted unit dependencies: %w", err)
-	}
-	return deleted != 0, nil
+	return exists, nil
 }

@@ -1,0 +1,32 @@
+package models
+
+import "time"
+
+type CurriculumProposal struct {
+	ID                int64
+	AuthorID          *int64
+	AuthorName        string
+	Title             string
+	Rationale         string
+	Status            string
+	BaseVersion       int64
+	PublishedVersion  *int64
+	RevertsProposalID *int64
+	CreatedAt         time.Time
+	AcceptedAt        *time.Time
+	Changes           []CurriculumProposalChange
+	CanRevert         bool
+}
+
+type CurriculumProposalChange struct {
+	ID                      int64
+	ProposalID              int64
+	Position                int
+	Kind                    string
+	UnitID                  int64
+	UnitName                string
+	UnitDescription         string
+	PreviousUnitName        string
+	PreviousUnitDescription string
+	PrerequisiteID          *int64
+}
