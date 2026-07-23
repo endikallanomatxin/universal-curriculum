@@ -22,8 +22,22 @@ The Go module lives in `app`. The usual dependency flow is:
 - Keep domain invariants close to the model and enforce structural invariants
   in PostgreSQL where possible.
 - Write commit messages in clear, standard English.
+
+## Documentation and agent guidance
+
+- `docs/specification.md` defines product behaviour.
+- `docs/implementation` documents mechanisms that may evolve without changing
+  the product specification.
+- `AGENTS.md` files contain the constraints and working procedures applicable
+  to their directory tree. Keep them concise and point to canonical
+  implementation documents instead of duplicating detailed mechanisms.
 - Keep documentation and applicable `AGENTS.md` files aligned with changes to
   architecture or conventions.
+- After user feedback corrects an implementation, consider whether reusable
+  repository knowledge available beforehand would have prevented the mistake.
+  If so, update the applicable `AGENTS.md` or canonical implementation document
+  in the same change; keep one-off preferences and visual tuning in code and
+  tests.
 
 ## Validation
 
