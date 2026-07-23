@@ -49,7 +49,7 @@ func TestApplicationShellTemplates(t *testing.T) {
 				CurrentSection string
 				Home           bool
 			}{User: user, CurrentSection: "account"},
-			contains: []string{`data-panel-group`, `data-panel-modes="mobile:0 icons:5 sidebar:17"`, `data-mobile-menu-toggle`, `data-panel-fill`, `class="pane-stack"`, `hx-target="#workspace"`, `hx-swap="outerHTML transition:true"`, `>person</span>`},
+			contains: []string{`data-panel-group`, `data-panel-modes="mobile:0 icons:5 sidebar:17"`, `data-mobile-menu-toggle`, `data-panel-fill`, `class="pane-stack"`, `hx-target="#workspace"`, `hx-swap="outerHTML transition:true"`, `/static/js/panel_breadcrumbs.js?v=`, `>person</span>`},
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -148,13 +148,26 @@ func TestMobilePanelBreadcrumbsUseTheSharedLayoutContract(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, contract := range []string{
-		`matchMedia("(max-width: 42rem)")`,
-		`"[data-panel-breadcrumb]"`,
-		`mobilePanelBreadcrumbs`,
+		`--mobile-panel-composition`,
 		`layoutMobileGroup`,
+		`panel-layout:complete`,
 	} {
 		if !strings.Contains(string(layout), contract) {
-			t.Errorf("shared panel layout is missing mobile breadcrumb contract %q", contract)
+			t.Errorf("shared panel layout is missing mobile composition contract %q", contract)
+		}
+	}
+
+	breadcrumbs, err := os.ReadFile("../../web/static/js/panel_breadcrumbs.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, contract := range []string{
+		`[data-layout-panel][data-panel-breadcrumb]`,
+		`panel-layout:complete`,
+		`panel:navigate`,
+	} {
+		if !strings.Contains(string(breadcrumbs), contract) {
+			t.Errorf("mobile breadcrumb controller is missing contract %q", contract)
 		}
 	}
 
@@ -172,6 +185,31 @@ func TestMobilePanelBreadcrumbsUseTheSharedLayoutContract(t *testing.T) {
 		}
 		if !strings.Contains(string(template), "data-panel-breadcrumb=") {
 			t.Errorf("%s does not declare a mobile breadcrumb label", templatePath)
+		}
+	}
+}
+
+func TestRestorableControllersDoNotSerializeInitializationState(t *testing.T) {
+	for _, controllerPath := range []string{
+		"../../web/static/js/curriculum_graph.js",
+		"../../web/static/js/inline_editing.js",
+		"../../web/static/js/panel_breadcrumbs.js",
+		"../../web/static/js/panels.js",
+		"../../web/static/js/shell.js",
+		"../../web/static/js/unit_picker.js",
+	} {
+		controller, err := os.ReadFile(controllerPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(controller), "dataset.panelInitialized") ||
+			strings.Contains(string(controller), "dataset.unitPickerInitialized") ||
+			strings.Contains(string(controller), "dataset.inlineEditorInitialized") ||
+			strings.Contains(string(controller), "dataset.curriculumGraphInitialized") ||
+			strings.Contains(string(controller), "dataset.graphSearchInitialized") ||
+			strings.Contains(string(controller), "dataset.menuInitialized") ||
+			strings.Contains(string(controller), "dataset.breadcrumbSignature") {
+			t.Errorf("%s serializes controller initialization state into HTMX history", controllerPath)
 		}
 	}
 }

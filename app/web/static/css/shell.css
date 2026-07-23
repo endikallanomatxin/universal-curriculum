@@ -514,7 +514,7 @@ button.primary-menu__link {
   pointer-events: none;
 }
 
-.ui-pane[data-panel-mode="collapsed"] [style*="view-transition-name"] {
+.ui-pane[data-panel-mode="collapsed"] [data-panel-transition-item] {
   view-transition-name: none !important;
 }
 

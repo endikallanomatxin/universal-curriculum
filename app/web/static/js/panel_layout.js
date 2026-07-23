@@ -232,62 +232,20 @@
     if (changed) group.dispatchEvent(new CustomEvent("panel-layout", { bubbles: true }));
   }
 
-  function mobileBreadcrumbItems(workspace) {
-    const items = [];
-    workspace.querySelectorAll("[data-panel-breadcrumb]").forEach(function (panel) {
-      if (panel.hidden || panel.classList.contains("is-closing")) return;
-      const label = (panel.dataset.panelBreadcrumb || "").trim();
-      if (label) items.push({ label: label, panel: panel });
-    });
-    return items;
-  }
-
-  function updateMobileBreadcrumbs(shell, mobile) {
-    const workspace = shell.querySelector("#workspace");
-    if (!workspace) return;
-    let trail = workspace.querySelector(":scope > [data-mobile-panel-breadcrumbs]");
-    if (!mobile) {
-      if (trail && !trail.hidden) trail.hidden = true;
-      return;
-    }
-    if (!trail) {
-      trail = document.createElement("nav");
-      trail.className = "mobile-panel-breadcrumbs";
-      trail.dataset.mobilePanelBreadcrumbs = "";
-      trail.setAttribute("aria-label", "Current location");
-      workspace.prepend(trail);
-    }
-    const items = mobileBreadcrumbItems(workspace);
-    const signature = items.map(function (item) { return item.label; }).join("\u001f");
-    if (trail.breadcrumbSignature === signature) {
-      const shouldHide = items.length === 0;
-      if (trail.hidden !== shouldHide) trail.hidden = shouldHide;
-      return;
-    }
-    trail.breadcrumbSignature = signature;
-    trail.replaceChildren();
-    items.forEach(function (item, index) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.textContent = item.label;
-      if (index === items.length - 1) button.setAttribute("aria-current", "page");
-      button.addEventListener("click", function () {
-        document.dispatchEvent(new CustomEvent("panel:navigate", {
-          detail: { panel: item.panel }
-        }));
-      });
-      trail.appendChild(button);
-    });
-    trail.hidden = items.length === 0;
+  function mobileCompositionEnabled() {
+    return getComputedStyle(document.documentElement)
+      .getPropertyValue("--mobile-panel-composition").trim() === "1";
   }
 
   function layoutFrom(root) {
-    const mobile = window.matchMedia("(max-width: 42rem)").matches;
+    const mobile = mobileCompositionEnabled();
     const groups = [];
     if (root.matches && root.matches("[data-panel-group]")) groups.push(root);
     root.querySelectorAll("[data-panel-group]").forEach(function (group) { groups.push(group); });
     groups.reverse().forEach(function (group) { layoutGroup(group, mobile); });
-    updateMobileBreadcrumbs(root, mobile);
+    document.dispatchEvent(new CustomEvent("panel-layout:complete", {
+      detail: { shell: root, mobile: mobile }
+    }));
   }
 
   function scheduleLayout(shell) {
@@ -337,12 +295,6 @@
         attributes: true,
         attributeFilter: ["hidden", "data-panel-breadcrumb"],
         subtree: true
-      });
-    }
-    if (!shell.panelLayoutBreakpoint) {
-      shell.panelLayoutBreakpoint = window.matchMedia("(max-width: 42rem)");
-      shell.panelLayoutBreakpoint.addEventListener("change", function () {
-        scheduleLayout(shell);
       });
     }
     layoutFrom(shell);

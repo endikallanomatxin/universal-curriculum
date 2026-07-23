@@ -55,6 +55,10 @@ At `42rem` and below, the allocator switches to the mobile composition: only
 the rightmost visible pane in each group receives width and every pane to its
 left uses its zero-width mode. The workspace turns the visible panes'
 `data-panel-breadcrumb` labels into one lightweight trail fixed across its top.
+CSS owns this breakpoint through `--mobile-panel-composition`; JavaScript reads
+the resolved signal rather than repeating the media query. The independent
+`web/static/js/panel_breadcrumbs.js` controller renders direct workspace panes
+after the layout completes.
 This replaces vertical breadcrumb panes on phones without duplicating page
 markup or domain-specific layout logic. Opening, closing and replacing panes
 rebuilds the trail automatically. Each trail segment is actionable: selecting
@@ -114,7 +118,7 @@ The shared layout observes group and shell size with `ResizeObserver`, pane
 visibility with `MutationObserver`, and scroll-driven changes on the next
 animation frame. HTMX swaps reinitialize the observers and trigger a complete
 inner-to-outer negotiation. Observer callbacks are coalesced into one animation
-frame, and the allocator only writes geometry or breadcrumb markup when its
-resolved value changed. The mobile media query also requests a layout directly
-when the breakpoint changes. These constraints prevent layout writes from
-feeding an unbounded resize loop.
+frame, and the allocator only writes geometry when its resolved value changed.
+Viewport changes resize the observed shell; the next pass reads the mobile
+composition signal resolved by CSS. These constraints prevent layout writes
+from feeding an unbounded resize loop.

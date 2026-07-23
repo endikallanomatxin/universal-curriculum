@@ -21,9 +21,12 @@
     navigation.addEventListener("click", function (event) {
       if (event.target.closest("a[href]")) setMobileMenu(false);
     });
-    document.addEventListener("keydown", function (event) {
-      if (event.key === "Escape") setMobileMenu(false);
-    });
+    if (!document.mobileMenuKeyboardInitialized) {
+      document.mobileMenuKeyboardInitialized = true;
+      document.addEventListener("keydown", function (event) {
+        if (event.key === "Escape") setMobileMenu(false);
+      });
+    }
   }
 
   function targetsWorkspace(event) {
@@ -54,6 +57,9 @@
     initializeMobileMenu();
     synchroniseShell();
   });
+  document.addEventListener("htmx:load", function () {
+    initializeMobileMenu();
+  });
   document.addEventListener("htmx:beforeSwap", function (event) {
     const shell = document.querySelector("#app-shell");
     if (shell && targetsWorkspace(event)) shell.classList.add("is-shell-navigation");
@@ -66,7 +72,10 @@
     if (shell && targetsWorkspace(event)) shell.classList.remove("is-shell-navigation");
   });
   window.addEventListener("popstate", function () {
-    window.setTimeout(synchroniseShell, 0);
+    window.setTimeout(function () {
+      initializeMobileMenu();
+      synchroniseShell();
+    }, 0);
   });
   document.addEventListener("panel-layout", function () {
     const navigation = document.querySelector(".primary-navigation");

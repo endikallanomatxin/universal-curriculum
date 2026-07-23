@@ -1,53 +1,58 @@
 (function () {
   "use strict";
 
+  const closeDuration = 280;
+
   function directChildContaining(group, element) {
     let current = element;
     while (current && current.parentElement !== group) current = current.parentElement;
     return current && current.parentElement === group ? current : null;
   }
 
+  function beginPanelClose(panel, restoreFocus) {
+    if (!panel || panel.hidden || panel.classList.contains("is-closing")) return false;
+    const trigger = panel.activeTrigger ||
+      (panel.id && document.querySelector('[data-open-panel="' + panel.id + '"]'));
+    window.clearTimeout(panel.closeTimer);
+    panel.classList.remove("is-opening");
+    panel.classList.add("is-closing");
+    if (trigger) trigger.setAttribute("aria-expanded", "false");
+    panel.closeTimer = window.setTimeout(function () {
+      panel.hidden = true;
+      panel.classList.remove("is-closing");
+      if (restoreFocus && trigger) {
+        trigger.scrollIntoView({ behavior: "auto", block: "nearest", inline: "end" });
+        trigger.focus({ preventScroll: true });
+      }
+    }, closeDuration);
+    return true;
+  }
+
+  function closeMatchingPanels(group, origin, predicate) {
+    if (!group || !origin) return false;
+    const children = Array.from(group.children);
+    const originIndex = children.indexOf(origin);
+    if (originIndex < 0) return false;
+    let changed = false;
+    children.forEach(function (panel, index) {
+      if (index <= originIndex || !predicate(panel)) return;
+      changed = beginPanelClose(panel, false) || changed;
+    });
+    return changed;
+  }
+
   function closePanelsToTheRight(trigger, targetPanel) {
     const group = targetPanel.parentElement;
     const origin = directChildContaining(group, trigger);
-    if (!group || !origin) return;
-    const children = Array.from(group.children);
-    const originIndex = children.indexOf(origin);
-    children.forEach(function (panel, index) {
-      if (index <= originIndex || panel === targetPanel ||
-          !panel.matches("[data-nested-panel]") || panel.hidden) return;
-      window.clearTimeout(panel.closeTimer);
-      panel.classList.remove("is-opening");
-      panel.classList.add("is-closing");
-      const panelTrigger = panel.activeTrigger;
-      if (panelTrigger) panelTrigger.setAttribute("aria-expanded", "false");
-      panel.closeTimer = window.setTimeout(function () {
-        panel.hidden = true;
-        panel.classList.remove("is-closing");
-      }, 280);
+    closeMatchingPanels(group, origin, function (panel) {
+      return panel !== targetPanel && panel.matches("[data-nested-panel]");
     });
   }
 
   function closePanelsAfter(panel) {
     const group = panel && panel.parentElement;
-    if (!group) return;
-    const panels = Array.from(group.children);
-    const panelIndex = panels.indexOf(panel);
-    let changed = false;
-    panels.forEach(function (candidate, index) {
-      if (index <= panelIndex || !candidate.matches("[data-layout-panel]") ||
-          candidate.hidden || candidate.classList.contains("is-closing")) return;
-      window.clearTimeout(candidate.closeTimer);
-      candidate.classList.remove("is-opening");
-      candidate.classList.add("is-closing");
-      if (candidate.activeTrigger) {
-        candidate.activeTrigger.setAttribute("aria-expanded", "false");
-      }
-      candidate.closeTimer = window.setTimeout(function () {
-        candidate.hidden = true;
-        candidate.classList.remove("is-closing");
-      }, 280);
-      changed = true;
+    const changed = closeMatchingPanels(group, panel, function (candidate) {
+      return candidate.matches("[data-layout-panel]");
     });
     if (changed && window.panelLayout) window.panelLayout.refresh();
   }
@@ -88,20 +93,8 @@
       if (!close || close.panelInitialized) return;
       close.panelInitialized = true;
       close.addEventListener("click", function () {
-        const trigger = panel.activeTrigger || document.querySelector('[data-open-panel="' + panel.id + '"]');
-        panel.classList.add("is-closing");
-        if (window.panelLayout) window.panelLayout.refresh();
-        if (trigger) {
-          trigger.setAttribute("aria-expanded", "false");
-        }
-        panel.closeTimer = window.setTimeout(function () {
-          panel.hidden = true;
-          panel.classList.remove("is-closing");
-          if (trigger) {
-            trigger.scrollIntoView({ behavior: "auto", block: "nearest", inline: "end" });
-            trigger.focus({ preventScroll: true });
-          }
-        }, 280);
+        const changed = beginPanelClose(panel, true);
+        if (changed && window.panelLayout) window.panelLayout.refresh();
       });
     });
   }
