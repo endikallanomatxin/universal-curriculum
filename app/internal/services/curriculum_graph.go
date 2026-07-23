@@ -1,12 +1,139 @@
 package services
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
 
 	"universal-curriculum/internal/models"
 )
+
+var ErrCurriculumUnitNotFound = errors.New("curriculum unit not found")
+
+const (
+	curriculumDirectNeighborLimit = 5
+	curriculumSecondNeighborLimit = 5
+	curriculumStrictSiblingLimit  = 3
+)
+
+func CurriculumNeighborhood(graph *models.CurriculumGraph, focusID *int64) (*models.CurriculumGraph, *models.Unit, []models.CurriculumGraphBoundary, error) {
+	neighborhood := &models.CurriculumGraph{}
+	if graph == nil {
+		return neighborhood, nil, nil, nil
+	}
+	unitsByID := make(map[int64]models.Unit, len(graph.Units))
+	incoming := make(map[int64]int, len(graph.Units))
+	prerequisites := make(map[int64][]int64)
+	dependents := make(map[int64][]int64)
+	for _, unit := range graph.Units {
+		unitsByID[unit.ID] = unit
+	}
+	for _, dependency := range graph.Dependencies {
+		incoming[dependency.UnitID]++
+		prerequisites[dependency.UnitID] = append(prerequisites[dependency.UnitID], dependency.PrerequisiteID)
+		dependents[dependency.PrerequisiteID] = append(dependents[dependency.PrerequisiteID], dependency.UnitID)
+	}
+	included := make(map[int64]bool)
+	var focus *models.Unit
+	if focusID == nil {
+		for _, unit := range graph.Units {
+			if incoming[unit.ID] == 0 {
+				included[unit.ID] = true
+			}
+		}
+	} else {
+		unit, exists := unitsByID[*focusID]
+		if !exists {
+			return nil, nil, nil, ErrCurriculumUnitNotFound
+		}
+		focus = &unit
+		included[unit.ID] = true
+		directPrerequisites := includeCurriculumNeighbors(included, prerequisites[unit.ID], curriculumDirectNeighborLimit)
+		directDependents := includeCurriculumNeighbors(included, dependents[unit.ID], curriculumDirectNeighborLimit)
+		includeSecondCurriculumNeighbors(included, directPrerequisites, prerequisites, curriculumSecondNeighborLimit)
+		includeSecondCurriculumNeighbors(included, directDependents, dependents, curriculumSecondNeighborLimit)
+
+		strictSiblings := make(map[int64]bool)
+		for _, prerequisiteID := range prerequisites[unit.ID] {
+			for _, siblingID := range dependents[prerequisiteID] {
+				if siblingID != unit.ID && !included[siblingID] {
+					strictSiblings[siblingID] = true
+				}
+			}
+		}
+		if len(strictSiblings) <= curriculumStrictSiblingLimit {
+			for _, candidate := range graph.Units {
+				if strictSiblings[candidate.ID] {
+					included[candidate.ID] = true
+				}
+			}
+		}
+	}
+	for _, unit := range graph.Units {
+		if included[unit.ID] {
+			neighborhood.Units = append(neighborhood.Units, unit)
+		}
+	}
+	for _, dependency := range graph.Dependencies {
+		if included[dependency.UnitID] && included[dependency.PrerequisiteID] {
+			neighborhood.Dependencies = append(neighborhood.Dependencies, dependency)
+		}
+	}
+	var boundaries []models.CurriculumGraphBoundary
+	for _, unit := range neighborhood.Units {
+		hiddenPrerequisites := countHiddenCurriculumNeighbors(prerequisites[unit.ID], included)
+		if hiddenPrerequisites > 0 {
+			boundaries = append(boundaries, models.CurriculumGraphBoundary{
+				UnitID: unit.ID, Direction: "prerequisites", Count: hiddenPrerequisites,
+			})
+		}
+		hiddenDependents := countHiddenCurriculumNeighbors(dependents[unit.ID], included)
+		if hiddenDependents > 0 {
+			boundaries = append(boundaries, models.CurriculumGraphBoundary{
+				UnitID: unit.ID, Direction: "dependents", Count: hiddenDependents,
+			})
+		}
+	}
+	return neighborhood, focus, boundaries, nil
+}
+
+func includeCurriculumNeighbors(included map[int64]bool, candidates []int64, limit int) []int64 {
+	if len(candidates) > limit {
+		candidates = candidates[:limit]
+	}
+	selected := append([]int64(nil), candidates...)
+	for _, id := range selected {
+		included[id] = true
+	}
+	return selected
+}
+
+func includeSecondCurriculumNeighbors(included map[int64]bool, first []int64, adjacency map[int64][]int64, limit int) {
+	added := 0
+	for _, firstID := range first {
+		for _, candidateID := range adjacency[firstID] {
+			if included[candidateID] {
+				continue
+			}
+			included[candidateID] = true
+			added++
+			if added == limit {
+				return
+			}
+		}
+	}
+}
+
+func countHiddenCurriculumNeighbors(candidates []int64, included map[int64]bool) int {
+	count := 0
+	for _, candidateID := range candidates {
+		if !included[candidateID] {
+			count++
+		}
+	}
+	return count
+}
 
 func BuildCurriculumGraphLayout(graph *models.CurriculumGraph) (*models.CurriculumGraphLayout, error) {
 	layout := &models.CurriculumGraphLayout{}
@@ -36,6 +163,7 @@ func topologicallyOrderCurriculum(graph *models.CurriculumGraphLayout) error {
 	nodesByID := make(map[int64]models.CurriculumGraphNode, len(graph.Nodes))
 	indegree := make(map[int64]int, len(graph.Nodes))
 	dependents := make(map[int64][]int64, len(graph.Nodes))
+	prerequisites := make(map[int64][]int64, len(graph.Nodes))
 	for _, node := range graph.Nodes {
 		nodesByID[node.ID] = node
 		indegree[node.ID] = 0
@@ -49,6 +177,7 @@ func topologicallyOrderCurriculum(graph *models.CurriculumGraphLayout) error {
 		}
 		indegree[edge.DependentID]++
 		dependents[edge.PrerequisiteID] = append(dependents[edge.PrerequisiteID], edge.DependentID)
+		prerequisites[edge.DependentID] = append(prerequisites[edge.DependentID], edge.PrerequisiteID)
 	}
 
 	available := make([]models.CurriculumGraphNode, 0, len(graph.Nodes))
@@ -59,15 +188,17 @@ func topologicallyOrderCurriculum(graph *models.CurriculumGraphLayout) error {
 	}
 	sortCurriculumNodes(available)
 	ordered := make([]models.CurriculumGraphNode, 0, len(graph.Nodes))
+	positions := make(map[int64]int, len(graph.Nodes))
 	for len(available) > 0 {
+		sortCurriculumTraversalCandidates(available, ordered, positions, prerequisites)
 		node := available[0]
 		available = available[1:]
+		positions[node.ID] = len(ordered)
 		ordered = append(ordered, node)
 		for _, dependentID := range dependents[node.ID] {
 			indegree[dependentID]--
 			if indegree[dependentID] == 0 {
 				available = append(available, nodesByID[dependentID])
-				sortCurriculumNodes(available)
 			}
 		}
 	}
@@ -76,6 +207,54 @@ func topologicallyOrderCurriculum(graph *models.CurriculumGraphLayout) error {
 	}
 	graph.Nodes = ordered
 	return nil
+}
+
+func sortCurriculumTraversalCandidates(
+	nodes []models.CurriculumGraphNode,
+	ordered []models.CurriculumGraphNode,
+	positions map[int64]int,
+	prerequisites map[int64][]int64,
+) {
+	if len(nodes) < 2 {
+		return
+	}
+	var previousID int64
+	if len(ordered) > 0 {
+		previousID = ordered[len(ordered)-1].ID
+	}
+	latestPrerequisite := func(nodeID int64) int {
+		latest := -1
+		for _, prerequisiteID := range prerequisites[nodeID] {
+			if position, exists := positions[prerequisiteID]; exists && position > latest {
+				latest = position
+			}
+		}
+		return latest
+	}
+	dependsOnPrevious := func(nodeID int64) bool {
+		for _, prerequisiteID := range prerequisites[nodeID] {
+			if prerequisiteID == previousID {
+				return true
+			}
+		}
+		return false
+	}
+	sort.SliceStable(nodes, func(i, j int) bool {
+		leftContinues := previousID != 0 && dependsOnPrevious(nodes[i].ID)
+		rightContinues := previousID != 0 && dependsOnPrevious(nodes[j].ID)
+		if leftContinues != rightContinues {
+			return leftContinues
+		}
+		leftLatest, rightLatest := latestPrerequisite(nodes[i].ID), latestPrerequisite(nodes[j].ID)
+		if leftLatest != rightLatest {
+			return leftLatest > rightLatest
+		}
+		leftName, rightName := strings.ToLower(nodes[i].Name), strings.ToLower(nodes[j].Name)
+		if leftName != rightName {
+			return leftName < rightName
+		}
+		return nodes[i].ID < nodes[j].ID
+	})
 }
 
 func sortCurriculumNodes(nodes []models.CurriculumGraphNode) {

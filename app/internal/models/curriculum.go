@@ -23,9 +23,16 @@ type CurriculumGraph struct {
 }
 
 type CurriculumGraphLayout struct {
-	Nodes     []CurriculumGraphNode
-	Edges     []CurriculumGraphEdge
-	LaneCount int
+	Nodes      []CurriculumGraphNode
+	Edges      []CurriculumGraphEdge
+	Boundaries []CurriculumGraphBoundary
+	LaneCount  int
+}
+
+type CurriculumGraphBoundary struct {
+	UnitID    int64
+	Direction string
+	Count     int
 }
 
 type CurriculumGraphNode struct {

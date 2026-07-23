@@ -10,17 +10,28 @@
         <div class="ui-pane__inner learn-view">
           <p class="ui-pane__eyebrow">Curriculum</p>
           <div class="learn-heading">
-            <h1 id="learn-title">Learn</h1>
-            {{ if .Graph.Nodes }}
-              <p>{{ len .Graph.Nodes }} units <span aria-hidden="true">·</span> {{ len .Graph.Edges }} dependencies</p>
-            {{ end }}
+            <div><h1 id="learn-title">Learn</h1><p>Move through the curriculum one neighbourhood at a time.</p></div>
+            <p>{{ .TotalUnits }} units <span aria-hidden="true">·</span> {{ .TotalDependencies }} dependencies</p>
           </div>
 
+          <section class="curriculum-explorer" id="curriculum-explorer" aria-live="polite">
           {{ if .Graph.Nodes }}
+            <nav class="learn-navigation" aria-label="Curriculum navigation">
+              {{ if .FocusedUnit }}
+                <button class="editor-action" type="button" hx-get="/learn" hx-target="#curriculum-explorer" hx-select="#curriculum-explorer" hx-swap="outerHTML transition:true">
+                  <span class="material-symbols-rounded" aria-hidden="true">arrow_back</span>
+                  Starting points
+                </button>
+                <p>Showing this unit’s direct prerequisites and the units it unlocks.</p>
+              {{ else }}
+                <p>Choose a unit with no prerequisites to explore what comes next.</p>
+              {{ end }}
+            </nav>
             <div class="curriculum-graph"
                  data-curriculum-graph
+                 data-focused-unit-id="{{ with .FocusedUnit }}{{ .ID }}{{ end }}"
                  data-lane-count="{{ .Graph.LaneCount }}">
-              <p class="visually-hidden" id="curriculum-graph-description">Arrows go from each prerequisite to the units that depend on it. Select a unit to highlight its learning path.</p>
+              <p class="visually-hidden" id="curriculum-graph-description">Arrows go from each prerequisite to the units that depend on it. Hover or focus a unit to highlight its visible relationships. Follow a unit link to navigate to its neighbourhood.</p>
               <div class="curriculum-graph__layout" aria-describedby="curriculum-graph-description">
                 <svg class="curriculum-graph__svg" aria-hidden="true">
                   <defs>
@@ -30,28 +41,40 @@
                     <marker id="curriculum-arrow-highlighted" viewBox="0 0 10 10" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse">
                       <path class="curriculum-graph__arrow curriculum-graph__arrow--highlighted" d="M0,0 L10,5 L0,10 z"></path>
                     </marker>
+                    <marker id="curriculum-arrow-boundary" viewBox="0 0 10 10" markerWidth="8" markerHeight="8" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+                      <path class="curriculum-graph__arrow curriculum-graph__arrow--boundary" d="M0,0 L10,5 L0,10 z"></path>
+                    </marker>
                   </defs>
                   <g data-curriculum-graph-paths
                      data-arrow-marker="curriculum-arrow"
-                     data-highlighted-arrow-marker="curriculum-arrow-highlighted"></g>
+                     data-highlighted-arrow-marker="curriculum-arrow-highlighted"
+                     data-boundary-arrow-marker="curriculum-arrow-boundary"></g>
                 </svg>
                 <ol class="curriculum-graph__list">
+                  {{ $focused := .FocusedUnit }}
                   {{ range .Graph.Nodes }}
+                    {{ $node := . }}
                     <li class="curriculum-graph__item"
                         data-curriculum-node
                         data-unit-id="{{ .ID }}"
                         data-node-lane="{{ .Lane }}"
-                        style="--curriculum-node-lane:{{ .Lane }};">
+                        style="--curriculum-node-lane:{{ .Lane }}; view-transition-name:curriculum-unit-{{ .ID }};">
                       <span class="curriculum-graph__anchor" data-curriculum-anchor aria-hidden="true"></span>
-                      <button class="curriculum-graph__row" type="button">
+                      <a class="curriculum-graph__row"
+                         href="/learn?unit={{ .ID }}"
+                         hx-get="/learn?unit={{ .ID }}"
+                         hx-target="#curriculum-explorer"
+                         hx-select="#curriculum-explorer"
+                         hx-swap="outerHTML transition:true"
+                        {{ with $focused }}{{ if eq .ID $node.ID }}aria-current="page"{{ end }}{{ end }}>
                         <span class="curriculum-graph__name">{{ .Name }}</span>
-                        <span class="curriculum-graph__description">{{ .Description }}</span>
-                      </button>
+                      </a>
                     </li>
                   {{ end }}
                 </ol>
                 <div hidden>
                   {{ range .Graph.Edges }}<span data-curriculum-edge data-prerequisite-id="{{ .PrerequisiteID }}" data-dependent-id="{{ .DependentID }}" data-lane="{{ .Lane }}"></span>{{ end }}
+                  {{ range .Graph.Boundaries }}<span data-curriculum-boundary data-unit-id="{{ .UnitID }}" data-direction="{{ .Direction }}" data-count="{{ .Count }}"></span>{{ end }}
                 </div>
               </div>
             </div>
@@ -62,6 +85,7 @@
               <p>Units will appear here once they are published.</p>
             </div>
           {{ end }}
+          </section>
         </div>
       </section>
     </main>

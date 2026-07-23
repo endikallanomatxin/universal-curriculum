@@ -23,6 +23,13 @@
         lane: Number(edge.dataset.lane) || 0
       };
     });
+    const boundaries = Array.from(root.querySelectorAll("[data-curriculum-boundary]")).map(function (boundary) {
+      return {
+        unitID: boundary.dataset.unitId,
+        direction: boundary.dataset.direction,
+        count: Number(boundary.dataset.count) || 0
+      };
+    });
     const incoming = new Map();
     const outgoing = new Map();
     edges.forEach(function (edge) {
@@ -33,7 +40,7 @@
     });
 
     let renderedPaths = [];
-    let selectedUnitID = "";
+    let highlightedUnitID = "";
     let frame = 0;
 
     function scheduleDraw() {
@@ -47,7 +54,11 @@
       const anchorWidth = sampleAnchor ? sampleAnchor.getBoundingClientRect().width : 12;
       const laneSpacing = Math.ceil(anchorWidth / 2 + 9);
       const contentGap = parseFloat(getComputedStyle(root).getPropertyValue("--curriculum-content-gap")) || 2;
-      const graphWidth = 8 + contentGap + Math.ceil(anchorWidth) + (laneCount - 1) * laneSpacing;
+      const boundaryGutter = boundaries.some(function (boundary) {
+        return boundary.direction === "dependents";
+      }) ? 34 : 0;
+      const graphWidth = 8 + contentGap + Math.ceil(anchorWidth) +
+        (laneCount - 1) * laneSpacing + boundaryGutter;
       const nodeLaneCount = Math.max(1, ...Array.from(nodes.values()).map(function (item) {
         return (Number(item.dataset.nodeLane) || 0) + 1;
       }));
@@ -55,6 +66,7 @@
       root.style.setProperty("--curriculum-graph-width", graphWidth + "px");
       root.style.setProperty("--curriculum-lane-spacing", laneSpacing + "px");
       root.style.setProperty("--curriculum-node-lane-offset", nodeLaneOffset);
+      root.style.setProperty("--curriculum-boundary-gutter", boundaryGutter + "px");
 
       window.requestAnimationFrame(function () {
         const layoutBox = layout.getBoundingClientRect();
@@ -159,7 +171,7 @@
           const source = anchorPoint(prerequisite);
           const target = anchorPoint(dependent);
           if (!source || !target) return;
-          const laneZeroX = graphWidth - source.width / 2 - contentGap;
+          const laneZeroX = graphWidth - boundaryGutter - source.width / 2 - contentGap;
           const laneX = Math.abs(source.x - target.x) < 1 ? source.x : Math.max(8, laneZeroX - edge.lane * laneSpacing);
           const path = document.createElementNS(svgNamespace, "path");
           path.setAttribute("d", edgePath(edge, source, target, laneX));
@@ -168,7 +180,33 @@
           pathLayer.appendChild(path);
           renderedPaths.push({ edge: edge, path: path });
         });
-        applyHighlight(selectedUnitID);
+        boundaries.forEach(function (boundary) {
+          const item = nodes.get(boundary.unitID);
+          const point = item && anchorPoint(item);
+          if (!point) return;
+          const isPrerequisite = boundary.direction === "prerequisites";
+          const nodeEdgeX = point.x + (isPrerequisite ? -point.width / 2 : point.width / 2);
+          const outerX = isPrerequisite
+            ? 4
+            : Math.max(nodeEdgeX + 16, graphWidth - 4);
+          const y = point.y + (isPrerequisite ? -3 : 3);
+          const startX = isPrerequisite ? outerX : nodeEdgeX;
+          const endX = isPrerequisite ? nodeEdgeX : outerX;
+          const path = document.createElementNS(svgNamespace, "path");
+          path.setAttribute("d", "M " + startX + " " + y + " H " + endX);
+          path.setAttribute("marker-end", "url(#" + pathLayer.dataset.boundaryArrowMarker + ")");
+          path.classList.add("curriculum-graph__edge", "curriculum-graph__edge--boundary");
+          pathLayer.appendChild(path);
+          const count = document.createElementNS(svgNamespace, "text");
+          count.setAttribute("x", isPrerequisite ? outerX + 2 : outerX - 2);
+          count.setAttribute("y", y - 9);
+          count.setAttribute("text-anchor", isPrerequisite ? "start" : "end");
+          count.classList.add("curriculum-graph__boundary-count");
+          count.textContent = "+" + boundary.count;
+          pathLayer.appendChild(count);
+          renderedPaths.push({ boundary: boundary, path: path, count: count });
+        });
+        applyHighlight(highlightedUnitID);
       });
     }
 
@@ -200,9 +238,14 @@
       root.classList.toggle("is-filtering", Boolean(selected));
       nodes.forEach(function (item, id) {
         item.classList.toggle("is-related", Boolean(selected) && relations.nodes.has(id));
-        item.classList.toggle("is-selected", id === unitID);
       });
       renderedPaths.forEach(function (rendered) {
+        if (rendered.boundary) {
+          const related = rendered.boundary.unitID === unitID;
+          rendered.path.classList.toggle("is-related", related);
+          if (rendered.count) rendered.count.classList.toggle("is-related", related);
+          return;
+        }
         const key = rendered.edge.prerequisiteID + ":" + rendered.edge.dependentID;
         const related = relations.edges.has(key);
         rendered.path.classList.toggle("is-related", related);
@@ -211,25 +254,43 @@
       });
     }
 
-    root.addEventListener("click", function (event) {
+    root.addEventListener("mouseover", function (event) {
       const item = event.target.closest("[data-curriculum-node]");
       if (!item) return;
-      selectedUnitID = selectedUnitID === item.dataset.unitId ? "" : item.dataset.unitId;
-      applyHighlight(selectedUnitID);
+      const previousItem = event.relatedTarget && event.relatedTarget.closest ?
+        event.relatedTarget.closest("[data-curriculum-node]") : null;
+      if (previousItem === item) return;
+      highlightedUnitID = item.dataset.unitId;
+      applyHighlight(highlightedUnitID);
+    });
+    root.addEventListener("mouseout", function (event) {
+      const item = event.target.closest("[data-curriculum-node]");
+      if (!item) return;
+      const nextItem = event.relatedTarget && event.relatedTarget.closest ?
+        event.relatedTarget.closest("[data-curriculum-node]") : null;
+      if (nextItem === item) return;
+      highlightedUnitID = "";
+      applyHighlight("");
     });
     root.addEventListener("focusin", function (event) {
       const item = event.target.closest("[data-curriculum-node]");
-      if (item) applyHighlight(item.dataset.unitId);
+      if (!item) return;
+      highlightedUnitID = item.dataset.unitId;
+      applyHighlight(highlightedUnitID);
     });
     root.addEventListener("focusout", function () {
       window.requestAnimationFrame(function () {
-        if (!root.contains(document.activeElement)) applyHighlight(selectedUnitID);
+        if (!root.contains(document.activeElement)) {
+          highlightedUnitID = "";
+          applyHighlight("");
+        }
       });
     });
     root.addEventListener("keydown", function (event) {
       if (event.key !== "Escape") return;
-      selectedUnitID = "";
+      highlightedUnitID = "";
       applyHighlight("");
+      if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
     });
 
     if (window.ResizeObserver) new ResizeObserver(scheduleDraw).observe(layout);

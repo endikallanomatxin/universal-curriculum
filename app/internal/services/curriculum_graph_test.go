@@ -39,6 +39,36 @@ func TestBuildCurriculumGraphLayoutOrdersDependenciesFirst(t *testing.T) {
 	}
 }
 
+func TestBuildCurriculumGraphLayoutKeepsConnectedBranchesTogether(t *testing.T) {
+	graph := &models.CurriculumGraph{
+		Units: []models.Unit{
+			{ID: 1, Name: "Alpha root"},
+			{ID: 2, Name: "Zebra child"},
+			{ID: 3, Name: "Zebra grandchild"},
+			{ID: 4, Name: "Beta unrelated root"},
+		},
+		Dependencies: []models.UnitDependency{
+			{UnitID: 2, PrerequisiteID: 1},
+			{UnitID: 3, PrerequisiteID: 2},
+		},
+	}
+
+	layout, err := BuildCurriculumGraphLayout(graph)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := make([]int64, 0, len(layout.Nodes))
+	for _, node := range layout.Nodes {
+		got = append(got, node.ID)
+	}
+	want := []int64{1, 2, 3, 4}
+	for index := range want {
+		if got[index] != want[index] {
+			t.Fatalf("node order = %v, want %v", got, want)
+		}
+	}
+}
+
 func TestBuildCurriculumGraphLayoutRejectsCycles(t *testing.T) {
 	graph := &models.CurriculumGraph{
 		Units: []models.Unit{{ID: 1, Name: "One"}, {ID: 2, Name: "Two"}},
@@ -135,5 +165,74 @@ func assertNoCurriculumNodeLaneCollisions(t *testing.T, layout *models.Curriculu
 				t.Fatalf("unit %d occupies lane %g used by dependency %d -> %d", node.ID, lane, edge.PrerequisiteID, edge.DependentID)
 			}
 		}
+	}
+}
+
+func TestCurriculumNeighborhood(t *testing.T) {
+	graph := &models.CurriculumGraph{
+		Units: []models.Unit{
+			{ID: 1, Name: "Foundations"},
+			{ID: 2, Name: "Algebra"},
+			{ID: 3, Name: "Calculus"},
+			{ID: 4, Name: "Geometry"},
+		},
+		Dependencies: []models.UnitDependency{
+			{UnitID: 2, PrerequisiteID: 1},
+			{UnitID: 3, PrerequisiteID: 2},
+		},
+	}
+
+	entries, focus, boundaries, err := CurriculumNeighborhood(graph, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if focus != nil || len(entries.Units) != 2 || entries.Units[0].ID != 1 || entries.Units[1].ID != 4 {
+		t.Fatalf("unexpected entry points: focus=%#v graph=%#v", focus, entries)
+	}
+	if len(boundaries) != 1 || boundaries[0].UnitID != 1 || boundaries[0].Direction != "dependents" {
+		t.Fatalf("unexpected entry boundaries: %#v", boundaries)
+	}
+
+	algebraID := int64(2)
+	neighborhood, focus, boundaries, err := CurriculumNeighborhood(graph, &algebraID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if focus == nil || focus.ID != algebraID {
+		t.Fatalf("focus = %#v", focus)
+	}
+	if len(neighborhood.Units) != 3 || len(neighborhood.Dependencies) != 2 {
+		t.Fatalf("unexpected algebra neighborhood: %#v", neighborhood)
+	}
+	if len(boundaries) != 0 {
+		t.Fatalf("unexpected algebra boundaries: %#v", boundaries)
+	}
+
+	missingID := int64(99)
+	if _, _, _, err := CurriculumNeighborhood(graph, &missingID); !errors.Is(err, ErrCurriculumUnitNotFound) {
+		t.Fatalf("missing unit returned %v", err)
+	}
+}
+
+func TestCurriculumNeighborhoodTruncatesWideBranches(t *testing.T) {
+	graph := &models.CurriculumGraph{Units: []models.Unit{{ID: 1, Name: "Focus"}}}
+	for id := int64(2); id <= 8; id++ {
+		graph.Units = append(graph.Units, models.Unit{ID: id, Name: "Dependent"})
+		graph.Dependencies = append(graph.Dependencies, models.UnitDependency{
+			UnitID: id, PrerequisiteID: 1,
+		})
+	}
+
+	focusID := int64(1)
+	neighborhood, _, boundaries, err := CurriculumNeighborhood(graph, &focusID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(neighborhood.Units) != 1+curriculumDirectNeighborLimit {
+		t.Fatalf("visible units = %d", len(neighborhood.Units))
+	}
+	if len(boundaries) != 1 || boundaries[0].UnitID != focusID ||
+		boundaries[0].Direction != "dependents" || boundaries[0].Count != 2 {
+		t.Fatalf("unexpected truncation boundary: %#v", boundaries)
 	}
 }
