@@ -215,8 +215,121 @@ a.learning-path-card {
 
 .learn-navigation p {
   color: var(--color-muted);
+  flex: 1 1 auto;
   font-size: 0.82rem;
   margin: 0;
+  min-width: 0;
+}
+
+.learn-navigation:has(> button) {
+  display: grid;
+  grid-template-columns: auto minmax(10rem, 1fr);
+}
+
+.learn-navigation:has(> button) > p {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
+.learn-navigation:has(> button) > button {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.learn-navigation:has(> button) > .graph-search {
+  grid-column: 2;
+  grid-row: 2;
+  max-width: none;
+  width: 100%;
+}
+
+.learn-navigation:not(:has(> button)) {
+  align-items: stretch;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.learn-navigation:not(:has(> button)) > p {
+  grid-row: 1;
+}
+
+.learn-navigation:not(:has(> button)) > .graph-search {
+  grid-row: 2;
+  margin-left: 0;
+  max-width: none;
+  width: 100%;
+}
+
+.graph-search {
+  flex: 0 1 18rem;
+  margin-left: auto;
+  min-width: 10rem;
+  position: relative;
+}
+
+.graph-search__icon {
+  color: var(--color-muted);
+  font-size: 1.1rem;
+  left: 0.7rem;
+  pointer-events: none;
+  position: absolute;
+  top: 0.62rem;
+  z-index: 1;
+}
+
+.graph-search input {
+  background: color-mix(in srgb, var(--color-surface) 72%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-ink) 14%, transparent);
+  border-radius: var(--radius-control);
+  font-size: 0.78rem;
+  min-height: 2.35rem;
+  padding: 0.5rem 0.8rem 0.5rem 2.2rem;
+  width: 100%;
+}
+
+.graph-search input:focus {
+  background: var(--color-surface);
+  border-color: color-mix(in srgb, var(--color-accent) 55%, transparent);
+  outline: 0;
+}
+
+.graph-search__results {
+  background: var(--color-surface);
+  border: 1px solid color-mix(in srgb, var(--color-ink) 14%, transparent);
+  border-radius: 0.45rem;
+  box-shadow: 0 0.65rem 1.5rem color-mix(in srgb, var(--color-ink-strong) 12%, transparent);
+  display: grid;
+  left: 0;
+  margin-top: 0.35rem;
+  max-height: 18rem;
+  overflow-y: auto;
+  position: absolute;
+  right: 0;
+  z-index: 12;
+}
+
+.graph-search__results[hidden],
+.graph-search__results [hidden] {
+  display: none;
+}
+
+.graph-search__results a {
+  font-size: 0.76rem;
+  padding: 0.65rem 0.75rem;
+  text-decoration: none;
+}
+
+.graph-search__results a + a {
+  border-top: 1px solid color-mix(in srgb, var(--color-ink) 8%, transparent);
+}
+
+.graph-search__results a:hover,
+.graph-search__results a:focus-visible {
+  background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface));
+}
+
+.graph-search__results p {
+  padding: 0.65rem 0.75rem;
 }
 
 .curriculum-graph {
@@ -623,6 +736,17 @@ a.learning-path-card {
 
   .learn-navigation {
     align-items: start;
+    display: flex;
     flex-direction: column;
+  }
+
+  .learn-navigation > p {
+    order: -1;
+  }
+
+  .graph-search {
+    flex-basis: auto;
+    margin-left: 0;
+    width: 100%;
   }
 }

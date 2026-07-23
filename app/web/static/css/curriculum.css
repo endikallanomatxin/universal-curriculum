@@ -79,6 +79,14 @@
   text-transform: uppercase;
 }
 
+.curriculum-units > .section-heading {
+  margin-bottom: 0;
+}
+
+.curriculum-units .curriculum-explorer {
+  margin-top: var(--space-3);
+}
+
 .unit-content__admin-actions {
   align-items: center;
   display: flex;

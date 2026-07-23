@@ -87,6 +87,21 @@
                   {{ else }}
                     <p>Choose an entry point to explore its neighbourhood.</p>
                   {{ end }}
+                  <div class="graph-search" data-graph-search>
+                    <span class="material-symbols-rounded graph-search__icon" aria-hidden="true">search</span>
+                    <input type="search" placeholder="Find a unit" autocomplete="off" aria-label="Find a unit in this graph" aria-controls="learn-graph-search-results" aria-expanded="false" data-graph-search-input>
+                    <div class="graph-search__results" id="learn-graph-search-results" data-graph-search-results hidden>
+                      {{ $selectedPath := .SelectedPath }}
+                      {{ range .NavigableUnits }}
+                        {{ if $selectedPath }}
+                          <a href="/learn?path={{ $selectedPath.ID }}&unit={{ .ID }}&content={{ .ID }}" hx-get="/learn?path={{ $selectedPath.ID }}&unit={{ .ID }}&content={{ .ID }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true" data-graph-search-option data-unit-name="{{ .Name }}">{{ .Name }}</a>
+                        {{ else }}
+                          <a href="/learn?path=all&unit={{ .ID }}&content={{ .ID }}" hx-get="/learn?path=all&unit={{ .ID }}&content={{ .ID }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true" data-graph-search-option data-unit-name="{{ .Name }}">{{ .Name }}</a>
+                        {{ end }}
+                      {{ end }}
+                      <p data-graph-search-empty hidden>No matching units</p>
+                    </div>
+                  </div>
                 </nav>
                 <div class="curriculum-graph" data-curriculum-graph data-focused-unit-id="{{ with .FocusedUnit }}{{ .ID }}{{ end }}" data-lane-count="{{ .Graph.LaneCount }}">
                   <p class="visually-hidden" id="curriculum-graph-description">Arrows go from each prerequisite to the units that depend on it. Hover or focus a unit to highlight its path.</p>

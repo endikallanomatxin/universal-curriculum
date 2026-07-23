@@ -341,25 +341,24 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 		http.Error(writer, "Unable to load curriculum", http.StatusInternalServerError)
 		return
 	}
-	visibleGraph := graph
-	var focusedUnit *models.Unit
-	var boundaries []models.CurriculumGraphBoundary
+	var focusID *int64
 	if unitValue := request.URL.Query().Get("unit"); unitValue != "" {
 		unitID, parseErr := parsePositiveID(unitValue)
 		if parseErr != nil {
 			http.Error(writer, "Invalid curriculum unit", http.StatusBadRequest)
 			return
 		}
-		visibleGraph, focusedUnit, boundaries, err = services.CurriculumNeighborhood(graph, &unitID)
-		if errors.Is(err, services.ErrCurriculumUnitNotFound) {
-			http.Error(writer, "Curriculum unit not found", http.StatusNotFound)
-			return
-		}
-		if err != nil {
-			log.Printf("build admin curriculum neighborhood: %v", err)
-			http.Error(writer, "Unable to navigate curriculum", http.StatusInternalServerError)
-			return
-		}
+		focusID = &unitID
+	}
+	visibleGraph, focusedUnit, boundaries, err := services.CurriculumNeighborhood(graph, focusID)
+	if errors.Is(err, services.ErrCurriculumUnitNotFound) {
+		http.Error(writer, "Curriculum unit not found", http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		log.Printf("build admin curriculum neighborhood: %v", err)
+		http.Error(writer, "Unable to navigate curriculum", http.StatusInternalServerError)
+		return
 	}
 	layout, err := services.BuildCurriculumGraphLayoutWithHints(visibleGraph, curriculumLayoutHints(request))
 	if err != nil {

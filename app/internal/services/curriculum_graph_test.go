@@ -260,7 +260,7 @@ func TestCurriculumNeighborhoodTruncatesWideBranches(t *testing.T) {
 		t.Fatalf("visible units = %d", len(neighborhood.Units))
 	}
 	if len(boundaries) != 1 || boundaries[0].UnitID != focusID ||
-		boundaries[0].Direction != "dependents" || boundaries[0].Count != 2 {
+		boundaries[0].Direction != "dependents" || boundaries[0].Count != 3 {
 		t.Fatalf("unexpected truncation boundary: %#v", boundaries)
 	}
 }
@@ -301,7 +301,7 @@ func TestCurriculumNeighborhoodIncludesForwardCoPrerequisitesButNotUpstreamSibli
 	}
 }
 
-func TestCurriculumNeighborhoodUsesTwoUpstreamAndThreeDownstreamLevels(t *testing.T) {
+func TestCurriculumNeighborhoodUsesOneUpstreamAndTwoDownstreamLevels(t *testing.T) {
 	graph := &models.CurriculumGraph{
 		Units: []models.Unit{
 			{ID: 1, Name: "Third upstream"},
@@ -329,12 +329,12 @@ func TestCurriculumNeighborhoodUsesTwoUpstreamAndThreeDownstreamLevels(t *testin
 	for _, unit := range neighborhood.Units {
 		visible[unit.ID] = true
 	}
-	for _, expected := range []int64{2, 3, 4, 5, 6, 7} {
+	for _, expected := range []int64{3, 4, 5, 6} {
 		if !visible[expected] {
 			t.Fatalf("expected unit %d in neighborhood: %#v", expected, neighborhood.Units)
 		}
 	}
-	if visible[1] || visible[8] {
+	if visible[1] || visible[2] || visible[7] || visible[8] {
 		t.Fatalf("neighborhood exceeded its directional horizon: %#v", neighborhood.Units)
 	}
 	if len(boundaries) != 2 {

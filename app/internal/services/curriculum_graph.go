@@ -12,8 +12,8 @@ import (
 var ErrCurriculumUnitNotFound = errors.New("curriculum unit not found")
 
 const (
-	curriculumDirectNeighborLimit = 5
-	curriculumSecondNeighborLimit = 5
+	curriculumDirectNeighborLimit = 4
+	curriculumSecondNeighborLimit = 4
 	curriculumCoPrerequisiteLimit = 3
 )
 
@@ -54,11 +54,9 @@ func CurriculumNeighborhood(graph *models.CurriculumGraph, focusID *int64) (*mod
 		}
 		focus = &unit
 		included[unit.ID] = true
-		directPrerequisites := includeCurriculumNeighbors(included, prerequisites[unit.ID], curriculumDirectNeighborLimit)
+		includeCurriculumNeighbors(included, prerequisites[unit.ID], curriculumDirectNeighborLimit)
 		directDependents := includeCurriculumNeighbors(included, dependents[unit.ID], curriculumDirectNeighborLimit)
-		includeSecondCurriculumNeighbors(included, directPrerequisites, prerequisites, curriculumSecondNeighborLimit)
-		secondDependents := includeSecondCurriculumNeighbors(included, directDependents, dependents, curriculumSecondNeighborLimit)
-		includeSecondCurriculumNeighbors(included, secondDependents, dependents, curriculumSecondNeighborLimit)
+		includeSecondCurriculumNeighbors(included, directDependents, dependents, curriculumSecondNeighborLimit)
 
 		coPrerequisites := make(map[int64]bool)
 		for _, dependentID := range directDependents {

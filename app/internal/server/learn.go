@@ -20,6 +20,7 @@ type learnPageData struct {
 	Paths             []models.LearningPath
 	SelectedPath      *models.LearningPath
 	AllUnits          []models.Unit
+	NavigableUnits    []models.Unit
 	TargetUnitIDs     map[int64]bool
 	ExploreAll        bool
 	ShowGraph         bool
@@ -90,6 +91,7 @@ func (server *Server) learn(writer http.ResponseWriter, request *http.Request) {
 		visibleGraph = services.CurriculumPathSubgraph(curriculum, targetIDs)
 		data.ShowGraph = true
 	}
+	data.NavigableUnits = visibleGraph.Units
 
 	var focusID *int64
 	if rawID := request.URL.Query().Get("unit"); rawID != "" {

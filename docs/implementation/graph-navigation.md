@@ -14,3 +14,20 @@ Edges that continue beyond the visible neighbourhood are represented by
 boundary arrows. Incoming boundaries connect to the left of a node and outgoing
 boundaries connect to its right; their labels report how many adjacent units
 are omitted.
+
+## Search and neighbourhood scope
+
+Learn and Curriculum Modification expose a client-filtered unit search above
+the graph. Results are ordinary HTMX-enhanced links: selecting one updates the
+URL, focuses that unit, loads its local neighbourhood and opens its content.
+Search within a personal path is limited to units in that path; curriculum
+editing searches the complete published curriculum.
+
+The current focused neighbourhood includes one prerequisite level and two
+dependent levels, with at most four neighbors selected at each traversal step.
+Immediate co-prerequisites of direct dependents are included when there are no
+more than three. Boundary arrows expose omitted relationships without loading
+the missing nodes.
+
+An unfocused full-curriculum view starts from graph entry points instead of
+rendering every unit at once.
