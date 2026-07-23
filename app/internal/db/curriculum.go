@@ -16,7 +16,7 @@ type curriculumExecutor interface {
 func GetCurriculumGraph(database *sql.DB) (*models.CurriculumGraph, error) {
 	graph := &models.CurriculumGraph{}
 	rows, err := database.Query(`
-		SELECT id, name, description, created_at, updated_at
+		SELECT id, name, content, created_at, updated_at
 		FROM units
 		ORDER BY lower(name), id
 	`)
@@ -26,7 +26,7 @@ func GetCurriculumGraph(database *sql.DB) (*models.CurriculumGraph, error) {
 	defer rows.Close()
 	for rows.Next() {
 		var unit models.Unit
-		if err := rows.Scan(&unit.ID, &unit.Name, &unit.Description, &unit.CreatedAt, &unit.UpdatedAt); err != nil {
+		if err := rows.Scan(&unit.ID, &unit.Name, &unit.Content, &unit.CreatedAt, &unit.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scan curriculum unit: %w", err)
 		}
 		graph.Units = append(graph.Units, unit)
@@ -65,10 +65,10 @@ func GetCurriculumGraph(database *sql.DB) (*models.CurriculumGraph, error) {
 func GetUnit(q curriculumExecutor, unitID int64) (*models.Unit, error) {
 	var unit models.Unit
 	err := q.QueryRow(`
-		SELECT id, name, description, created_at, updated_at
+		SELECT id, name, content, created_at, updated_at
 		FROM units
 		WHERE id = $1
-	`, unitID).Scan(&unit.ID, &unit.Name, &unit.Description, &unit.CreatedAt, &unit.UpdatedAt)
+	`, unitID).Scan(&unit.ID, &unit.Name, &unit.Content, &unit.CreatedAt, &unit.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}

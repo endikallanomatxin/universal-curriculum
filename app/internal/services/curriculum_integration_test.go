@@ -47,11 +47,11 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	foundations, err := CreateCurriculumUnit(database, authorID, proposal.ID, "Foundations", "Core foundations")
+	foundations, err := CreateCurriculumUnit(database, authorID, proposal.ID, "Foundations", "Learn the core foundations.")
 	if err != nil {
 		t.Fatal(err)
 	}
-	algebra, err := CreateCurriculumUnit(database, authorID, proposal.ID, "Algebra", "Core algebra")
+	algebra, err := CreateCurriculumUnit(database, authorID, proposal.ID, "Algebra", "Learn variables and equations.")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,6 +68,12 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if err := PublishCurriculumProposal(database, authorID, proposal.ID); err != nil {
 		t.Fatal(err)
 	}
+	learningPath, err := CreateLearningPath(
+		database, authorID, "Algebra goal", "Keep a personal target while the curriculum evolves.", []int64{algebra.ID},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
 	proposal, err = CreateCurriculumProposal(database, authorID, "Algebra path", "Connect and refine the new units.")
 	if err != nil {
 		t.Fatal(err)
@@ -81,8 +87,49 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if err := AddUnitDependency(database, authorID, proposal.ID, algebra.ID, foundations.ID); err != nil {
 		t.Fatalf("restore dependency staged in the same proposal: %v", err)
 	}
-	if err := UpdateCurriculumUnit(database, authorID, proposal.ID, algebra.ID, "Introductory algebra", "Variables and equations"); err != nil {
+	if err := UpdateCurriculumUnit(database, authorID, proposal.ID, algebra.ID, "Introductory algebra"); err != nil {
 		t.Fatal(err)
+	}
+	if err := UpdateCurriculumUnitContent(database, authorID, proposal.ID, algebra.ID, "Work through variables, expressions, and equations."); err != nil {
+		t.Fatal(err)
+	}
+	if err := UpdateCurriculumUnit(database, authorID, proposal.ID, algebra.ID, "Algebra"); err != nil {
+		t.Fatal(err)
+	}
+	if err := UpdateCurriculumUnitContent(database, authorID, proposal.ID, algebra.ID, "Learn variables and equations."); err != nil {
+		t.Fatal(err)
+	}
+	draft, err := db.GetCurriculumProposal(database, proposal.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, change := range draft.Changes {
+		if change.Kind == "update_unit" || change.Kind == "update_content" {
+			t.Fatalf("unchanged unit value left a proposal change behind: %#v", change)
+		}
+	}
+	if err := UpdateCurriculumUnit(database, authorID, proposal.ID, algebra.ID, "Introductory algebra"); err != nil {
+		t.Fatal(err)
+	}
+	if err := UpdateCurriculumUnit(database, authorID, proposal.ID, algebra.ID, "Introductory algebra"); err != nil {
+		t.Fatal(err)
+	}
+	if err := UpdateCurriculumUnitContent(database, authorID, proposal.ID, algebra.ID, "Work through variables, expressions, and equations."); err != nil {
+		t.Fatal(err)
+	}
+	if err := UpdateCurriculumUnitContent(database, authorID, proposal.ID, algebra.ID, "Work through variables, expressions, and equations."); err != nil {
+		t.Fatal(err)
+	}
+	draft, err = db.GetCurriculumProposal(database, proposal.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	changeCounts := map[string]int{}
+	for _, change := range draft.Changes {
+		changeCounts[change.Kind]++
+	}
+	if changeCounts["update_unit"] != 1 || changeCounts["update_content"] != 1 {
+		t.Fatalf("unit edits accumulated duplicate proposal changes: %#v", draft.Changes)
 	}
 	if err := PublishCurriculumProposal(database, authorID, proposal.ID); err != nil {
 		t.Fatal(err)
@@ -94,6 +141,14 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if len(graph.Units) != 2 || len(graph.Dependencies) != 1 {
 		t.Fatalf("unexpected published graph: %#v", graph)
 	}
+	persistedPath, err := db.GetLearningPath(database, authorID, learningPath.ID)
+	if err != nil || persistedPath == nil || len(persistedPath.Units) != 1 || persistedPath.Units[0].ID != algebra.ID {
+		t.Fatalf("curriculum rebuild did not preserve the learning path: path=%#v err=%v", persistedPath, err)
+	}
+	if graph.Units[0].ID == algebra.ID && graph.Units[0].Content != "Work through variables, expressions, and equations." ||
+		graph.Units[1].ID == algebra.ID && graph.Units[1].Content != "Work through variables, expressions, and equations." {
+		t.Fatalf("content change was not published: %#v", graph.Units)
+	}
 	if err := RevertCurriculumProposal(database, authorID, proposal.ID); err != nil {
 		t.Fatal(err)
 	}
@@ -103,5 +158,10 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	}
 	if len(graph.Dependencies) != 0 {
 		t.Fatalf("revert did not undo whole proposal: %#v", graph)
+	}
+	for _, unit := range graph.Units {
+		if unit.ID == algebra.ID && unit.Content != "Learn variables and equations." {
+			t.Fatalf("revert did not restore unit content: %#v", unit)
+		}
 	}
 }

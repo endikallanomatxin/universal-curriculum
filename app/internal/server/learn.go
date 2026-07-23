@@ -16,6 +16,7 @@ type learnPageData struct {
 	userPageData
 	Graph             *models.CurriculumGraphLayout
 	FocusedUnit       *models.Unit
+	ContentUnit       *models.Unit
 	Paths             []models.LearningPath
 	SelectedPath      *models.LearningPath
 	AllUnits          []models.Unit
@@ -98,6 +99,23 @@ func (server *Server) learn(writer http.ResponseWriter, request *http.Request) {
 			return
 		}
 		focusID = &id
+	}
+	if rawID := request.URL.Query().Get("content"); rawID != "" {
+		contentID, parseErr := strconv.ParseInt(rawID, 10, 64)
+		if parseErr != nil || contentID <= 0 {
+			http.Error(writer, "Invalid curriculum unit", http.StatusBadRequest)
+			return
+		}
+		for index := range visibleGraph.Units {
+			if visibleGraph.Units[index].ID == contentID {
+				data.ContentUnit = &visibleGraph.Units[index]
+				break
+			}
+		}
+		if data.ContentUnit == nil {
+			http.Error(writer, "Curriculum unit not found in this learning path", http.StatusNotFound)
+			return
+		}
 	}
 	var boundaries []models.CurriculumGraphBoundary
 	if focusID != nil || data.ExploreAll {

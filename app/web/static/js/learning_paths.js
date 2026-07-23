@@ -45,12 +45,10 @@
         const row = document.createElement("div");
         const copy = document.createElement("div");
         const title = document.createElement("strong");
-        const description = document.createElement("span");
         const remove = document.createElement("button");
         const hiddenInput = document.createElement("input");
         row.className = "dependency-editor__row";
         title.textContent = option.dataset.unitName;
-        description.textContent = option.dataset.unitDescription;
         remove.type = "button";
         remove.className = "editor-action";
         remove.textContent = "Remove";
@@ -62,7 +60,7 @@
         hiddenInput.type = "hidden";
         hiddenInput.name = "unit_ids";
         hiddenInput.value = option.dataset.unitId;
-        copy.append(title, description);
+        copy.append(title);
         row.append(copy, remove, hiddenInput);
         current.append(row);
       });

@@ -3,11 +3,11 @@ package models
 import "time"
 
 type Unit struct {
-	ID          int64
-	Name        string
-	Description string
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID        int64
+	Name      string
+	Content   string
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type UnitDependency struct {

@@ -19,14 +19,14 @@ type CurriculumProposal struct {
 }
 
 type CurriculumProposalChange struct {
-	ID                      int64
-	ProposalID              int64
-	Position                int
-	Kind                    string
-	UnitID                  int64
-	UnitName                string
-	UnitDescription         string
-	PreviousUnitName        string
-	PreviousUnitDescription string
-	PrerequisiteID          *int64
+	ID                  int64
+	ProposalID          int64
+	Position            int
+	Kind                string
+	UnitID              int64
+	UnitName            string
+	PreviousUnitName    string
+	UnitContent         string
+	PreviousUnitContent string
+	PrerequisiteID      *int64
 }

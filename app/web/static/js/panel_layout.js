@@ -108,8 +108,20 @@
       for (let modeIndex = selections[index] + 1; modeIndex < definition.modes.length; modeIndex += 1) {
         const increase = definition.modes[modeIndex].width - definition.modes[selections[index]].width;
         if (used + increase > available) {
-          higherPriorityPanelWantsSpace = definition.modes[modeIndex].width <= desiredWidth;
-          break;
+          for (let donorIndex = 0; donorIndex < index && used + increase > available; donorIndex += 1) {
+            const donor = definitions[donorIndex];
+            while (selections[donorIndex] > 0 && used + increase > available) {
+              const lowerMode = donor.modes[selections[donorIndex] - 1];
+              if (lowerMode.width === 0) break;
+              const reduction = donor.modes[selections[donorIndex]].width - lowerMode.width;
+              selections[donorIndex] -= 1;
+              used -= reduction;
+            }
+          }
+          if (used + increase > available) {
+            higherPriorityPanelWantsSpace = definition.modes[modeIndex].width <= desiredWidth;
+            break;
+          }
         }
         selections[index] = modeIndex;
         used += increase;

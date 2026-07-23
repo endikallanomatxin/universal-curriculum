@@ -18,7 +18,8 @@ func LoadTemplates() (*template.Template, error) {
 		return nil, fmt.Errorf("version static assets: %w", err)
 	}
 	templates, err := template.New("application").Funcs(template.FuncMap{
-		"assetVersion": func() string { return assetVersion },
+		"assetVersion":      func() string { return assetVersion },
+		"renderUnitContent": RenderUnitContent,
 	}).ParseGlob("web/templates/*.html")
 	if err != nil {
 		return nil, fmt.Errorf("parse templates: %w", err)

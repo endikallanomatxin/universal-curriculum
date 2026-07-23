@@ -12,7 +12,7 @@ func ListLearningPaths(database *sql.DB, userID int64) ([]models.LearningPath, e
 	rows, err := database.Query(`
 		SELECT path.id, path.user_id, path.name, path.description,
 		       path.created_at, path.updated_at,
-		       unit.id, unit.name, unit.description
+		       unit.id, unit.name
 		FROM learning_paths path
 		LEFT JOIN learning_path_units path_unit ON path_unit.path_id = path.id
 		LEFT JOIN units unit ON unit.id = path_unit.unit_id
@@ -28,11 +28,11 @@ func ListLearningPaths(database *sql.DB, userID int64) ([]models.LearningPath, e
 	for rows.Next() {
 		var path models.LearningPath
 		var unitID sql.NullInt64
-		var unitName, unitDescription sql.NullString
+		var unitName sql.NullString
 		if err := rows.Scan(
 			&path.ID, &path.UserID, &path.Name, &path.Description,
 			&path.CreatedAt, &path.UpdatedAt,
-			&unitID, &unitName, &unitDescription,
+			&unitID, &unitName,
 		); err != nil {
 			return nil, fmt.Errorf("scan learning path: %w", err)
 		}
@@ -44,9 +44,8 @@ func ListLearningPaths(database *sql.DB, userID int64) ([]models.LearningPath, e
 		}
 		if unitID.Valid {
 			paths[index].Units = append(paths[index].Units, models.Unit{
-				ID:          unitID.Int64,
-				Name:        unitName.String,
-				Description: unitDescription.String,
+				ID:   unitID.Int64,
+				Name: unitName.String,
 			})
 			paths[index].UnitCount++
 		}
@@ -70,7 +69,7 @@ func GetLearningPath(q curriculumExecutor, userID, pathID int64) (*models.Learni
 		return nil, fmt.Errorf("get learning path: %w", err)
 	}
 	rows, err := q.Query(`
-		SELECT unit.id, unit.name, unit.description, unit.created_at, unit.updated_at
+		SELECT unit.id, unit.name, unit.content, unit.created_at, unit.updated_at
 		FROM learning_path_units path_unit
 		JOIN units unit ON unit.id = path_unit.unit_id
 		WHERE path_unit.path_id = $1
@@ -82,7 +81,7 @@ func GetLearningPath(q curriculumExecutor, userID, pathID int64) (*models.Learni
 	defer rows.Close()
 	for rows.Next() {
 		var unit models.Unit
-		if err := rows.Scan(&unit.ID, &unit.Name, &unit.Description, &unit.CreatedAt, &unit.UpdatedAt); err != nil {
+		if err := rows.Scan(&unit.ID, &unit.Name, &unit.Content, &unit.CreatedAt, &unit.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scan learning path unit: %w", err)
 		}
 		path.Units = append(path.Units, unit)

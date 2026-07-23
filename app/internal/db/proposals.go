@@ -109,18 +109,18 @@ func AddDraftCurriculumProposalChange(q curriculumExecutor, proposalID, authorID
 	change.ProposalID = proposalID
 	err := q.QueryRow(`
 		INSERT INTO curriculum_proposal_changes (
-			proposal_id, position, kind, unit_id, unit_name, unit_description,
-			previous_unit_name, previous_unit_description, prerequisite_id
+			proposal_id, position, kind, unit_id, unit_name, previous_unit_name,
+			unit_content, previous_unit_content, prerequisite_id
 		)
 		SELECT proposal.id,
 		       COALESCE((SELECT MAX(position) + 1 FROM curriculum_proposal_changes WHERE proposal_id = proposal.id), 1),
-		       $3, $4, NULLIF($5, ''), NULLIF($6, ''), NULLIF($7, ''), NULLIF($8, ''), $9
+		       $3, $4, NULLIF($5, ''), NULLIF($6, ''), NULLIF($7, ''),
+		       NULLIF($8, ''), $9
 		FROM curriculum_proposals proposal
 		WHERE proposal.id = $1 AND proposal.author_id = $2 AND proposal.status = 'draft'
 		RETURNING id, position
 	`, proposalID, authorID, change.Kind, change.UnitID, change.UnitName,
-		change.UnitDescription, change.PreviousUnitName, change.PreviousUnitDescription,
-		change.PrerequisiteID,
+		change.PreviousUnitName, change.UnitContent, change.PreviousUnitContent, change.PrerequisiteID,
 	).Scan(&change.ID, &change.Position)
 	if errors.Is(err, sql.ErrNoRows) {
 		return sql.ErrNoRows
@@ -146,6 +146,30 @@ func DeleteDraftCurriculumProposalChange(q curriculumExecutor, proposalID, chang
 	return count == 1, err
 }
 
+func DeleteDraftCurriculumProposalUnitChanges(q curriculumExecutor, proposalID, authorID, unitID int64, kind string) (bool, error) {
+	var authorized bool
+	err := q.QueryRow(`
+		WITH authorized_proposal AS (
+			SELECT id
+			FROM curriculum_proposals
+			WHERE id = $1 AND author_id = $2 AND status = 'draft'
+		),
+		deleted AS (
+			DELETE FROM curriculum_proposal_changes change
+			USING authorized_proposal proposal
+			WHERE change.proposal_id = proposal.id
+			  AND change.unit_id = $3
+			  AND change.kind = $4
+			RETURNING change.id
+		)
+		SELECT EXISTS (SELECT 1 FROM authorized_proposal)
+	`, proposalID, authorID, unitID, kind).Scan(&authorized)
+	if err != nil {
+		return false, fmt.Errorf("replace draft curriculum unit change: %w", err)
+	}
+	return authorized, nil
+}
+
 func CreateAcceptedCurriculumProposal(q curriculumExecutor, proposal *models.CurriculumProposal) error {
 	err := q.QueryRow(`
 		INSERT INTO curriculum_proposals (
@@ -165,16 +189,15 @@ func CreateAcceptedCurriculumProposal(q curriculumExecutor, proposal *models.Cur
 		change.Position = index + 1
 		err := q.QueryRow(`
 			INSERT INTO curriculum_proposal_changes (
-				proposal_id, position, kind, unit_id, unit_name,
-				unit_description, previous_unit_name, previous_unit_description,
-				prerequisite_id
+				proposal_id, position, kind, unit_id, unit_name, previous_unit_name,
+				unit_content, previous_unit_content, prerequisite_id
 			)
 			VALUES ($1, $2, $3, $4, NULLIF($5, ''), NULLIF($6, ''),
 			        NULLIF($7, ''), NULLIF($8, ''), $9)
 			RETURNING id
 		`, change.ProposalID, change.Position, change.Kind, change.UnitID,
-			change.UnitName, change.UnitDescription, change.PreviousUnitName,
-			change.PreviousUnitDescription, change.PrerequisiteID,
+			change.UnitName, change.PreviousUnitName, change.UnitContent,
+			change.PreviousUnitContent, change.PrerequisiteID,
 		).Scan(&change.ID)
 		if err != nil {
 			return fmt.Errorf("create curriculum proposal change: %w", err)
@@ -207,7 +230,8 @@ func AcceptDraftCurriculumProposal(q curriculumExecutor, proposalID, authorID, p
 func RebuildCurriculumProjection(q curriculumExecutor, version, proposalID int64) error {
 	rows, err := q.Query(`
 		SELECT change.kind, change.unit_id, COALESCE(change.unit_name, ''),
-		       COALESCE(change.unit_description, ''), change.prerequisite_id
+		       COALESCE(change.unit_content, ''),
+		       change.prerequisite_id
 		FROM curriculum_proposals proposal
 		JOIN curriculum_proposal_changes change ON change.proposal_id = proposal.id
 		WHERE proposal.status = 'accepted'
@@ -221,7 +245,10 @@ func RebuildCurriculumProjection(q curriculumExecutor, version, proposalID int64
 	for rows.Next() {
 		var change models.CurriculumProposalChange
 		var prerequisite sql.NullInt64
-		if err := rows.Scan(&change.Kind, &change.UnitID, &change.UnitName, &change.UnitDescription, &prerequisite); err != nil {
+		if err := rows.Scan(
+			&change.Kind, &change.UnitID, &change.UnitName,
+			&change.UnitContent, &prerequisite,
+		); err != nil {
 			return fmt.Errorf("scan accepted curriculum change: %w", err)
 		}
 		if prerequisite.Valid {
@@ -232,41 +259,55 @@ func RebuildCurriculumProjection(q curriculumExecutor, version, proposalID int64
 	if err := rows.Err(); err != nil {
 		return fmt.Errorf("iterate accepted curriculum changes: %w", err)
 	}
-	if _, err := q.Exec(`DELETE FROM unit_dependencies`); err != nil {
-		return fmt.Errorf("clear projected curriculum dependencies: %w", err)
-	}
-	if _, err := q.Exec(`DELETE FROM units`); err != nil {
-		return fmt.Errorf("clear projected curriculum units: %w", err)
+	if _, err := q.Exec(`
+		CREATE TEMP TABLE curriculum_rebuild_units (
+			id BIGINT PRIMARY KEY,
+			name TEXT NOT NULL,
+			content TEXT NOT NULL
+		) ON COMMIT DROP;
+		CREATE TEMP TABLE curriculum_rebuild_dependencies (
+			unit_id BIGINT NOT NULL,
+			prerequisite_id BIGINT NOT NULL,
+			PRIMARY KEY (unit_id, prerequisite_id)
+		) ON COMMIT DROP
+	`); err != nil {
+		return fmt.Errorf("prepare curriculum projection rebuild: %w", err)
 	}
 	for _, change := range changes {
 		switch change.Kind {
 		case "create_unit":
 			if _, err := q.Exec(`
-				INSERT INTO units (id, name, description)
+				INSERT INTO curriculum_rebuild_units (id, name, content)
 				VALUES ($1, $2, $3)
-			`, change.UnitID, change.UnitName, change.UnitDescription); err != nil {
+			`, change.UnitID, change.UnitName, change.UnitContent); err != nil {
 				return fmt.Errorf("project unit creation: %w", err)
 			}
 		case "delete_unit":
-			if _, err := q.Exec(`DELETE FROM units WHERE id = $1`, change.UnitID); err != nil {
+			if _, err := q.Exec(`DELETE FROM curriculum_rebuild_units WHERE id = $1`, change.UnitID); err != nil {
 				return fmt.Errorf("project unit deletion: %w", err)
 			}
 		case "update_unit":
 			if _, err := q.Exec(`
-				UPDATE units SET name = $2, description = $3 WHERE id = $1
-			`, change.UnitID, change.UnitName, change.UnitDescription); err != nil {
+				UPDATE curriculum_rebuild_units SET name = $2 WHERE id = $1
+			`, change.UnitID, change.UnitName); err != nil {
 				return fmt.Errorf("project unit update: %w", err)
+			}
+		case "update_content":
+			if _, err := q.Exec(`
+				UPDATE curriculum_rebuild_units SET content = $2 WHERE id = $1
+			`, change.UnitID, change.UnitContent); err != nil {
+				return fmt.Errorf("project unit content update: %w", err)
 			}
 		case "add_dependency":
 			if _, err := q.Exec(`
-				INSERT INTO unit_dependencies (unit_id, prerequisite_id)
+				INSERT INTO curriculum_rebuild_dependencies (unit_id, prerequisite_id)
 				VALUES ($1, $2)
 			`, change.UnitID, change.PrerequisiteID); err != nil {
 				return fmt.Errorf("project dependency creation: %w", err)
 			}
 		case "remove_dependency":
 			if _, err := q.Exec(`
-				DELETE FROM unit_dependencies
+				DELETE FROM curriculum_rebuild_dependencies
 				WHERE unit_id = $1 AND prerequisite_id = $2
 			`, change.UnitID, change.PrerequisiteID); err != nil {
 				return fmt.Errorf("project dependency deletion: %w", err)
@@ -274,6 +315,40 @@ func RebuildCurriculumProjection(q curriculumExecutor, version, proposalID int64
 		default:
 			return fmt.Errorf("project unsupported curriculum change %q", change.Kind)
 		}
+	}
+	if _, err := q.Exec(`DELETE FROM unit_dependencies`); err != nil {
+		return fmt.Errorf("clear projected curriculum dependencies: %w", err)
+	}
+	if _, err := q.Exec(`
+		INSERT INTO units (id, name, content)
+		SELECT id, name, content
+		FROM curriculum_rebuild_units
+		ON CONFLICT (id) DO UPDATE
+		SET name = EXCLUDED.name,
+		    content = EXCLUDED.content,
+		    updated_at = CASE
+		        WHEN (units.name, units.content)
+		             IS DISTINCT FROM (EXCLUDED.name, EXCLUDED.content)
+		        THEN NOW()
+		        ELSE units.updated_at
+		    END
+	`); err != nil {
+		return fmt.Errorf("reconcile projected curriculum units: %w", err)
+	}
+	if _, err := q.Exec(`
+		DELETE FROM units unit
+		WHERE NOT EXISTS (
+			SELECT 1 FROM curriculum_rebuild_units rebuilt WHERE rebuilt.id = unit.id
+		)
+	`); err != nil {
+		return fmt.Errorf("remove deleted projected curriculum units: %w", err)
+	}
+	if _, err := q.Exec(`
+		INSERT INTO unit_dependencies (unit_id, prerequisite_id)
+		SELECT unit_id, prerequisite_id
+		FROM curriculum_rebuild_dependencies
+	`); err != nil {
+		return fmt.Errorf("reconcile projected curriculum dependencies: %w", err)
 	}
 	result, err := q.Exec(`
 		UPDATE curriculum_projection_state
@@ -362,8 +437,8 @@ func GetLatestRevertibleCurriculumProposal(q curriculumExecutor) (*models.Curric
 func listCurriculumProposalChanges(q curriculumExecutor, proposalID int64) ([]models.CurriculumProposalChange, error) {
 	rows, err := q.Query(`
 		SELECT id, proposal_id, position, kind, unit_id,
-		       COALESCE(unit_name, ''), COALESCE(unit_description, ''),
-		       COALESCE(previous_unit_name, ''), COALESCE(previous_unit_description, ''),
+		       COALESCE(unit_name, ''), COALESCE(previous_unit_name, ''),
+		       COALESCE(unit_content, ''), COALESCE(previous_unit_content, ''),
 		       prerequisite_id
 		FROM curriculum_proposal_changes
 		WHERE proposal_id = $1
@@ -379,8 +454,8 @@ func listCurriculumProposalChanges(q curriculumExecutor, proposalID int64) ([]mo
 		var prerequisite sql.NullInt64
 		if err := rows.Scan(
 			&change.ID, &change.ProposalID, &change.Position, &change.Kind,
-			&change.UnitID, &change.UnitName, &change.UnitDescription,
-			&change.PreviousUnitName, &change.PreviousUnitDescription, &prerequisite,
+			&change.UnitID, &change.UnitName, &change.PreviousUnitName,
+			&change.UnitContent, &change.PreviousUnitContent, &prerequisite,
 		); err != nil {
 			return nil, fmt.Errorf("scan curriculum proposal change: %w", err)
 		}

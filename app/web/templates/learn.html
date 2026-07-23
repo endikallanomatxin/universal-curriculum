@@ -6,12 +6,13 @@
   <div class="app-shell" id="app-shell" data-panel-group>
     {{ template "primary-navigation" . }}
     <main class="pane-stack" id="workspace" data-shell-view="detail" data-document-title="Learn · Universal Curriculum" data-layout-panel data-panel-modes="mobile:20 content:34 wide:46" data-panel-required-mode="content" data-panel-fill data-panel-group>
-      <section class="ui-pane learning-paths-pane" aria-labelledby="learning-paths-title" data-layout-panel data-panel-modes="mobile:20 content:24 wide:28" data-panel-required-mode="mobile" data-panel-max="28">
+      <section class="ui-pane learning-paths-pane" aria-labelledby="learning-paths-title" data-layout-panel data-panel-modes="breadcrumb:4 mobile:20 content:24 wide:28" data-panel-required-mode="mobile" data-panel-max="28">
         <div class="ui-pane__inner learning-paths">
           <header class="learning-paths__header">
             <div>
               <p class="ui-pane__eyebrow">Learn</p>
               <h1 id="learning-paths-title">Paths</h1>
+              <span class="learning-paths__breadcrumb-title">{{ if .SelectedPath }}{{ .SelectedPath.Name }}{{ else }}{{ if .ExploreAll }}Full curriculum{{ else }}Paths{{ end }}{{ end }}</span>
             </div>
           </header>
           <p class="learning-paths__introduction">Choose a goal-focused view of the curriculum.</p>
@@ -59,10 +60,10 @@
       {{ if .ShowGraph }}
         <section class="ui-pane ui-pane--wide" aria-labelledby="learn-graph-title" data-nested-panel data-layout-panel data-panel-modes="breadcrumb:4 mobile:20 content:34 wide:46" data-panel-required-mode="mobile" data-panel-fill>
           <div class="ui-pane__inner learn-view">
-            <div class="learn-heading">
+            <div class="learn-heading {{ if .SelectedPath }}learn-heading--path{{ end }}">
               <div>
                 <p class="ui-pane__eyebrow">Learning path</p>
-                <h1 id="learn-graph-title">{{ with .SelectedPath }}{{ .Name }}{{ else }}Full curriculum{{ end }}</h1>
+                <h1 id="learn-graph-title">{{ if .SelectedPath }}Curriculum map{{ else }}Full curriculum{{ end }}</h1>
                 {{ with .SelectedPath }}{{ if .Description }}<p>{{ .Description }}</p>{{ end }}{{ end }}
               </div>
               <p>{{ len .Graph.Nodes }} units in view</p>
@@ -106,9 +107,9 @@
                         <li class="curriculum-graph__item {{ if index $.TargetUnitIDs .ID }}is-path-target{{ end }}" data-curriculum-node data-unit-id="{{ .ID }}" data-node-lane="{{ .Lane }}" style="--curriculum-node-lane:{{ .Lane }}; view-transition-name:curriculum-unit-{{ .ID }};">
                           <span class="curriculum-graph__anchor" data-curriculum-anchor aria-hidden="true"></span>
                           {{ if $selectedPath }}
-                            <a class="curriculum-graph__row" href="/learn?path={{ $selectedPath.ID }}&unit={{ .ID }}" hx-get="/learn?path={{ $selectedPath.ID }}&unit={{ .ID }}" hx-target="#curriculum-explorer" hx-select="#curriculum-explorer" hx-swap="outerHTML transition:true" {{ with $focused }}{{ if eq .ID $node.ID }}aria-current="page"{{ end }}{{ end }}>
+                            <a class="curriculum-graph__row" href="/learn?path={{ $selectedPath.ID }}&unit={{ .ID }}&content={{ .ID }}" hx-get="/learn?path={{ $selectedPath.ID }}&unit={{ .ID }}&content={{ .ID }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true" {{ with $focused }}{{ if eq .ID $node.ID }}aria-current="page"{{ end }}{{ end }}>
                           {{ else }}
-                            <a class="curriculum-graph__row" href="/learn?path=all&unit={{ .ID }}" hx-get="/learn?path=all&unit={{ .ID }}" hx-target="#curriculum-explorer" hx-select="#curriculum-explorer" hx-swap="outerHTML transition:true" {{ with $focused }}{{ if eq .ID $node.ID }}aria-current="page"{{ end }}{{ end }}>
+                            <a class="curriculum-graph__row" href="/learn?path=all&unit={{ .ID }}&content={{ .ID }}" hx-get="/learn?path=all&unit={{ .ID }}&content={{ .ID }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true" {{ with $focused }}{{ if eq .ID $node.ID }}aria-current="page"{{ end }}{{ end }}>
                           {{ end }}
                             <span class="curriculum-graph__name">{{ .Name }}</span>
                             {{ if index $.TargetUnitIDs .ID }}<span class="curriculum-graph__target-label">Path target</span>{{ end }}
@@ -127,6 +128,21 @@
               {{ end }}
             </section>
           </div>
+        </section>
+      {{ end }}
+
+      {{ with .ContentUnit }}
+        <section class="ui-pane ui-pane--wide unit-content-pane" data-nested-panel data-layout-panel data-panel-modes="breadcrumb:4 mobile:20 content:32 wide:42" data-panel-required-mode="mobile" data-panel-fill aria-labelledby="unit-content-title">
+          <article class="ui-pane__inner unit-content">
+            <header class="nested-panel__header">
+              <div>
+                <p class="ui-pane__eyebrow">Unit content</p>
+                <h1 id="unit-content-title">{{ .Name }}</h1>
+              </div>
+              <button class="icon-button nested-panel__close" type="button" data-close-panel aria-label="Close unit content"><span class="material-symbols-rounded" aria-hidden="true">close</span></button>
+            </header>
+            <div class="unit-content__body">{{ renderUnitContent .Content }}</div>
+          </article>
         </section>
       {{ end }}
 
@@ -156,9 +172,8 @@
                 <input id="learning-path-unit-search" type="search" placeholder="Search units" autocomplete="off" data-learning-path-unit-search-input aria-controls="learning-path-unit-results" aria-expanded="false">
                 <div class="unit-search__results" id="learning-path-unit-results" data-learning-path-unit-results hidden>
                   {{ range .AllUnits }}
-                    <button type="button" data-learning-path-unit-option data-unit-id="{{ .ID }}" data-unit-name="{{ .Name }}" data-unit-description="{{ .Description }}">
+                    <button type="button" data-learning-path-unit-option data-unit-id="{{ .ID }}" data-unit-name="{{ .Name }}">
                       <strong>{{ .Name }}</strong>
-                      <span>{{ .Description }}</span>
                     </button>
                   {{ end }}
                   <p class="unit-search__empty" data-learning-path-unit-empty hidden>No matching units.</p>

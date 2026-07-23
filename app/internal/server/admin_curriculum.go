@@ -24,6 +24,8 @@ type adminCurriculumPageData struct {
 	Units          []curriculumUnitView
 	Dependencies   []models.UnitDependency
 	Graph          *models.CurriculumGraphLayout
+	FocusedUnit    *models.Unit
+	ContentUnit    *curriculumUnitView
 	Proposals      []models.CurriculumProposal
 	ActiveProposal *models.CurriculumProposal
 	Error          string
@@ -48,7 +50,7 @@ func (server *Server) createCurriculumUnit(writer http.ResponseWriter, request *
 		authorID,
 		proposalID,
 		request.FormValue("name"),
-		request.FormValue("description"),
+		request.FormValue("content"),
 	)
 	if err != nil {
 		server.renderCurriculumMutationError(writer, request, err)
@@ -72,11 +74,35 @@ func (server *Server) updateCurriculumUnit(writer http.ResponseWriter, request *
 		return
 	}
 	authorID, _ := services.SessionUserID(request)
-	if err := services.UpdateCurriculumUnit(server.Database, authorID, proposalID, unitID, request.FormValue("name"), request.FormValue("description")); err != nil {
+	if err := services.UpdateCurriculumUnit(server.Database, authorID, proposalID, unitID, request.FormValue("name")); err != nil {
 		server.renderCurriculumMutationError(writer, request, err)
 		return
 	}
-	redirectToProposal(writer, request, proposalID)
+	redirectToProposalUnit(writer, request, proposalID, unitID)
+}
+
+func (server *Server) updateCurriculumUnitContent(writer http.ResponseWriter, request *http.Request) {
+	if !server.parseAdminMutation(writer, request) {
+		return
+	}
+	unitID, err := parsePositiveID(request.PathValue("id"))
+	if err != nil {
+		http.Error(writer, "Invalid unit ID", http.StatusBadRequest)
+		return
+	}
+	proposalID, err := parsePositiveID(request.FormValue("proposal_id"))
+	if err != nil {
+		server.renderCurriculumMutationError(writer, request, services.ErrProposalNotFound)
+		return
+	}
+	authorID, _ := services.SessionUserID(request)
+	if err := services.UpdateCurriculumUnitContent(
+		server.Database, authorID, proposalID, unitID, request.FormValue("content"),
+	); err != nil {
+		server.renderCurriculumMutationError(writer, request, err)
+		return
+	}
+	redirectToProposalUnit(writer, request, proposalID, unitID)
 }
 
 func (server *Server) deleteCurriculumUnit(writer http.ResponseWriter, request *http.Request) {
@@ -274,8 +300,8 @@ func curriculumErrorResponse(err error) (string, int) {
 		return "Remove the dependencies from " + joinNames(prerequisiteError.DependentNames) + " before deleting this unit.", http.StatusConflict
 	case errors.Is(err, services.ErrUnitNameRequired):
 		return "A unit name is required.", http.StatusBadRequest
-	case errors.Is(err, services.ErrUnitDescriptionRequired):
-		return "A short description is required.", http.StatusBadRequest
+	case errors.Is(err, services.ErrUnitContentRequired):
+		return "Unit content cannot be empty.", http.StatusBadRequest
 	case errors.Is(err, services.ErrUnitNotFound):
 		return "The selected unit no longer exists.", http.StatusNotFound
 	case errors.Is(err, services.ErrDependencyExists):
@@ -315,12 +341,33 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 		http.Error(writer, "Unable to load curriculum", http.StatusInternalServerError)
 		return
 	}
-	layout, err := services.BuildCurriculumGraphLayout(graph)
+	visibleGraph := graph
+	var focusedUnit *models.Unit
+	var boundaries []models.CurriculumGraphBoundary
+	if unitValue := request.URL.Query().Get("unit"); unitValue != "" {
+		unitID, parseErr := parsePositiveID(unitValue)
+		if parseErr != nil {
+			http.Error(writer, "Invalid curriculum unit", http.StatusBadRequest)
+			return
+		}
+		visibleGraph, focusedUnit, boundaries, err = services.CurriculumNeighborhood(graph, &unitID)
+		if errors.Is(err, services.ErrCurriculumUnitNotFound) {
+			http.Error(writer, "Curriculum unit not found", http.StatusNotFound)
+			return
+		}
+		if err != nil {
+			log.Printf("build admin curriculum neighborhood: %v", err)
+			http.Error(writer, "Unable to navigate curriculum", http.StatusInternalServerError)
+			return
+		}
+	}
+	layout, err := services.BuildCurriculumGraphLayoutWithHints(visibleGraph, curriculumLayoutHints(request))
 	if err != nil {
 		log.Printf("layout curriculum graph: %v", err)
 		http.Error(writer, "Unable to lay out curriculum", http.StatusInternalServerError)
 		return
 	}
+	layout.Boundaries = boundaries
 	proposals, err := db.ListCurriculumProposals(server.Database, 8)
 	if err != nil {
 		log.Printf("load curriculum proposals: %v", err)
@@ -347,23 +394,64 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 			}
 		}
 	}
+	applyCurriculumChangeLabels(activeProposal, graph)
 	data := adminCurriculumPageData{
 		userPageData: userPageData{
 			User: user, CSRFToken: sessionCSRFToken(request), CurrentSection: "curriculum",
 		},
 		Dependencies:   graph.Dependencies,
 		Graph:          layout,
+		FocusedUnit:    focusedUnit,
 		Proposals:      proposals,
 		ActiveProposal: activeProposal,
 		Error:          message,
 	}
 	data.Units = curriculumUnitViews(graph, layout)
 	applyProposedDependencies(data.Units, activeProposal)
+	if contentValue := request.URL.Query().Get("content"); contentValue != "" {
+		contentID, parseErr := parsePositiveID(contentValue)
+		if parseErr != nil {
+			http.Error(writer, "Invalid curriculum unit", http.StatusBadRequest)
+			return
+		}
+		for index := range data.Units {
+			if data.Units[index].ID == contentID {
+				data.ContentUnit = &data.Units[index]
+				break
+			}
+		}
+		if data.ContentUnit == nil {
+			http.Error(writer, "Curriculum unit not found", http.StatusNotFound)
+			return
+		}
+	}
 	server.renderStatus(writer, status, "admin-curriculum.html", data)
+}
+
+func applyCurriculumChangeLabels(proposal *models.CurriculumProposal, graph *models.CurriculumGraph) {
+	if proposal == nil || graph == nil {
+		return
+	}
+	names := make(map[int64]string, len(graph.Units))
+	for _, unit := range graph.Units {
+		names[unit.ID] = unit.Name
+	}
+	for index := range proposal.Changes {
+		if proposal.Changes[index].UnitName == "" {
+			proposal.Changes[index].UnitName = names[proposal.Changes[index].UnitID]
+		}
+	}
 }
 
 func redirectToProposal(writer http.ResponseWriter, request *http.Request, proposalID int64) {
 	http.Redirect(writer, request, "/admin/curriculum?proposal="+strconv.FormatInt(proposalID, 10), http.StatusSeeOther)
+}
+
+func redirectToProposalUnit(writer http.ResponseWriter, request *http.Request, proposalID, unitID int64) {
+	target := "/admin/curriculum?proposal=" + strconv.FormatInt(proposalID, 10) +
+		"&unit=" + strconv.FormatInt(unitID, 10) +
+		"&content=" + strconv.FormatInt(unitID, 10)
+	http.Redirect(writer, request, target, http.StatusSeeOther)
 }
 
 func redirectToProposalPanel(writer http.ResponseWriter, request *http.Request, proposalID int64, panel string, subjectID int64) {

@@ -9,43 +9,27 @@
       <section class="ui-pane ui-pane--wide" aria-labelledby="curriculum-title" data-layout-panel data-panel-modes="breadcrumb:4 mobile:20 content:34 wide:46" data-panel-required-mode="mobile" data-panel-fill>
         <div class="ui-pane__inner curriculum-editor" id="curriculum-editor">
           <header class="curriculum-editor__header">
-            <div>
-              <p class="ui-pane__eyebrow">Administration</p>
-              <h1 id="curriculum-title">Curriculum modification</h1>
-            </div>
-            <div class="curriculum-editor__header-actions">
-              <p class="curriculum-editor__summary">
-                <strong>{{ len .Units }}</strong> units
-                <span aria-hidden="true">·</span>
-                <strong>{{ len .Dependencies }}</strong> dependencies
-              </p>
-              {{ if .ActiveProposal }}
-                <button class="editor-action" type="button" data-open-panel="new-unit-panel" aria-controls="new-unit-panel" aria-expanded="false">
-                  <span class="material-symbols-rounded" aria-hidden="true">add</span>
-                  Add unit change
-                </button>
-              {{ end }}
-            </div>
+            <h1 class="curriculum-editor__title" id="curriculum-title">Curriculum modification</h1>
+            <button class="editor-action" type="button" data-open-panel="proposal-history-panel" aria-controls="proposal-history-panel" aria-expanded="false">
+              <span class="material-symbols-rounded" aria-hidden="true">history</span>
+              History
+            </button>
           </header>
 
           {{ if .Error }}<p class="form-error curriculum-editor__error" role="alert">{{ .Error }}</p>{{ end }}
 
           <section class="proposal-history" aria-labelledby="proposal-workspace-title">
             {{ if .ActiveProposal }}
-              <div class="section-heading">
-                <div>
-                  <p class="section-heading__eyebrow">Working proposal</p>
-                  <h2 id="proposal-workspace-title">{{ .ActiveProposal.Title }}</h2>
-                </div>
-                <div class="proposal-workspace__actions">
-                  <button class="editor-action" type="button" data-open-panel="proposal-details-panel" aria-controls="proposal-details-panel" aria-expanded="false">
-                    <span class="material-symbols-rounded" aria-hidden="true">description</span>
-                    Proposal details
-                  </button>
-                  <button class="editor-action" type="button" data-open-panel="proposal-history-panel" aria-controls="proposal-history-panel" aria-expanded="false">
-                    <span class="material-symbols-rounded" aria-hidden="true">history</span>
-                    History
-                  </button>
+              <div class="proposal-workspace__header">
+                <div class="proposal-workspace__identity">
+                  <p class="proposal-workspace__status"><span>Draft</span><span>{{ len .ActiveProposal.Changes }} {{ if eq (len .ActiveProposal.Changes) 1 }}change{{ else }}changes{{ end }}</span></p>
+                  <div class="proposal-workspace__title-row">
+                    <h2 id="proposal-workspace-title">{{ .ActiveProposal.Title }}</h2>
+                    <button class="editor-action" type="button" data-open-panel="proposal-details-panel" aria-controls="proposal-details-panel" aria-expanded="false">
+                      <span class="material-symbols-rounded" aria-hidden="true">description</span>
+                      Proposal details
+                    </button>
+                  </div>
                 </div>
               </div>
               {{ if .ActiveProposal.Changes }}
@@ -53,8 +37,8 @@
                   {{ range .ActiveProposal.Changes }}
                     <li>
                       <div>
-                        <strong>{{ if eq .Kind "create_unit" }}Create unit{{ else if eq .Kind "update_unit" }}Edit unit{{ else if eq .Kind "delete_unit" }}Delete unit{{ else if eq .Kind "add_dependency" }}Add prerequisite{{ else }}Remove prerequisite{{ end }}</strong>
-                        <span>{{ if .UnitName }}{{ .UnitName }}{{ else }}Unit #{{ .UnitID }}{{ end }}</span>
+                        <span>{{ if eq .Kind "create_unit" }}Create unit{{ else if eq .Kind "update_unit" }}Rename{{ else if eq .Kind "update_content" }}Edit content{{ else if eq .Kind "delete_unit" }}Delete unit{{ else if eq .Kind "add_dependency" }}Add prerequisite{{ else }}Remove prerequisite{{ end }}</span>
+                        <strong>{{ if .UnitName }}{{ .UnitName }}{{ else }}Unit #{{ .UnitID }}{{ end }}</strong>
                       </div>
                       <form action="/admin/curriculum/proposals/{{ $.ActiveProposal.ID }}/changes/{{ .ID }}/delete" method="post">
                         <input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}">
@@ -65,16 +49,12 @@
                 </ol>
               {{ else }}<p class="proposal-history__empty">This draft has no changes yet.</p>{{ end }}
             {{ else }}
-              <div class="section-heading">
-                <div>
-                  <p class="section-heading__eyebrow">Working proposal</p>
-                  <h2 id="proposal-workspace-title">No draft selected</h2>
+              <div class="proposal-workspace__header">
+                <div class="proposal-workspace__identity">
+                  <p class="proposal-workspace__status"><span>No active draft</span></p>
+                  <h2 id="proposal-workspace-title">Choose a working proposal</h2>
                 </div>
                 <div class="proposal-workspace__actions">
-                  <button class="editor-action" type="button" data-open-panel="proposal-history-panel" aria-controls="proposal-history-panel" aria-expanded="false">
-                    <span class="material-symbols-rounded" aria-hidden="true">history</span>
-                    History
-                  </button>
                   <button class="editor-action" type="button" data-open-panel="new-proposal-panel" aria-controls="new-proposal-panel" aria-expanded="false">
                     <span class="material-symbols-rounded" aria-hidden="true">add</span>
                     New proposal
@@ -88,15 +68,28 @@
           <div class="curriculum-editor__layout">
             <section class="curriculum-units" aria-labelledby="units-title">
               <div class="section-heading">
-                <div>
-                  <p class="section-heading__eyebrow">Published structure</p>
-                  <h2 id="units-title">Units</h2>
-                </div>
-                <span>{{ len .Units }}</span>
+                <h2 id="units-title">Published curriculum</h2>
+                {{ if .ActiveProposal }}
+                  <div class="curriculum-units__heading-actions">
+                    <button class="editor-action" type="button" data-open-panel="new-unit-panel" aria-controls="new-unit-panel" aria-expanded="false">
+                      <span class="material-symbols-rounded" aria-hidden="true">add</span>
+                      Add unit creation
+                    </button>
+                  </div>
+                {{ end }}
               </div>
 
-              {{ if .Units }}
-                <div class="curriculum-graph editor-graph" data-curriculum-graph data-lane-count="{{ .Graph.LaneCount }}">
+              {{ if .Graph.Nodes }}
+                <section class="curriculum-explorer" id="curriculum-explorer" aria-live="polite">
+                  <nav class="learn-navigation" aria-label="Curriculum navigation">
+                    {{ if .FocusedUnit }}
+                      <p>Showing the local neighbourhood around {{ .FocusedUnit.Name }}.</p>
+                    {{ else }}
+                      <p>Choose a unit to navigate its neighbourhood and read its content.</p>
+                    {{ end }}
+                  </nav>
+                <div class="curriculum-graph" data-curriculum-graph data-focused-unit-id="{{ with .FocusedUnit }}{{ .ID }}{{ end }}" data-lane-count="{{ .Graph.LaneCount }}">
+                  <p class="visually-hidden" id="editor-curriculum-graph-description">Arrows go from each prerequisite to the units that depend on it. Select a unit to navigate and read its content.</p>
                   <div class="curriculum-graph__layout">
                     <svg class="curriculum-graph__svg" aria-hidden="true">
                       <defs>
@@ -106,52 +99,36 @@
                         <marker id="editor-curriculum-arrow-highlighted" viewBox="0 0 10 10" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse">
                           <path class="curriculum-graph__arrow curriculum-graph__arrow--highlighted" d="M0,0 L10,5 L0,10 z"></path>
                         </marker>
+                        <marker id="editor-curriculum-arrow-boundary" viewBox="0 0 10 10" markerWidth="8" markerHeight="8" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+                          <path class="curriculum-graph__arrow curriculum-graph__arrow--boundary" d="M0,0 L10,5 L0,10 z"></path>
+                        </marker>
                       </defs>
-                      <g data-curriculum-graph-paths data-arrow-marker="editor-curriculum-arrow" data-highlighted-arrow-marker="editor-curriculum-arrow-highlighted"></g>
+                      <g data-curriculum-graph-paths data-arrow-marker="editor-curriculum-arrow" data-highlighted-arrow-marker="editor-curriculum-arrow-highlighted" data-boundary-arrow-marker="editor-curriculum-arrow-boundary"></g>
                     </svg>
-                    <ol class="unit-list curriculum-graph__list">
-                  {{ range .Units }}
-                    {{ $unit := . }}
-                    <li class="unit-row curriculum-graph__item" data-curriculum-node data-unit-id="{{ .ID }}" data-node-lane="{{ .Lane }}" style="--curriculum-node-lane:{{ .Lane }};">
-                      <span class="curriculum-graph__anchor" data-curriculum-anchor aria-hidden="true"></span>
-                      <article class="unit-row__content">
-                        <header class="unit-row__header">
-                          <div>
-                            <h3>{{ .Name }}</h3>
-                            <p>{{ .Description }}</p>
-                          </div>
-                          <div class="unit-row__actions">
-                            {{ if $.ActiveProposal }}
-                              <button class="unit-action" type="button" data-open-panel="edit-unit-panel" data-unit-id="{{ .ID }}" data-unit-name="{{ .Name }}" data-unit-description="{{ .Description }}" aria-controls="edit-unit-panel" aria-expanded="false">
-                                <span class="material-symbols-rounded" aria-hidden="true">edit</span>
-                                Edit
-                              </button>
-                            {{ end }}
-                            {{ if $.ActiveProposal }}
-                              <button class="unit-action" type="button" data-open-panel="edit-dependencies-panel" data-dependent-id="{{ .ID }}" data-dependent-name="{{ .Name }}" data-prerequisite-ids="{{ range .Prerequisites }}{{ .ID }},{{ end }}" aria-controls="edit-dependencies-panel" aria-expanded="false">
-                                <span class="material-symbols-rounded" aria-hidden="true">conversion_path</span>
-                                Edit dependencies
-                              </button>
-                            {{ end }}
-                            {{ if $.ActiveProposal }}<form action="/admin/curriculum/units/{{ .ID }}/delete" method="post" onsubmit="return confirm('Add deletion of {{ .Name }} to this proposal?')">
-                              <input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}">
-                              <input type="hidden" name="proposal_id" value="{{ $.ActiveProposal.ID }}">
-                              <button class="icon-button icon-button--danger" type="submit" aria-label="Propose deleting {{ .Name }}" {{ if .Dependents }}disabled title="Remove dependent relationships first"{{ end }}>
-                                <span class="material-symbols-rounded" aria-hidden="true">delete</span>
-                              </button>
-                            </form>{{ end }}
-                          </div>
-                        </header>
-
-                      </article>
-                    </li>
-                  {{ end }}
+                    <ol class="curriculum-graph__list">
+                      {{ $focused := .FocusedUnit }}
+                      {{ range .Graph.Nodes }}
+                        {{ $node := . }}
+                        <li class="curriculum-graph__item" data-curriculum-node data-unit-id="{{ .ID }}" data-node-lane="{{ .Lane }}" style="--curriculum-node-lane:{{ .Lane }}; view-transition-name:curriculum-unit-{{ .ID }};">
+                          <span class="curriculum-graph__anchor" data-curriculum-anchor aria-hidden="true"></span>
+                          <a class="curriculum-graph__row"
+                             href="/admin/curriculum?{{ with $.ActiveProposal }}proposal={{ .ID }}&{{ end }}unit={{ .ID }}&content={{ .ID }}"
+                             hx-get="/admin/curriculum?{{ with $.ActiveProposal }}proposal={{ .ID }}&{{ end }}unit={{ .ID }}&content={{ .ID }}"
+                             hx-target="#workspace" hx-select="#workspace"
+                             hx-swap="outerHTML transition:true" hx-push-url="true"
+                             {{ with $focused }}{{ if eq .ID $node.ID }}aria-current="page"{{ end }}{{ end }}>
+                            <span class="curriculum-graph__name">{{ .Name }}</span>
+                          </a>
+                        </li>
+                      {{ end }}
                     </ol>
                     <div hidden>
                       {{ range .Graph.Edges }}<span data-curriculum-edge data-prerequisite-id="{{ .PrerequisiteID }}" data-dependent-id="{{ .DependentID }}" data-lane="{{ .Lane }}"></span>{{ end }}
+                      {{ range .Graph.Boundaries }}<span data-curriculum-boundary data-unit-id="{{ .UnitID }}" data-direction="{{ .Direction }}" data-count="{{ .Count }}"></span>{{ end }}
                     </div>
                   </div>
                 </div>
+                </section>
               {{ else }}
                 <div class="curriculum-empty">
                   <span class="material-symbols-rounded" aria-hidden="true">conversion_path</span>
@@ -164,6 +141,58 @@
           </div>
         </div>
       </section>
+
+      {{ with .ContentUnit }}
+        <section class="ui-pane ui-pane--wide unit-content-pane" data-nested-panel data-layout-panel data-panel-modes="breadcrumb:4 mobile:20 content:32 wide:42" data-panel-required-mode="mobile" data-panel-fill aria-labelledby="admin-unit-content-title">
+          <article class="ui-pane__inner unit-content">
+            <header class="nested-panel__header">
+              <div>
+                <p class="ui-pane__eyebrow">Published unit content</p>
+                <h1 id="admin-unit-content-title" data-inline-editor-display="inline-rename-unit">{{ .Name }}</h1>
+                {{ if $.ActiveProposal }}
+                  <form class="editor-form unit-content__inline-editor unit-content__inline-editor--rename" id="inline-rename-unit" action="/admin/curriculum/units/{{ .ID }}" method="post" hidden>
+                    <input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}">
+                    <input type="hidden" name="proposal_id" value="{{ $.ActiveProposal.ID }}">
+                    <label class="visually-hidden" for="inline-unit-name">Unit name</label>
+                    <textarea id="inline-unit-name" name="name" required maxlength="200" rows="1" data-autoresize>{{ .Name }}</textarea>
+                    <div class="unit-content__inline-actions">
+                      <button class="primary-button" type="submit">Add rename</button>
+                      <button class="editor-action" type="button" data-inline-editor-close>Cancel</button>
+                    </div>
+                  </form>
+                {{ end }}
+              </div>
+              <button class="icon-button nested-panel__close" type="button" data-close-panel aria-label="Close unit content"><span class="material-symbols-rounded" aria-hidden="true">close</span></button>
+            </header>
+            {{ if $.ActiveProposal }}
+              <div class="unit-content__admin-actions">
+                <button class="unit-action" type="button" data-inline-editor-trigger="inline-rename-unit" aria-controls="inline-rename-unit" aria-expanded="false"><span class="material-symbols-rounded" aria-hidden="true">edit</span>Rename</button>
+                <button class="unit-action" type="button" data-inline-editor-trigger="inline-edit-unit-content" aria-controls="inline-edit-unit-content" aria-expanded="false"><span class="material-symbols-rounded" aria-hidden="true">article</span>Edit content</button>
+                <button class="unit-action" type="button" data-open-panel="edit-dependencies-panel" data-dependent-id="{{ .ID }}" data-dependent-name="{{ .Name }}" data-prerequisite-ids="{{ range .Prerequisites }}{{ .ID }},{{ end }}" aria-controls="edit-dependencies-panel" aria-expanded="false"><span class="material-symbols-rounded" aria-hidden="true">conversion_path</span>Edit dependencies</button>
+                <form action="/admin/curriculum/units/{{ .ID }}/delete" method="post" onsubmit="return confirm('Add deletion of {{ .Name }} to this proposal?')">
+                  <input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}">
+                  <input type="hidden" name="proposal_id" value="{{ $.ActiveProposal.ID }}">
+                  <button class="icon-button icon-button--danger" type="submit" aria-label="Propose deleting {{ .Name }}" {{ if .Dependents }}disabled title="Remove dependent relationships first"{{ end }}><span class="material-symbols-rounded" aria-hidden="true">delete</span></button>
+                </form>
+              </div>
+              <form class="editor-form unit-content__inline-editor unit-content__inline-editor--content" id="inline-edit-unit-content" action="/admin/curriculum/units/{{ .ID }}/content" method="post" hidden>
+                <input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}">
+                <input type="hidden" name="proposal_id" value="{{ $.ActiveProposal.ID }}">
+                <div class="unit-content__source-header">
+                  <span><span class="material-symbols-rounded" aria-hidden="true">code</span>Source</span>
+                  <div class="unit-content__inline-actions">
+                    <button class="primary-button" type="submit">Save to proposal</button>
+                    <button class="editor-action" type="button" data-inline-editor-close>Cancel</button>
+                  </div>
+                </div>
+                <label class="visually-hidden" for="inline-unit-content">Markdown source</label>
+                <textarea id="inline-unit-content" name="content" required rows="1" spellcheck="true" data-autoresize data-autoresize-unbounded>{{ .Content }}</textarea>
+              </form>
+            {{ end }}
+            <div class="unit-content__body" data-inline-editor-display="inline-edit-unit-content">{{ renderUnitContent .Content }}</div>
+          </article>
+        </section>
+      {{ end }}
 
       {{ if .ActiveProposal }}
         <section class="ui-pane ui-pane--form" id="proposal-details-panel" data-nested-panel data-layout-panel data-panel-modes="compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-max="34" hidden aria-labelledby="proposal-details-title">
@@ -286,38 +315,13 @@
             {{ if .ActiveProposal }}<input type="hidden" name="proposal_id" value="{{ .ActiveProposal.ID }}">{{ end }}
             <label for="unit-name">Name</label>
             <input id="unit-name" name="name" required maxlength="200" autocomplete="off">
-            <label for="unit-description">Short description</label>
-            <textarea id="unit-description" name="description" required rows="2" maxlength="1000" data-autoresize></textarea>
+            <label for="unit-content">Content</label>
+            <p class="editor-form__hint">Markdown with $…$ or $$…$$ for LaTeX. Embed isolated HTML, CSS and JavaScript with a standard <code>&lt;iframe srcdoc="…"&gt;</code>.</p>
+            <textarea id="unit-content" name="content" required rows="10" data-autoresize placeholder="Write the first textual explanation for this unit."></textarea>
             <button class="primary-button" type="submit" {{ if not .ActiveProposal }}disabled{{ end }}>Add to proposal</button>
           </form>
         </div>
       </section>
-
-      {{ if .ActiveProposal }}
-        <section class="ui-pane ui-pane--form" id="edit-unit-panel" data-nested-panel data-layout-panel data-panel-modes="compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-max="34" hidden aria-labelledby="edit-unit-title">
-          <div class="ui-pane__inner nested-panel">
-            <header class="nested-panel__header">
-              <div>
-                <p class="ui-pane__eyebrow">Proposed unit change</p>
-                <h1 id="edit-unit-title" data-unit-heading>Edit unit</h1>
-              </div>
-              <button class="icon-button nested-panel__close" type="button" data-close-panel aria-label="Close unit editor">
-                <span class="material-symbols-rounded" aria-hidden="true">close</span>
-              </button>
-            </header>
-            <p class="nested-panel__introduction">Add changes to this unit to the selected proposal. The published unit remains unchanged until publication.</p>
-            <form class="editor-form editor-form--panel" action="" method="post" data-unit-edit-form>
-              <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
-              <input type="hidden" name="proposal_id" value="{{ .ActiveProposal.ID }}">
-              <label for="edit-unit-name">Name</label>
-              <input id="edit-unit-name" name="name" required maxlength="200" data-unit-name-input>
-              <label for="edit-unit-description">Description</label>
-              <textarea id="edit-unit-description" name="description" required rows="4" maxlength="1000" data-autoresize data-unit-description-input></textarea>
-              <button class="primary-button" type="submit">Add edit to proposal</button>
-            </form>
-          </div>
-        </section>
-      {{ end }}
 
       <section class="ui-pane ui-pane--form" id="edit-dependencies-panel" data-nested-panel data-layout-panel data-panel-modes="compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-max="34" hidden aria-labelledby="edit-dependencies-title">
         <div class="ui-pane__inner nested-panel">
@@ -351,9 +355,8 @@
               <input id="prerequisite-unit-search" type="search" autocomplete="off" placeholder="Search units" data-unit-search-input aria-controls="prerequisite-unit-results" aria-expanded="false">
               <div class="unit-search__results" id="prerequisite-unit-results" data-unit-search-results hidden>
                 {{ range .Units }}
-                  <button type="button" data-unit-search-option data-unit-id="{{ .ID }}" data-unit-name="{{ .Name }}" data-unit-description="{{ .Description }}">
+                  <button type="button" data-unit-search-option data-unit-id="{{ .ID }}" data-unit-name="{{ .Name }}">
                     <strong>{{ .Name }}</strong>
-                    <span>{{ .Description }}</span>
                   </button>
                 {{ end }}
                 <p class="unit-search__empty" data-unit-search-empty hidden>No matching units.</p>

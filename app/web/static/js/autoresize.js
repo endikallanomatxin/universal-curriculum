@@ -4,7 +4,10 @@
   function autoResize(textarea) {
     textarea.style.height = "auto";
 
-    if (textarea.scrollHeight < 60) {
+    if (textarea.dataset.autoresizeUnbounded !== undefined) {
+      textarea.style.height = Math.max(60, textarea.scrollHeight) + "px";
+      textarea.style.overflowY = "hidden";
+    } else if (textarea.scrollHeight < 60) {
       textarea.style.height = "60px";
       textarea.style.overflowY = "hidden";
     } else if (textarea.scrollHeight > 360) {

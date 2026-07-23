@@ -7,3 +7,4 @@ product specification.
 - [Curriculum versioning](curriculum-versioning.md)
 - [Graph navigation](graph-navigation.md)
 - [Learning paths](learning-paths.md)
+- [Unit content](unit-content.md)

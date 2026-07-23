@@ -333,10 +333,6 @@
   transform: translateY(-0.1rem);
 }
 
-.primary-menu__link[aria-current="page"] {
-  color: var(--color-ink-strong);
-}
-
 .primary-menu__link--account .primary-menu__icon {
   view-transition-name: account-navigation;
 }
@@ -468,6 +464,12 @@ button.primary-menu__link {
 
 .app-shell:not(.app-shell--home) .primary-menu__link:hover {
   background: color-mix(in srgb, var(--color-surface) 55%, transparent);
+}
+
+.app-shell .primary-menu__link[aria-current="page"],
+.app-shell .primary-menu__link[aria-current="page"]:hover {
+  background: var(--color-surface);
+  color: var(--color-ink-strong);
 }
 
 .pane-stack {

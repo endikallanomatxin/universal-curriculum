@@ -13,7 +13,7 @@ import (
 var (
 	ErrUnitNotFound              = errors.New("curriculum unit not found")
 	ErrUnitNameRequired          = errors.New("unit name is required")
-	ErrUnitDescriptionRequired   = errors.New("unit description is required")
+	ErrUnitContentRequired       = errors.New("unit content is required")
 	ErrDependencyExists          = errors.New("unit dependency already exists")
 	ErrDependencyNotFound        = errors.New("unit dependency not found")
 	ErrDependencyCycle           = errors.New("unit dependency creates a cycle")
@@ -83,21 +83,22 @@ func DeleteCurriculumProposal(database *sql.DB, authorID, proposalID int64) erro
 	return nil
 }
 
-func CreateCurriculumUnit(database *sql.DB, authorID, proposalID int64, name, description string) (*models.Unit, error) {
+func CreateCurriculumUnit(database *sql.DB, authorID, proposalID int64, name, content string) (*models.Unit, error) {
 	name = strings.TrimSpace(name)
-	description = strings.TrimSpace(description)
+	content = strings.TrimSpace(content)
 	if name == "" {
 		return nil, ErrUnitNameRequired
 	}
-	if description == "" {
-		return nil, ErrUnitDescriptionRequired
+	if content == "" {
+		return nil, ErrUnitContentRequired
 	}
 	unitID, err := db.NextCurriculumUnitID(database)
 	if err != nil {
 		return nil, err
 	}
 	change := &models.CurriculumProposalChange{
-		Kind: "create_unit", UnitID: unitID, UnitName: name, UnitDescription: description,
+		Kind: "create_unit", UnitID: unitID, UnitName: name,
+		UnitContent: content,
 	}
 	if err := db.AddDraftCurriculumProposalChange(database, proposalID, authorID, change); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -105,17 +106,13 @@ func CreateCurriculumUnit(database *sql.DB, authorID, proposalID int64, name, de
 		}
 		return nil, err
 	}
-	return &models.Unit{ID: unitID, Name: name, Description: description}, nil
+	return &models.Unit{ID: unitID, Name: name, Content: content}, nil
 }
 
-func UpdateCurriculumUnit(database *sql.DB, authorID, proposalID, unitID int64, name, description string) error {
+func UpdateCurriculumUnit(database *sql.DB, authorID, proposalID, unitID int64, name string) error {
 	name = strings.TrimSpace(name)
-	description = strings.TrimSpace(description)
 	if name == "" {
 		return ErrUnitNameRequired
-	}
-	if description == "" {
-		return ErrUnitDescriptionRequired
 	}
 	unit, err := db.GetUnit(database, unitID)
 	if err != nil {
@@ -125,10 +122,35 @@ func UpdateCurriculumUnit(database *sql.DB, authorID, proposalID, unitID int64, 
 		return ErrUnitNotFound
 	}
 	change := &models.CurriculumProposalChange{
-		Kind: "update_unit", UnitID: unitID, UnitName: name, UnitDescription: description,
-		PreviousUnitName: unit.Name, PreviousUnitDescription: unit.Description,
+		Kind: "update_unit", UnitID: unitID, UnitName: name,
+		PreviousUnitName: unit.Name,
 	}
-	return addProposalChange(database, authorID, proposalID, change)
+	if name == unit.Name {
+		change = nil
+	}
+	return replaceUnitProposalChange(database, authorID, proposalID, unitID, "update_unit", change)
+}
+
+func UpdateCurriculumUnitContent(database *sql.DB, authorID, proposalID, unitID int64, content string) error {
+	content = strings.TrimSpace(content)
+	if content == "" {
+		return ErrUnitContentRequired
+	}
+	unit, err := db.GetUnit(database, unitID)
+	if err != nil {
+		return err
+	}
+	if unit == nil {
+		return ErrUnitNotFound
+	}
+	var change *models.CurriculumProposalChange
+	if content != unit.Content {
+		change = &models.CurriculumProposalChange{
+			Kind: "update_content", UnitID: unitID,
+			UnitContent: content, PreviousUnitContent: unit.Content,
+		}
+	}
+	return replaceUnitProposalChange(database, authorID, proposalID, unitID, "update_content", change)
 }
 
 func DeleteCurriculumUnit(database *sql.DB, authorID, proposalID, unitID int64) error {
@@ -140,7 +162,8 @@ func DeleteCurriculumUnit(database *sql.DB, authorID, proposalID, unitID int64) 
 		return ErrUnitNotFound
 	}
 	change := &models.CurriculumProposalChange{
-		Kind: "delete_unit", UnitID: unitID, UnitName: unit.Name, UnitDescription: unit.Description,
+		Kind: "delete_unit", UnitID: unitID, UnitName: unit.Name,
+		UnitContent: unit.Content,
 	}
 	return addProposalChange(database, authorID, proposalID, change)
 }
@@ -280,7 +303,8 @@ func RevertCurriculumProposal(database *sql.DB, authorID, proposalID int64) erro
 			change.Kind = "create_unit"
 		case "update_unit":
 			change.UnitName, change.PreviousUnitName = change.PreviousUnitName, change.UnitName
-			change.UnitDescription, change.PreviousUnitDescription = change.PreviousUnitDescription, change.UnitDescription
+		case "update_content":
+			change.UnitContent, change.PreviousUnitContent = change.PreviousUnitContent, change.UnitContent
 		case "add_dependency":
 			change.Kind = "remove_dependency"
 		case "remove_dependency":
@@ -331,6 +355,33 @@ func addProposalChange(database *sql.DB, authorID, proposalID int64, change *mod
 			return ErrProposalNotFound
 		}
 		return err
+	}
+	return nil
+}
+
+func replaceUnitProposalChange(database *sql.DB, authorID, proposalID, unitID int64, kind string, change *models.CurriculumProposalChange) error {
+	tx, err := beginCurriculumProposal(database)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	authorized, err := db.DeleteDraftCurriculumProposalUnitChanges(tx, proposalID, authorID, unitID, kind)
+	if err != nil {
+		return err
+	}
+	if !authorized {
+		return ErrProposalNotFound
+	}
+	if change != nil {
+		if err := db.AddDraftCurriculumProposalChange(tx, proposalID, authorID, change); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return ErrProposalNotFound
+			}
+			return err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit curriculum unit proposal change: %w", err)
 	}
 	return nil
 }
