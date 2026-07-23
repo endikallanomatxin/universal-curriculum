@@ -337,7 +337,6 @@ a.learning-path-card {
   --curriculum-content-gap: 2px;
   --curriculum-boundary-gutter: 0px;
   --curriculum-lane-spacing: 14px;
-  --curriculum-node-lane-offset: 0;
   border-bottom: 1px solid color-mix(in srgb, var(--color-ink) 14%, transparent);
   border-top: 1px solid color-mix(in srgb, var(--color-ink) 14%, transparent);
   container: curriculum-graph / inline-size;
@@ -428,7 +427,7 @@ a.learning-path-card {
   grid-row: 1;
   height: 0.75rem;
   justify-self: end;
-  margin-right: calc(var(--curriculum-content-gap) + var(--curriculum-boundary-gutter) + (var(--curriculum-node-lane) + var(--curriculum-node-lane-offset)) * var(--curriculum-lane-spacing));
+  margin-right: calc(var(--curriculum-content-gap) + var(--curriculum-boundary-gutter) + var(--curriculum-node-lane) * var(--curriculum-lane-spacing));
   width: 0.75rem;
   z-index: 4;
 }

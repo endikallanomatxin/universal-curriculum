@@ -214,6 +214,32 @@ func TestRestorableControllersDoNotSerializeInitializationState(t *testing.T) {
 	}
 }
 
+func TestCurriculumGraphRendersStraightNodeToNodeEdges(t *testing.T) {
+	controller, err := os.ReadFile("../../web/static/js/curriculum_graph.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(controller)
+	for _, contract := range []string{
+		`function edgePath(source, target)`,
+		`" L " + target.x + " " + targetY`,
+		`path.setAttribute("d", edgePath(source, target))`,
+	} {
+		if !strings.Contains(source, contract) {
+			t.Errorf("curriculum graph is missing straight-edge contract %q", contract)
+		}
+	}
+	for _, routedEdgeDetail := range []string{
+		`edge.dataset.lane`,
+		`latestSafeBranchY`,
+		`chamferedPath`,
+	} {
+		if strings.Contains(source, routedEdgeDetail) {
+			t.Errorf("curriculum graph still contains routed-edge detail %q", routedEdgeDetail)
+		}
+	}
+}
+
 func TestNavigationCounterpartsHaveSharedTransitions(t *testing.T) {
 	stylesheet, err := os.ReadFile("../../web/static/css/shell.css")
 	if err != nil {

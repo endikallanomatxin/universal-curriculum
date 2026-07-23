@@ -62,8 +62,7 @@
 {{ define "curriculum-graph" -}}
 <div class="curriculum-graph"
      data-curriculum-graph
-     data-focused-unit-id="{{ range .Nodes }}{{ if .IsCurrent }}{{ .ID }}{{ end }}{{ end }}"
-     data-lane-count="{{ .Layout.LaneCount }}">
+     data-focused-unit-id="{{ range .Nodes }}{{ if .IsCurrent }}{{ .ID }}{{ end }}{{ end }}">
   <p class="visually-hidden" id="{{ .IDPrefix }}-description">{{ .Description }}</p>
   <div class="curriculum-graph__layout" aria-describedby="{{ .IDPrefix }}-description">
     <svg class="curriculum-graph__svg" aria-hidden="true">
@@ -118,7 +117,7 @@
       {{ end }}
     </ol>
     <div hidden>
-      {{ range .Layout.Edges }}<span data-curriculum-edge data-prerequisite-id="{{ .PrerequisiteID }}" data-dependent-id="{{ .DependentID }}" data-lane="{{ .Lane }}"></span>{{ end }}
+      {{ range .Layout.Edges }}<span data-curriculum-edge data-prerequisite-id="{{ .PrerequisiteID }}" data-dependent-id="{{ .DependentID }}"></span>{{ end }}
       {{ range .Layout.Boundaries }}<span data-curriculum-boundary data-unit-id="{{ .UnitID }}" data-direction="{{ .Direction }}" data-count="{{ .Count }}"></span>{{ end }}
     </div>
   </div>
