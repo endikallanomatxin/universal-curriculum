@@ -3,10 +3,10 @@
 <html lang="en">
 <head>{{ template "document-head" "Curriculum modification · Universal Curriculum" }}</head>
 <body>
-  <div class="app-shell" id="app-shell">
+  <div class="app-shell" id="app-shell" data-panel-group>
     {{ template "primary-navigation" . }}
-    <main class="pane-stack" id="workspace" data-shell-view="detail" data-document-title="Curriculum modification · Universal Curriculum">
-      <section class="ui-pane ui-pane--wide" aria-labelledby="curriculum-title">
+    <main class="pane-stack" id="workspace" data-shell-view="detail" data-document-title="Curriculum modification · Universal Curriculum" data-layout-panel data-panel-modes="mobile:20 content:34 wide:46" data-panel-required-mode="content" data-panel-fill data-panel-group>
+      <section class="ui-pane ui-pane--wide" aria-labelledby="curriculum-title" data-layout-panel data-panel-modes="breadcrumb:4 mobile:20 content:34 wide:46" data-panel-required-mode="mobile" data-panel-fill>
         <div class="ui-pane__inner curriculum-editor" id="curriculum-editor">
           <header class="curriculum-editor__header">
             <div>
@@ -119,7 +119,7 @@
         </div>
       </section>
 
-      <section class="ui-pane ui-pane--form" id="new-unit-panel" data-nested-panel hidden aria-labelledby="create-unit-title">
+      <section class="ui-pane ui-pane--form" id="new-unit-panel" data-nested-panel data-layout-panel data-panel-modes="compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-max="34" hidden aria-labelledby="create-unit-title">
         <div class="ui-pane__inner nested-panel">
           <header class="nested-panel__header">
             <div>
@@ -142,7 +142,7 @@
         </div>
       </section>
 
-      <section class="ui-pane ui-pane--form" id="new-dependency-panel" data-nested-panel hidden aria-labelledby="create-dependency-title">
+      <section class="ui-pane ui-pane--form" id="new-dependency-panel" data-nested-panel data-layout-panel data-panel-modes="compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-max="34" hidden aria-labelledby="create-dependency-title">
         <div class="ui-pane__inner nested-panel">
           <header class="nested-panel__header">
             <div>

@@ -32,7 +32,13 @@
 {{ define "shell-link-attributes" }}hx-get="{{ . }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true"{{ end }}
 
 {{ define "primary-navigation" -}}
-<aside class="primary-navigation">
+<aside class="primary-navigation"
+       data-layout-panel
+       data-panel-modes="mobile:0 icons:5 sidebar:17">
+  <button class="mobile-menu-toggle" type="button" data-mobile-menu-toggle aria-expanded="false" aria-label="Open menu">
+    <span class="mobile-menu-toggle__line" aria-hidden="true"></span>
+    <span class="mobile-menu-toggle__line" aria-hidden="true"></span>
+  </button>
   <div class="primary-navigation__inner">
     <a class="brand" href="/" {{ template "shell-link-attributes" "/" }}>
       <span>Universal Curriculum</span>
@@ -92,6 +98,7 @@
 
 {{ define "shell-scripts" -}}
   <script src="/static/js/htmx.min.js" defer></script>
+  <script src="/static/js/panel_layout.js" defer></script>
   <script src="/static/js/shell.js" defer></script>
   <script src="/static/js/autoresize.js" defer></script>
   <script src="/static/js/panels.js" defer></script>

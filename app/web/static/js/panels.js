@@ -21,13 +21,19 @@
             option.disabled = option.value === trigger.dataset.dependentId || existingPrerequisites.includes(option.value);
           });
         }
+        panel.classList.add("is-opening");
         panel.hidden = false;
         trigger.setAttribute("aria-expanded", "true");
+        if (window.panelLayout) window.panelLayout.refresh();
+        panel.getBoundingClientRect();
         window.requestAnimationFrame(function () {
+          panel.classList.remove("is-opening");
           if (window.autoResizeTextareas) window.autoResizeTextareas(panel);
-          panel.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "end" });
           const firstField = panel.querySelector("form input:not([type=hidden]), form select, form textarea, form button");
           if (firstField) firstField.focus({ preventScroll: true });
+          window.setTimeout(function () {
+            panel.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "end" });
+          }, 260);
         });
       });
     });
@@ -39,15 +45,18 @@
       close.addEventListener("click", function () {
         const trigger = panel.activeTrigger || document.querySelector('[data-open-panel="' + panel.id + '"]');
         panel.classList.add("is-closing");
+        if (window.panelLayout) window.panelLayout.refresh();
         if (trigger) {
           trigger.setAttribute("aria-expanded", "false");
-          trigger.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "end" });
-          trigger.focus({ preventScroll: true });
         }
         panel.closeTimer = window.setTimeout(function () {
           panel.hidden = true;
           panel.classList.remove("is-closing");
-        }, 420);
+          if (trigger) {
+            trigger.scrollIntoView({ behavior: "auto", block: "nearest", inline: "end" });
+            trigger.focus({ preventScroll: true });
+          }
+        }, 280);
       });
     });
   }

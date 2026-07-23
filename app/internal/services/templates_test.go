@@ -48,7 +48,7 @@ func TestApplicationShellTemplates(t *testing.T) {
 				CurrentSection string
 				Home           bool
 			}{User: user, CurrentSection: "account"},
-			contains: []string{`class="app-shell"`, `class="pane-stack"`, `hx-target="#workspace"`, `hx-swap="outerHTML transition:true"`, `>person</span>`},
+			contains: []string{`data-panel-group`, `data-panel-modes="mobile:0 icons:5 sidebar:17"`, `data-mobile-menu-toggle`, `data-panel-fill`, `class="pane-stack"`, `hx-target="#workspace"`, `hx-swap="outerHTML transition:true"`, `>person</span>`},
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {

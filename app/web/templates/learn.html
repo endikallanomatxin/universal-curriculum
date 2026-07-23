@@ -3,10 +3,10 @@
 <html lang="en">
 <head>{{ template "document-head" "Learn · Universal Curriculum" }}</head>
 <body>
-  <div class="app-shell" id="app-shell">
+  <div class="app-shell" id="app-shell" data-panel-group>
     {{ template "primary-navigation" . }}
-    <main class="pane-stack" id="workspace" data-shell-view="detail" data-document-title="Learn · Universal Curriculum">
-      <section class="ui-pane ui-pane--wide" aria-labelledby="learn-title">
+    <main class="pane-stack" id="workspace" data-shell-view="detail" data-document-title="Learn · Universal Curriculum" data-layout-panel data-panel-modes="mobile:20 content:30 wide:42" data-panel-required-mode="content" data-panel-fill data-panel-group>
+      <section class="ui-pane ui-pane--wide" aria-labelledby="learn-title" data-layout-panel data-panel-modes="breadcrumb:4 mobile:20 content:30 wide:42" data-panel-required-mode="mobile" data-panel-fill>
         <div class="ui-pane__inner learn-view">
           <p class="ui-pane__eyebrow">Curriculum</p>
           <div class="learn-heading">
