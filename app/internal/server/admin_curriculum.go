@@ -121,7 +121,7 @@ func (server *Server) createUnitDependency(writer http.ResponseWriter, request *
 		server.renderCurriculumMutationError(writer, request, err)
 		return
 	}
-	redirectToProposal(writer, request, proposalID)
+	redirectToProposalPanel(writer, request, proposalID, "edit_dependencies", unitID)
 }
 
 func (server *Server) deleteUnitDependency(writer http.ResponseWriter, request *http.Request) {
@@ -144,7 +144,7 @@ func (server *Server) deleteUnitDependency(writer http.ResponseWriter, request *
 		server.renderCurriculumMutationError(writer, request, err)
 		return
 	}
-	redirectToProposal(writer, request, proposalID)
+	redirectToProposalPanel(writer, request, proposalID, "edit_dependencies", unitID)
 }
 
 func (server *Server) createCurriculumProposal(writer http.ResponseWriter, request *http.Request) {
@@ -358,11 +358,61 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 		Error:          message,
 	}
 	data.Units = curriculumUnitViews(graph, layout)
+	applyProposedDependencies(data.Units, activeProposal)
 	server.renderStatus(writer, status, "admin-curriculum.html", data)
 }
 
 func redirectToProposal(writer http.ResponseWriter, request *http.Request, proposalID int64) {
 	http.Redirect(writer, request, "/admin/curriculum?proposal="+strconv.FormatInt(proposalID, 10), http.StatusSeeOther)
+}
+
+func redirectToProposalPanel(writer http.ResponseWriter, request *http.Request, proposalID int64, panel string, subjectID int64) {
+	target := "/admin/curriculum?proposal=" + strconv.FormatInt(proposalID, 10) +
+		"&" + panel + "=" + strconv.FormatInt(subjectID, 10)
+	http.Redirect(writer, request, target, http.StatusSeeOther)
+}
+
+func applyProposedDependencies(views []curriculumUnitView, proposal *models.CurriculumProposal) {
+	if proposal == nil {
+		return
+	}
+	byID := make(map[int64]*curriculumUnitView, len(views))
+	units := make(map[int64]models.Unit, len(views))
+	for index := range views {
+		byID[views[index].ID] = &views[index]
+		units[views[index].ID] = views[index].Unit
+	}
+	for _, change := range proposal.Changes {
+		if change.PrerequisiteID == nil {
+			continue
+		}
+		view := byID[change.UnitID]
+		prerequisite, exists := units[*change.PrerequisiteID]
+		if view == nil || !exists {
+			continue
+		}
+		switch change.Kind {
+		case "add_dependency":
+			alreadyPresent := false
+			for _, current := range view.Prerequisites {
+				if current.ID == prerequisite.ID {
+					alreadyPresent = true
+					break
+				}
+			}
+			if !alreadyPresent {
+				view.Prerequisites = append(view.Prerequisites, prerequisite)
+			}
+		case "remove_dependency":
+			filtered := view.Prerequisites[:0]
+			for _, current := range view.Prerequisites {
+				if current.ID != prerequisite.ID {
+					filtered = append(filtered, current)
+				}
+			}
+			view.Prerequisites = filtered
+		}
+	}
 }
 
 func curriculumUnitViews(graph *models.CurriculumGraph, layout *models.CurriculumGraphLayout) []curriculumUnitView {

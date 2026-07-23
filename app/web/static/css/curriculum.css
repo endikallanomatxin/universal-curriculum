@@ -160,6 +160,102 @@
   color: var(--color-danger);
 }
 
+.unit-search {
+  position: relative;
+}
+
+.unit-search__icon {
+  color: var(--color-muted);
+  font-size: 1.15rem;
+  left: 0.75rem;
+  pointer-events: none;
+  position: absolute;
+  top: 0.72rem;
+  z-index: 1;
+}
+
+.editor-form .unit-search input[type="search"] {
+  padding-inline-start: 2.5rem;
+  width: 100%;
+}
+
+.unit-search__results {
+  border: 1px solid color-mix(in srgb, var(--color-ink) 14%, transparent);
+  border-radius: 0.35rem;
+  display: grid;
+  margin-top: var(--space-1);
+  max-height: 18rem;
+  overflow-y: auto;
+}
+
+.unit-search__results[hidden] {
+  display: none;
+}
+
+.unit-search__results button {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.7rem 0.8rem;
+  text-align: left;
+}
+
+.unit-search__results button + button {
+  border-top: 1px solid color-mix(in srgb, var(--color-ink) 8%, transparent);
+}
+
+.unit-search__results button:hover,
+.unit-search__results button:focus-visible {
+  background: color-mix(in srgb, var(--color-surface) 65%, transparent);
+}
+
+.dependency-editor {
+  border-bottom: 1px solid color-mix(in srgb, var(--color-ink) 12%, transparent);
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-4);
+}
+
+.dependency-editor__current {
+  display: grid;
+}
+
+.dependency-editor__row {
+  align-items: center;
+  border-top: 1px solid color-mix(in srgb, var(--color-ink) 8%, transparent);
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+  padding: var(--space-2) 0;
+}
+
+.dependency-editor__row > div {
+  display: grid;
+  min-width: 0;
+}
+
+.dependency-editor__row span {
+  color: var(--color-muted);
+  font-size: 0.76rem;
+}
+
+.unit-search__results button.is-filtered {
+  display: none;
+}
+
+.unit-search__results span,
+.unit-search__empty {
+  color: var(--color-muted);
+  font-size: 0.76rem;
+}
+
+.unit-search__empty {
+  margin: 0;
+  padding: var(--space-3);
+}
+
 .proposal-change-list {
   background: color-mix(in srgb, var(--color-surface) 65%, transparent);
   border-radius: var(--radius-control);

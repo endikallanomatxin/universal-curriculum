@@ -128,9 +128,9 @@
                               </button>
                             {{ end }}
                             {{ if $.ActiveProposal }}
-                              <button class="unit-action" type="button" data-open-panel="new-dependency-panel" data-dependent-id="{{ .ID }}" data-dependent-name="{{ .Name }}" data-prerequisite-ids="{{ range .Prerequisites }}{{ .ID }},{{ end }}" aria-controls="new-dependency-panel" aria-expanded="false">
-                                <span class="material-symbols-rounded" aria-hidden="true">add</span>
-                                Propose prerequisite
+                              <button class="unit-action" type="button" data-open-panel="edit-dependencies-panel" data-dependent-id="{{ .ID }}" data-dependent-name="{{ .Name }}" data-prerequisite-ids="{{ range .Prerequisites }}{{ .ID }},{{ end }}" aria-controls="edit-dependencies-panel" aria-expanded="false">
+                                <span class="material-symbols-rounded" aria-hidden="true">conversion_path</span>
+                                Edit dependencies
                               </button>
                             {{ end }}
                             {{ if $.ActiveProposal }}<form action="/admin/curriculum/units/{{ .ID }}/delete" method="post" onsubmit="return confirm('Add deletion of {{ .Name }} to this proposal?')">
@@ -143,29 +143,6 @@
                           </div>
                         </header>
 
-                        {{ if and $.ActiveProposal .Prerequisites }}
-                          <dl class="unit-relations">
-                            <div class="unit-relations__group">
-                              <dt>Requires</dt>
-                              <dd>
-                                {{ range .Prerequisites }}
-                                  <form class="relation-chip" action="/admin/curriculum/dependencies/delete" method="post">
-                                    <input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}">
-                                    <input type="hidden" name="unit_id" value="{{ $unit.ID }}">
-                                    <input type="hidden" name="prerequisite_id" value="{{ .ID }}">
-                                    {{ if $.ActiveProposal }}<input type="hidden" name="proposal_id" value="{{ $.ActiveProposal.ID }}">{{ end }}
-                                    <span>{{ .Name }}</span>
-                                    {{ if $.ActiveProposal }}
-                                      <button type="submit" aria-label="Propose removing {{ .Name }} as a prerequisite of {{ $unit.Name }}">
-                                        <span class="material-symbols-rounded" aria-hidden="true">close</span>
-                                      </button>
-                                    {{ end }}
-                                  </form>
-                                {{ end }}
-                              </dd>
-                            </div>
-                          </dl>
-                        {{ end }}
                       </article>
                     </li>
                   {{ end }}
@@ -342,28 +319,52 @@
         </section>
       {{ end }}
 
-      <section class="ui-pane ui-pane--form" id="new-dependency-panel" data-nested-panel data-layout-panel data-panel-modes="compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-max="34" hidden aria-labelledby="create-dependency-title">
+      <section class="ui-pane ui-pane--form" id="edit-dependencies-panel" data-nested-panel data-layout-panel data-panel-modes="compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-max="34" hidden aria-labelledby="edit-dependencies-title">
         <div class="ui-pane__inner nested-panel">
           <header class="nested-panel__header">
             <div>
-              <p class="ui-pane__eyebrow">Add prerequisite to</p>
-              <h1 id="create-dependency-title" data-dependent-name>Unit</h1>
+              <p class="ui-pane__eyebrow">Edit dependencies</p>
+              <h1 id="edit-dependencies-title" data-dependent-name>Unit</h1>
             </div>
-            <button class="icon-button nested-panel__close" type="button" data-close-panel aria-label="Close dependency panel">
+            <button class="icon-button nested-panel__close" type="button" data-close-panel aria-label="Close dependencies panel">
               <span class="material-symbols-rounded" aria-hidden="true">close</span>
             </button>
           </header>
-          <p class="nested-panel__introduction">Add the prerequisite to the selected draft. It will remain isolated until the proposal is published.</p>
+          <p class="nested-panel__introduction">Changes are added directly to the working proposal and remain isolated until it is published.</p>
+          <section class="dependency-editor" aria-labelledby="current-dependencies-title">
+            <div class="section-heading">
+              <div>
+                <p class="section-heading__eyebrow">Current selection</p>
+                <h2 id="current-dependencies-title">Requires</h2>
+              </div>
+            </div>
+            <div class="dependency-editor__current" data-current-dependencies></div>
+          </section>
           <form class="editor-form editor-form--panel" action="/admin/curriculum/dependencies" method="post">
             <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
             {{ if .ActiveProposal }}<input type="hidden" name="proposal_id" value="{{ .ActiveProposal.ID }}">{{ end }}
             <input type="hidden" name="unit_id" value="" data-dependent-input>
-            <label for="prerequisite-unit">Prerequisite</label>
-            <select id="prerequisite-unit" name="prerequisite_id" required>
-              <option value="">Select a prerequisite</option>
-              {{ range .Units }}<option value="{{ .ID }}">{{ .Name }}</option>{{ end }}
-            </select>
-            <button class="primary-button" type="submit" {{ if not .ActiveProposal }}disabled{{ end }}>Add to proposal</button>
+            <input type="hidden" name="prerequisite_id" value="" data-prerequisite-input>
+            <label for="prerequisite-unit-search">Add prerequisite</label>
+            <div class="unit-search" data-unit-search>
+              <span class="material-symbols-rounded unit-search__icon" aria-hidden="true">search</span>
+              <input id="prerequisite-unit-search" type="search" autocomplete="off" placeholder="Search units" data-unit-search-input aria-controls="prerequisite-unit-results" aria-expanded="false">
+              <div class="unit-search__results" id="prerequisite-unit-results" data-unit-search-results hidden>
+                {{ range .Units }}
+                  <button type="button" data-unit-search-option data-unit-id="{{ .ID }}" data-unit-name="{{ .Name }}" data-unit-description="{{ .Description }}">
+                    <strong>{{ .Name }}</strong>
+                    <span>{{ .Description }}</span>
+                  </button>
+                {{ end }}
+                <p class="unit-search__empty" data-unit-search-empty hidden>No matching units.</p>
+              </div>
+            </div>
+          </form>
+          <form action="/admin/curriculum/dependencies/delete" method="post" data-remove-dependency-form>
+            <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+            {{ if .ActiveProposal }}<input type="hidden" name="proposal_id" value="{{ .ActiveProposal.ID }}">{{ end }}
+            <input type="hidden" name="unit_id" value="" data-remove-dependent-input>
+            <input type="hidden" name="prerequisite_id" value="" data-remove-prerequisite-input>
           </form>
         </div>
       </section>

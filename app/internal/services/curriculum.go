@@ -172,6 +172,10 @@ func AddUnitDependency(database *sql.DB, authorID, proposalID, unitID, prerequis
 	if err != nil {
 		return err
 	}
+	exists, err = proposedDependencyExists(database, authorID, proposalID, unitID, prerequisiteID, exists)
+	if err != nil {
+		return err
+	}
 	if exists {
 		return ErrDependencyExists
 	}
@@ -183,6 +187,10 @@ func AddUnitDependency(database *sql.DB, authorID, proposalID, unitID, prerequis
 
 func RemoveUnitDependency(database *sql.DB, authorID, proposalID, unitID, prerequisiteID int64) error {
 	exists, err := db.DependencyExists(database, unitID, prerequisiteID)
+	if err != nil {
+		return err
+	}
+	exists, err = proposedDependencyExists(database, authorID, proposalID, unitID, prerequisiteID, exists)
 	if err != nil {
 		return err
 	}
@@ -325,6 +333,29 @@ func addProposalChange(database *sql.DB, authorID, proposalID int64, change *mod
 		return err
 	}
 	return nil
+}
+
+func proposedDependencyExists(database *sql.DB, authorID, proposalID, unitID, prerequisiteID int64, published bool) (bool, error) {
+	proposal, err := db.GetCurriculumProposal(database, proposalID)
+	if err != nil {
+		return false, err
+	}
+	if proposal == nil || proposal.Status != "draft" || proposal.AuthorID == nil || *proposal.AuthorID != authorID {
+		return false, ErrProposalNotFound
+	}
+	exists := published
+	for _, change := range proposal.Changes {
+		if change.UnitID != unitID || change.PrerequisiteID == nil || *change.PrerequisiteID != prerequisiteID {
+			continue
+		}
+		switch change.Kind {
+		case "add_dependency":
+			exists = true
+		case "remove_dependency":
+			exists = false
+		}
+	}
+	return exists, nil
 }
 
 func beginCurriculumProposal(database *sql.DB) (*sql.Tx, error) {

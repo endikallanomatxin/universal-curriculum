@@ -75,6 +75,12 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if err := AddUnitDependency(database, authorID, proposal.ID, algebra.ID, foundations.ID); err != nil {
 		t.Fatal(err)
 	}
+	if err := RemoveUnitDependency(database, authorID, proposal.ID, algebra.ID, foundations.ID); err != nil {
+		t.Fatalf("remove dependency staged in the same proposal: %v", err)
+	}
+	if err := AddUnitDependency(database, authorID, proposal.ID, algebra.ID, foundations.ID); err != nil {
+		t.Fatalf("restore dependency staged in the same proposal: %v", err)
+	}
 	if err := UpdateCurriculumUnit(database, authorID, proposal.ID, algebra.ID, "Introductory algebra", "Variables and equations"); err != nil {
 		t.Fatal(err)
 	}
