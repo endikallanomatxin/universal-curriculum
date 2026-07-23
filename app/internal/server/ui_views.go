@@ -1,14 +1,18 @@
 package server
 
 import (
+	"strconv"
+	"strings"
+
 	"universal-curriculum/internal/models"
 )
 
 type curriculumGraphNodeView struct {
 	models.CurriculumGraphNode
-	URL       string
-	IsCurrent bool
-	IsTarget  bool
+	NavigateURL string
+	ContentURL  string
+	IsCurrent   bool
+	IsTarget    bool
 }
 
 type curriculumGraphView struct {
@@ -30,13 +34,33 @@ type unitNavigationSearchView struct {
 	Options     []unitNavigationOptionView
 }
 
+func curriculumUnitURLs(
+	unitURL func(int64) string,
+	contentOpen bool,
+) (navigateURL func(int64) string, contentURL func(int64) string) {
+	contentURL = func(unitID int64) string {
+		target := unitURL(unitID)
+		separator := "?"
+		if strings.Contains(target, "?") {
+			separator = "&"
+		}
+		return target + separator + "content=" + strconv.FormatInt(unitID, 10)
+	}
+	navigateURL = unitURL
+	if contentOpen {
+		navigateURL = contentURL
+	}
+	return navigateURL, contentURL
+}
+
 func newCurriculumGraphView(
 	idPrefix string,
 	description string,
 	layout *models.CurriculumGraphLayout,
 	focusedUnit *models.Unit,
 	targetUnitIDs map[int64]bool,
-	unitURL func(int64) string,
+	navigateURL func(int64) string,
+	contentURL func(int64) string,
 ) curriculumGraphView {
 	view := curriculumGraphView{IDPrefix: idPrefix, Description: description, Layout: layout}
 	if layout == nil {
@@ -50,7 +74,8 @@ func newCurriculumGraphView(
 	for _, node := range layout.Nodes {
 		view.Nodes = append(view.Nodes, curriculumGraphNodeView{
 			CurriculumGraphNode: node,
-			URL:                 unitURL(node.ID),
+			NavigateURL:         navigateURL(node.ID),
+			ContentURL:          contentURL(node.ID),
 			IsCurrent:           node.ID == currentID,
 			IsTarget:            targetUnitIDs[node.ID],
 		})

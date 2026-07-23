@@ -93,8 +93,8 @@
             style="--curriculum-node-lane:{{ .Lane }}; view-transition-name:curriculum-unit-{{ .ID }};">
           <span class="curriculum-graph__anchor" data-curriculum-anchor aria-hidden="true"></span>
           <a class="curriculum-graph__row"
-             href="{{ .URL }}"
-             hx-get="{{ .URL }}"
+             href="{{ .NavigateURL }}"
+             hx-get="{{ .NavigateURL }}"
              hx-target="#workspace"
              hx-select="#workspace"
              hx-swap="outerHTML transition:true"
@@ -102,6 +102,17 @@
              {{ if .IsCurrent }}aria-current="page"{{ end }}>
             <span class="curriculum-graph__name">{{ .Name }}</span>
             {{ if .IsTarget }}<span class="curriculum-graph__target-label">Path target</span>{{ end }}
+          </a>
+          <a class="curriculum-graph__content"
+             href="{{ .ContentURL }}"
+             hx-get="{{ .ContentURL }}"
+             hx-target="#workspace"
+             hx-select="#workspace"
+             hx-swap="outerHTML transition:true"
+             hx-push-url="true"
+             aria-label="Open content for {{ .Name }}"
+             title="Open content">
+            <span class="material-symbols-rounded" aria-hidden="true">article</span>
           </a>
         </li>
       {{ end }}

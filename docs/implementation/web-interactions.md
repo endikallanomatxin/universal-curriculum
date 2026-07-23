@@ -85,8 +85,9 @@ empty state.
 
 Navigation search and picker search are distinct:
 
-- navigation loads the selected unit's neighbourhood and content and updates
-  browser history;
+- navigation loads the selected unit's neighbourhood and updates browser
+  history; opening its content is a separate graph action, while an already
+  open viewer follows subsequent navigation;
 - selection changes a durable selected set without navigating away.
 
 Picker selection is stored outside the replaceable result list. Changing a

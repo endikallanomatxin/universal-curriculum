@@ -147,21 +147,23 @@ func (server *Server) learn(writer http.ResponseWriter, request *http.Request) {
 	}
 	unitURL := func(unitID int64) string {
 		value := strconv.FormatInt(unitID, 10)
-		return "/learn?path=" + pathQuery + "&unit=" + value + "&content=" + value
+		return "/learn?path=" + pathQuery + "&unit=" + value
 	}
+	navigateURL, contentURL := curriculumUnitURLs(unitURL, data.ContentUnit != nil)
 	data.GraphView = newCurriculumGraphView(
 		"learn-curriculum",
 		"Arrows go from each prerequisite to the units that depend on it. Hover or focus a unit to highlight its path.",
 		data.Graph,
 		data.FocusedUnit,
 		data.TargetUnitIDs,
-		unitURL,
+		navigateURL,
+		contentURL,
 	)
 	data.GraphSearch = newUnitNavigationSearchView(
 		"learn-graph-search-results",
 		"Find a unit in this graph",
 		data.NavigableUnits,
-		unitURL,
+		navigateURL,
 	)
 	server.render(writer, "learn.html", data)
 }
