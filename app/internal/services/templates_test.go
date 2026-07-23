@@ -3,6 +3,7 @@ package services
 import (
 	"bytes"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -38,7 +39,7 @@ func TestApplicationShellTemplates(t *testing.T) {
 				CurrentSection string
 				Home           bool
 			}{User: user, CurrentSection: "home", Home: true},
-			contains: []string{`id="app-shell"`, `class="app-shell app-shell--home"`, `>Learn</span>`, `>book_5</span>`, `>Account<`, `>Log out</span>`, `Material+Symbols+Rounded`},
+			contains: []string{`id="app-shell"`, `class="app-shell app-shell--home"`, `>Learn</span>`, `>book_5</span>`, `>Account<`, `>Log out</span>`, `Material+Symbols+Rounded`, `/static/css/base.css?v=`, `/static/js/shell.js?v=`},
 		},
 		{
 			name: "account.html",
@@ -68,6 +69,43 @@ func TestApplicationShellTemplates(t *testing.T) {
 				t.Error("account actions should not be duplicated in a navigation footer")
 			}
 		})
+	}
+}
+
+func TestStaticAssetVersionChangesWithContents(t *testing.T) {
+	root := t.TempDir()
+	if err := os.Mkdir(filepath.Join(root, "css"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	asset := filepath.Join(root, "css", "base.css")
+	if err := os.WriteFile(asset, []byte("body { color: black; }"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	first, err := staticAssetVersion(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	same, err := staticAssetVersion(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first != same {
+		t.Fatalf("asset version is not deterministic: %q != %q", first, same)
+	}
+	if len(first) != 12 {
+		t.Fatalf("asset version length = %d, want 12", len(first))
+	}
+
+	if err := os.WriteFile(asset, []byte("body { color: purple; }"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	changed, err := staticAssetVersion(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if changed == first {
+		t.Fatal("asset version did not change with asset contents")
 	}
 }
 

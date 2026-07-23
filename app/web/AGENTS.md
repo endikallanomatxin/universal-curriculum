@@ -18,3 +18,6 @@
   their parent, so outer context panels collapse before inner content does.
 - Keep shell navigation functional without HTMX; use enhanced swaps only for
   continuity and motion.
+- Reference CSS and JavaScript with the shared `assetVersion`; it is generated
+  from the contents of `web/static`, so asset changes invalidate browser caches
+  after an application restart.

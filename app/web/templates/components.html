@@ -6,11 +6,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded&display=block" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/base.css">
-  <link rel="stylesheet" href="/static/css/shell.css">
-  <link rel="stylesheet" href="/static/css/components.css">
-  <link rel="stylesheet" href="/static/css/curriculum.css">
-  <link rel="stylesheet" href="/static/css/learn.css">
+  <link rel="stylesheet" href="/static/css/base.css?v={{ assetVersion }}">
+  <link rel="stylesheet" href="/static/css/shell.css?v={{ assetVersion }}">
+  <link rel="stylesheet" href="/static/css/components.css?v={{ assetVersion }}">
+  <link rel="stylesheet" href="/static/css/curriculum.css?v={{ assetVersion }}">
+  <link rel="stylesheet" href="/static/css/learn.css?v={{ assetVersion }}">
 {{- end }}
 
 {{ define "icon-account" -}}
@@ -97,10 +97,10 @@
 {{- end }}
 
 {{ define "shell-scripts" -}}
-  <script src="/static/js/htmx.min.js" defer></script>
-  <script src="/static/js/panel_layout.js" defer></script>
-  <script src="/static/js/shell.js" defer></script>
-  <script src="/static/js/autoresize.js" defer></script>
-  <script src="/static/js/panels.js" defer></script>
-  <script src="/static/js/curriculum_graph.js" defer></script>
+  <script src="/static/js/htmx.min.js?v={{ assetVersion }}" defer></script>
+  <script src="/static/js/panel_layout.js?v={{ assetVersion }}" defer></script>
+  <script src="/static/js/shell.js?v={{ assetVersion }}" defer></script>
+  <script src="/static/js/autoresize.js?v={{ assetVersion }}" defer></script>
+  <script src="/static/js/panels.js?v={{ assetVersion }}" defer></script>
+  <script src="/static/js/curriculum_graph.js?v={{ assetVersion }}" defer></script>
 {{- end }}
