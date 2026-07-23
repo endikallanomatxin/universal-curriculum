@@ -109,6 +109,39 @@ func TestStaticAssetVersionChangesWithContents(t *testing.T) {
 	}
 }
 
+func TestSharedCurriculumUITemplatesAreRegistered(t *testing.T) {
+	workingDirectory, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir("../.."); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(workingDirectory) })
+
+	templates, err := LoadTemplates()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"curriculum-graph", "unit-navigation-search"} {
+		if templates.Lookup(name) == nil {
+			t.Errorf("shared UI template %q is not registered", name)
+		}
+	}
+}
+
+func TestPanelControllerDoesNotOwnCurriculumEditing(t *testing.T) {
+	controller, err := os.ReadFile("../../web/static/js/panels.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, domainDetail := range []string{"dependentId", "prerequisite", "/admin/curriculum"} {
+		if strings.Contains(string(controller), domainDetail) {
+			t.Errorf("generic panel controller contains domain detail %q", domainDetail)
+		}
+	}
+}
+
 func TestNavigationCounterpartsHaveSharedTransitions(t *testing.T) {
 	stylesheet, err := os.ReadFile("../../web/static/css/shell.css")
 	if err != nil {

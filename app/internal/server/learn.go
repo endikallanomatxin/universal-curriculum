@@ -15,6 +15,8 @@ import (
 type learnPageData struct {
 	userPageData
 	Graph             *models.CurriculumGraphLayout
+	GraphView         curriculumGraphView
+	GraphSearch       unitNavigationSearchView
 	FocusedUnit       *models.Unit
 	ContentUnit       *models.Unit
 	Paths             []models.LearningPath
@@ -139,6 +141,28 @@ func (server *Server) learn(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 	data.Graph.Boundaries = boundaries
+	pathQuery := "all"
+	if data.SelectedPath != nil {
+		pathQuery = strconv.FormatInt(data.SelectedPath.ID, 10)
+	}
+	unitURL := func(unitID int64) string {
+		value := strconv.FormatInt(unitID, 10)
+		return "/learn?path=" + pathQuery + "&unit=" + value + "&content=" + value
+	}
+	data.GraphView = newCurriculumGraphView(
+		"learn-curriculum",
+		"Arrows go from each prerequisite to the units that depend on it. Hover or focus a unit to highlight its path.",
+		data.Graph,
+		data.FocusedUnit,
+		data.TargetUnitIDs,
+		unitURL,
+	)
+	data.GraphSearch = newUnitNavigationSearchView(
+		"learn-graph-search-results",
+		"Find a unit in this graph",
+		data.NavigableUnits,
+		unitURL,
+	)
 	server.render(writer, "learn.html", data)
 }
 

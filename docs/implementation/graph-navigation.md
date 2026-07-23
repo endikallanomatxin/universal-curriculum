@@ -10,6 +10,11 @@ requests. The server uses the previous order and lanes as starting hints for
 the next layout, and stable view-transition names let shared nodes move between
 their old and new positions.
 
+Learn and Curriculum Modification render the same `curriculum-graph` and
+`unit-navigation-search` templates. Server view models prepare consumer-specific
+URLs, current state and optional path targets; the shared templates own the SVG
+markers, node and edge contract consumed by `curriculum_graph.js`.
+
 Edges that continue beyond the visible neighbourhood are represented by
 boundary arrows. Incoming boundaries connect to the left of a node and outgoing
 boundaries connect to its right; their labels report how many adjacent units

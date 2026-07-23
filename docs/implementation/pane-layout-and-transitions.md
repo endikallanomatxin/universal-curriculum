@@ -54,7 +54,10 @@ editors. Closing a right-hand pane restores the space to the remaining panes.
 
 `web/static/js/panels.js` owns this interaction. New panel interactions should
 reuse its declarative triggers and stable panel boundaries rather than adding
-page-specific show/hide code.
+page-specific show/hide code. It dispatches `panel:configure` before revealing
+a panel; domain controllers populate their editor through that event. The
+shared controller must not contain proposal, curriculum or learning-path
+configuration.
 
 ## Motion and continuity
 

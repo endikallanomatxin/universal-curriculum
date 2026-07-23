@@ -54,8 +54,8 @@ Current system-wide concepts include:
 
 - shell and negotiated panes;
 - right-hand panel opening, replacement and closing;
-- graph rendering, neighbourhood navigation and unit search;
-- search results and persistent multi-selection;
+- graph rendering, neighbourhood navigation and unit navigation search;
+- searchable unit picking and persistent selection;
 - rendered unit documents and inline source editing;
 - buttons, form controls and action hierarchy; and
 - HTMX workspace navigation with View Transitions.
@@ -92,7 +92,8 @@ Navigation search and picker search are distinct:
 Picker selection is stored outside the replaceable result list. Changing a
 query cannot silently deselect an existing choice. The prerequisite picker is
 the shared interaction precedent for dependency editing and learning-path
-targets.
+targets. Both use `unit_picker.js`; domain adapters decide whether selection is
+kept as form state or submitted immediately.
 
 ## Interaction quality
 

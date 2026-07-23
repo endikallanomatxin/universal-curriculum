@@ -33,6 +33,86 @@
 
 {{ define "shell-link-attributes" }}hx-get="{{ . }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true"{{ end }}
 
+{{ define "unit-navigation-search" -}}
+<div class="graph-search" data-graph-search>
+  <span class="material-symbols-rounded graph-search__icon" aria-hidden="true">search</span>
+  <input type="search"
+         placeholder="{{ .Placeholder }}"
+         autocomplete="off"
+         aria-label="{{ .Label }}"
+         aria-controls="{{ .ID }}"
+         aria-expanded="false"
+         data-graph-search-input>
+  <div class="graph-search__results" id="{{ .ID }}" data-graph-search-results hidden>
+    {{ range .Options }}
+      <a href="{{ .URL }}"
+         hx-get="{{ .URL }}"
+         hx-target="#workspace"
+         hx-select="#workspace"
+         hx-swap="outerHTML transition:true"
+         hx-push-url="true"
+         data-graph-search-option
+         data-unit-name="{{ .Name }}">{{ .Name }}</a>
+    {{ end }}
+    <p data-graph-search-empty hidden>No matching units</p>
+  </div>
+</div>
+{{- end }}
+
+{{ define "curriculum-graph" -}}
+<div class="curriculum-graph"
+     data-curriculum-graph
+     data-focused-unit-id="{{ range .Nodes }}{{ if .IsCurrent }}{{ .ID }}{{ end }}{{ end }}"
+     data-lane-count="{{ .Layout.LaneCount }}">
+  <p class="visually-hidden" id="{{ .IDPrefix }}-description">{{ .Description }}</p>
+  <div class="curriculum-graph__layout" aria-describedby="{{ .IDPrefix }}-description">
+    <svg class="curriculum-graph__svg" aria-hidden="true">
+      <defs>
+        <marker id="{{ .IDPrefix }}-arrow" viewBox="0 0 10 10" markerWidth="9" markerHeight="9" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+          <path class="curriculum-graph__arrow" d="M0,0 L10,5 L0,10 z"></path>
+        </marker>
+        <marker id="{{ .IDPrefix }}-arrow-highlighted" viewBox="0 0 10 10" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+          <path class="curriculum-graph__arrow curriculum-graph__arrow--highlighted" d="M0,0 L10,5 L0,10 z"></path>
+        </marker>
+        <marker id="{{ .IDPrefix }}-arrow-boundary" viewBox="0 0 10 10" markerWidth="8" markerHeight="8" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+          <path class="curriculum-graph__arrow curriculum-graph__arrow--boundary" d="M0,0 L10,5 L0,10 z"></path>
+        </marker>
+      </defs>
+      <g data-curriculum-graph-paths
+         data-arrow-marker="{{ .IDPrefix }}-arrow"
+         data-highlighted-arrow-marker="{{ .IDPrefix }}-arrow-highlighted"
+         data-boundary-arrow-marker="{{ .IDPrefix }}-arrow-boundary"></g>
+    </svg>
+    <ol class="curriculum-graph__list">
+      {{ range .Nodes }}
+        <li class="curriculum-graph__item {{ if .IsTarget }}is-path-target{{ end }}"
+            data-curriculum-node
+            data-unit-id="{{ .ID }}"
+            data-node-lane="{{ .Lane }}"
+            style="--curriculum-node-lane:{{ .Lane }}; view-transition-name:curriculum-unit-{{ .ID }};">
+          <span class="curriculum-graph__anchor" data-curriculum-anchor aria-hidden="true"></span>
+          <a class="curriculum-graph__row"
+             href="{{ .URL }}"
+             hx-get="{{ .URL }}"
+             hx-target="#workspace"
+             hx-select="#workspace"
+             hx-swap="outerHTML transition:true"
+             hx-push-url="true"
+             {{ if .IsCurrent }}aria-current="page"{{ end }}>
+            <span class="curriculum-graph__name">{{ .Name }}</span>
+            {{ if .IsTarget }}<span class="curriculum-graph__target-label">Path target</span>{{ end }}
+          </a>
+        </li>
+      {{ end }}
+    </ol>
+    <div hidden>
+      {{ range .Layout.Edges }}<span data-curriculum-edge data-prerequisite-id="{{ .PrerequisiteID }}" data-dependent-id="{{ .DependentID }}" data-lane="{{ .Lane }}"></span>{{ end }}
+      {{ range .Layout.Boundaries }}<span data-curriculum-boundary data-unit-id="{{ .UnitID }}" data-direction="{{ .Direction }}" data-count="{{ .Count }}"></span>{{ end }}
+    </div>
+  </div>
+</div>
+{{- end }}
+
 {{ define "primary-navigation" -}}
 <aside class="primary-navigation"
        data-layout-panel
@@ -105,6 +185,9 @@
   <script src="/static/js/shell.js?v={{ assetVersion }}" defer></script>
   <script src="/static/js/autoresize.js?v={{ assetVersion }}" defer></script>
   <script src="/static/js/panels.js?v={{ assetVersion }}" defer></script>
+  <script src="/static/js/inline_editing.js?v={{ assetVersion }}" defer></script>
+  <script src="/static/js/unit_picker.js?v={{ assetVersion }}" defer></script>
+  <script src="/static/js/curriculum_editor.js?v={{ assetVersion }}" defer></script>
   <script src="/static/js/learning_paths.js?v={{ assetVersion }}" defer></script>
   <script src="/static/js/curriculum_graph.js?v={{ assetVersion }}" defer></script>
   <script src="/static/vendor/katex/katex.min.js?v={{ assetVersion }}" defer></script>

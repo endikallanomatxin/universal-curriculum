@@ -24,6 +24,8 @@ type adminCurriculumPageData struct {
 	Units          []curriculumUnitView
 	Dependencies   []models.UnitDependency
 	Graph          *models.CurriculumGraphLayout
+	GraphView      curriculumGraphView
+	GraphSearch    unitNavigationSearchView
 	FocusedUnit    *models.Unit
 	ContentUnit    *curriculumUnitView
 	Proposals      []models.CurriculumProposal
@@ -407,6 +409,27 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 	}
 	data.Units = curriculumUnitViews(graph, layout)
 	applyProposedDependencies(data.Units, activeProposal)
+	unitURL := func(unitID int64) string {
+		target := "/admin/curriculum?"
+		if activeProposal != nil {
+			target += "proposal=" + strconv.FormatInt(activeProposal.ID, 10) + "&"
+		}
+		return target + "unit=" + strconv.FormatInt(unitID, 10) + "&content=" + strconv.FormatInt(unitID, 10)
+	}
+	data.GraphView = newCurriculumGraphView(
+		"admin-curriculum",
+		"Arrows go from each prerequisite to the units that depend on it. Select a unit to navigate and read its content.",
+		layout,
+		focusedUnit,
+		nil,
+		unitURL,
+	)
+	data.GraphSearch = newUnitNavigationSearchView(
+		"admin-graph-search-results",
+		"Find a unit in the curriculum",
+		graph.Units,
+		unitURL,
+	)
 	if contentValue := request.URL.Query().Get("content"); contentValue != "" {
 		contentID, parseErr := parsePositiveID(contentValue)
 		if parseErr != nil {

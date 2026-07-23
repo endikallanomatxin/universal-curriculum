@@ -39,65 +39,9 @@
         window.clearTimeout(panel.closeTimer);
         panel.classList.remove("is-closing");
         panel.activeTrigger = trigger;
-        if (trigger.dataset.dependentId) {
-          const input = panel.querySelector("[data-dependent-input]");
-          const name = panel.querySelector("[data-dependent-name]");
-          const existingPrerequisites = trigger.dataset.prerequisiteIds.split(",");
-          const prerequisiteInput = panel.querySelector("[data-prerequisite-input]");
-          const searchInput = panel.querySelector("[data-unit-search-input]");
-          const current = panel.querySelector("[data-current-dependencies]");
-          const removeForm = panel.querySelector("[data-remove-dependency-form]");
-          const removeDependentInput = panel.querySelector("[data-remove-dependent-input]");
-          const removePrerequisiteInput = panel.querySelector("[data-remove-prerequisite-input]");
-          if (input) input.value = trigger.dataset.dependentId;
-          if (name) name.textContent = trigger.dataset.dependentName;
-          if (prerequisiteInput) prerequisiteInput.value = "";
-          if (searchInput) searchInput.value = "";
-          if (removeDependentInput) removeDependentInput.value = trigger.dataset.dependentId;
-          if (current) current.replaceChildren();
-          panel.querySelectorAll("[data-unit-search-option]").forEach(function (option) {
-            const isCurrent = existingPrerequisites.includes(option.dataset.unitId);
-            option.hidden = option.dataset.unitId === trigger.dataset.dependentId || isCurrent;
-            if (isCurrent && current) {
-              const row = document.createElement("div");
-              row.className = "dependency-editor__row";
-              const copy = document.createElement("div");
-              const title = document.createElement("strong");
-              const remove = document.createElement("button");
-              title.textContent = option.dataset.unitName;
-              remove.type = "button";
-              remove.className = "editor-action";
-              remove.textContent = "Remove";
-              remove.addEventListener("click", function () {
-                if (removePrerequisiteInput) removePrerequisiteInput.value = option.dataset.unitId;
-                if (removeForm) removeForm.requestSubmit();
-              });
-              copy.append(title);
-              row.append(copy, remove);
-              current.append(row);
-            }
-          });
-          if (current && !current.children.length) {
-            const empty = document.createElement("p");
-            empty.className = "proposal-history__empty";
-            empty.textContent = "No prerequisites selected.";
-            current.append(empty);
-          }
-        }
-        if (trigger.dataset.unitId) {
-          const form = panel.querySelector("[data-unit-edit-form]");
-          const contentForm = panel.querySelector("[data-unit-content-form]");
-          const heading = panel.querySelector("[data-unit-heading]");
-          const contentHeading = panel.querySelector("[data-unit-content-heading]");
-          const name = panel.querySelector("[data-unit-name-input]");
-          const content = panel.querySelector("[data-unit-content-input]");
-          if (form) form.action = "/admin/curriculum/units/" + encodeURIComponent(trigger.dataset.unitId);
-          if (contentForm) contentForm.action = "/admin/curriculum/units/" + encodeURIComponent(trigger.dataset.unitId) + "/content";
-          if (heading) heading.textContent = trigger.dataset.unitName;
-          if (contentHeading) contentHeading.textContent = trigger.dataset.unitName;
-          if (name) name.value = trigger.dataset.unitName;
-          if (content) content.value = trigger.dataset.unitContent;
-        }
+        document.dispatchEvent(new CustomEvent("panel:configure", {
+          detail: { panel: panel, trigger: trigger }
+        }));
         panel.classList.add("is-opening");
         panel.hidden = false;
         trigger.setAttribute("aria-expanded", "true");
@@ -138,107 +82,10 @@
     });
   }
 
-  function initializeUnitSearch(root) {
-    root.querySelectorAll("[data-unit-search]").forEach(function (search) {
-      if (search.dataset.searchInitialized === "true") return;
-      search.dataset.searchInitialized = "true";
-      const input = search.querySelector("[data-unit-search-input]");
-      const results = search.querySelector("[data-unit-search-results]");
-      const empty = search.querySelector("[data-unit-search-empty]");
-      const hiddenInput = search.closest("form").querySelector("[data-prerequisite-input]");
-      const options = Array.from(search.querySelectorAll("[data-unit-search-option]"));
-      if (!input || !results || !hiddenInput) return;
-
-      function filterOptions() {
-        const query = input.value.trim().toLocaleLowerCase();
-        let matches = 0;
-        options.forEach(function (option) {
-          const unavailable = option.hidden;
-          const matchesQuery = option.dataset.unitName.toLocaleLowerCase().includes(query);
-          option.classList.toggle("is-filtered", unavailable || !matchesQuery);
-          if (!unavailable && matchesQuery) matches += 1;
-        });
-        if (empty) empty.hidden = matches > 0;
-        results.hidden = false;
-        input.setAttribute("aria-expanded", "true");
-      }
-
-      input.addEventListener("focus", filterOptions);
-      input.addEventListener("input", filterOptions);
-      options.forEach(function (option) {
-        option.addEventListener("click", function () {
-          hiddenInput.value = option.dataset.unitId;
-          results.hidden = true;
-          input.setAttribute("aria-expanded", "false");
-          search.closest("form").requestSubmit();
-        });
-      });
-      search.closest("form").addEventListener("submit", function (event) {
-        if (hiddenInput.value) return;
-        event.preventDefault();
-        input.setCustomValidity("Select a unit from the search results.");
-        input.reportValidity();
-        input.setCustomValidity("");
-      });
-    });
-  }
-
-  function initializeInlineEditors(root) {
-    root.querySelectorAll("[data-inline-editor-trigger]").forEach(function (trigger) {
-      if (trigger.dataset.inlineEditorInitialized === "true") return;
-      trigger.dataset.inlineEditorInitialized = "true";
-      const editor = document.getElementById(trigger.dataset.inlineEditorTrigger);
-      if (!editor) return;
-
-      function setOpen(open) {
-        const container = editor.closest(".unit-content") || editor.parentElement;
-        if (open) {
-          container.querySelectorAll(".unit-content__inline-editor").forEach(function (other) {
-            if (other === editor) return;
-            other.hidden = true;
-            const otherDisplay = container.querySelector('[data-inline-editor-display="' + other.id + '"]');
-            if (otherDisplay) otherDisplay.hidden = false;
-            const otherTrigger = container.querySelector('[data-inline-editor-trigger="' + other.id + '"]');
-            if (otherTrigger) otherTrigger.setAttribute("aria-expanded", "false");
-          });
-        }
-        editor.hidden = !open;
-        const display = container.querySelector('[data-inline-editor-display="' + editor.id + '"]');
-        if (display) display.hidden = open;
-        trigger.setAttribute("aria-expanded", String(open));
-        if (open) {
-          if (window.autoResizeTextareas) window.autoResizeTextareas(editor);
-          const field = editor.querySelector("input:not([type=hidden]), textarea");
-          if (field) field.focus({ preventScroll: true });
-        }
-      }
-
-      trigger.addEventListener("click", function () {
-        setOpen(editor.hidden);
-      });
-      const close = editor.querySelector("[data-inline-editor-close]");
-      if (close) close.addEventListener("click", function () {
-        setOpen(false);
-        trigger.focus({ preventScroll: true });
-      });
-    });
-  }
-
   document.addEventListener("DOMContentLoaded", function () {
     initializePanels(document);
-    initializeUnitSearch(document);
-    initializeInlineEditors(document);
-    const dependencyID = new URL(window.location.href).searchParams.get("edit_dependencies");
-    if (dependencyID) {
-      const trigger = document.querySelector('[data-open-panel="edit-dependencies-panel"][data-dependent-id="' +
-        CSS.escape(dependencyID) + '"]');
-      if (trigger) trigger.click();
-    }
   });
   document.addEventListener("htmx:load", function (event) {
-    const root = event.detail.elt || document;
-    initializePanels(root);
-    initializeUnitSearch(root);
-    initializeInlineEditors(root);
+    initializePanels(event.detail.elt || document);
   });
 })();
