@@ -13,6 +13,8 @@ type curriculumGraphNodeView struct {
 	ContentURL  string
 	IsCurrent   bool
 	IsTarget    bool
+	IsCompleted bool
+	HasProgress bool
 }
 
 type curriculumGraphView struct {
@@ -59,6 +61,8 @@ func newCurriculumGraphView(
 	layout *models.CurriculumGraphLayout,
 	focusedUnit *models.Unit,
 	targetUnitIDs map[int64]bool,
+	completedUnitIDs map[int64]bool,
+	hasProgress bool,
 	navigateURL func(int64) string,
 	contentURL func(int64) string,
 ) curriculumGraphView {
@@ -78,6 +82,8 @@ func newCurriculumGraphView(
 			ContentURL:          contentURL(node.ID),
 			IsCurrent:           node.ID == currentID,
 			IsTarget:            targetUnitIDs[node.ID],
+			IsCompleted:         completedUnitIDs[node.ID],
+			HasProgress:         hasProgress,
 		})
 	}
 	return view

@@ -90,7 +90,7 @@
             data-unit-id="{{ .ID }}"
             data-node-lane="{{ .Lane }}"
             style="--curriculum-node-lane:{{ .Lane }}; view-transition-name:curriculum-unit-{{ .ID }};">
-          <span class="curriculum-graph__anchor" data-curriculum-anchor aria-hidden="true"></span>
+          <span class="curriculum-graph__anchor {{ if .HasProgress }}has-progress{{ end }} {{ if .IsCompleted }}is-completed{{ end }}" data-curriculum-anchor aria-hidden="true"></span>
           <a class="curriculum-graph__row"
              href="{{ .NavigateURL }}"
              hx-get="{{ .NavigateURL }}"
@@ -100,7 +100,6 @@
              hx-push-url="true"
              {{ if .IsCurrent }}aria-current="page"{{ end }}>
             <span class="curriculum-graph__name">{{ .Name }}</span>
-            {{ if .IsTarget }}<span class="curriculum-graph__target-label">Path target</span>{{ end }}
           </a>
           <a class="curriculum-graph__content"
              href="{{ .ContentURL }}"

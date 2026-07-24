@@ -74,6 +74,9 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err := db.SetUnitCompleted(database, authorID, foundations.ID, true); err != nil {
+		t.Fatal(err)
+	}
 	proposal, err = CreateCurriculumProposal(database, authorID, "Algebra path", "Connect and refine the new units.")
 	if err != nil {
 		t.Fatal(err)
@@ -141,6 +144,10 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if len(graph.Units) != 2 || len(graph.Dependencies) != 1 {
 		t.Fatalf("unexpected published graph: %#v", graph)
 	}
+	completedUnitIDs, err := db.CompletedUnitIDs(database, authorID)
+	if err != nil || !completedUnitIDs[foundations.ID] {
+		t.Fatalf("curriculum publication did not preserve completion: ids=%v err=%v", completedUnitIDs, err)
+	}
 	persistedPath, err := db.GetLearningPath(database, authorID, learningPath.ID)
 	if err != nil || persistedPath == nil || len(persistedPath.Units) != 1 || persistedPath.Units[0].ID != algebra.ID {
 		t.Fatalf("curriculum rebuild did not preserve the learning path: path=%#v err=%v", persistedPath, err)
@@ -163,5 +170,12 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 		if unit.ID == algebra.ID && unit.Content != "Learn variables and equations." {
 			t.Fatalf("revert did not restore unit content: %#v", unit)
 		}
+	}
+	if err := db.SetUnitCompleted(database, authorID, foundations.ID, false); err != nil {
+		t.Fatal(err)
+	}
+	completedUnitIDs, err = db.CompletedUnitIDs(database, authorID)
+	if err != nil || completedUnitIDs[foundations.ID] {
+		t.Fatalf("unit remained completed after returning it to pending: ids=%v err=%v", completedUnitIDs, err)
 	}
 }

@@ -24,6 +24,9 @@ type learnPageData struct {
 	AllUnits          []models.Unit
 	NavigableUnits    []models.Unit
 	TargetUnitIDs     map[int64]bool
+	CompletedUnitIDs  map[int64]bool
+	ContentCompleted  bool
+	ReturnURL         string
 	ExploreAll        bool
 	ShowGraph         bool
 	TotalUnits        int
@@ -55,6 +58,12 @@ func (server *Server) learn(writer http.ResponseWriter, request *http.Request) {
 		if err != nil {
 			log.Printf("list learning paths: %v", err)
 			http.Error(writer, "Unable to load learning paths", http.StatusInternalServerError)
+			return
+		}
+		data.CompletedUnitIDs, err = db.CompletedUnitIDs(server.Database, userID)
+		if err != nil {
+			log.Printf("list completed units: %v", err)
+			http.Error(writer, "Unable to load progress", http.StatusInternalServerError)
 			return
 		}
 	}
@@ -120,6 +129,8 @@ func (server *Server) learn(writer http.ResponseWriter, request *http.Request) {
 			http.Error(writer, "Curriculum unit not found in this learning path", http.StatusNotFound)
 			return
 		}
+		data.ContentCompleted = data.CompletedUnitIDs[data.ContentUnit.ID]
+		data.ReturnURL = request.URL.RequestURI()
 	}
 	var boundaries []models.CurriculumGraphBoundary
 	if focusID != nil || data.ExploreAll {
@@ -156,6 +167,8 @@ func (server *Server) learn(writer http.ResponseWriter, request *http.Request) {
 		data.Graph,
 		data.FocusedUnit,
 		data.TargetUnitIDs,
+		data.CompletedUnitIDs,
+		authenticated,
 		navigateURL,
 		contentURL,
 	)
@@ -166,6 +179,46 @@ func (server *Server) learn(writer http.ResponseWriter, request *http.Request) {
 		navigateURL,
 	)
 	server.render(writer, "learn.html", data)
+}
+
+func (server *Server) setUnitCompletion(writer http.ResponseWriter, request *http.Request) {
+	request.Body = http.MaxBytesReader(writer, request.Body, 1<<20)
+	if err := request.ParseForm(); err != nil {
+		http.Error(writer, "Invalid form", http.StatusBadRequest)
+		return
+	}
+	if !services.ValidCSRFToken(request, request.FormValue("csrf_token")) {
+		http.Error(writer, "Invalid CSRF token", http.StatusForbidden)
+		return
+	}
+	unitID, err := strconv.ParseInt(request.PathValue("id"), 10, 64)
+	if err != nil || unitID <= 0 {
+		http.Error(writer, "Invalid curriculum unit", http.StatusBadRequest)
+		return
+	}
+	completedValue := request.FormValue("completed")
+	if completedValue != "true" && completedValue != "false" {
+		http.Error(writer, "Invalid completion value", http.StatusBadRequest)
+		return
+	}
+	unit, err := db.GetUnit(server.Database, unitID)
+	if err != nil {
+		log.Printf("get unit for completion: %v", err)
+		http.Error(writer, "Unable to update progress", http.StatusInternalServerError)
+		return
+	}
+	if unit == nil {
+		http.Error(writer, "Curriculum unit not found", http.StatusNotFound)
+		return
+	}
+	userID, _ := services.SessionUserID(request)
+	if err := db.SetUnitCompleted(server.Database, userID, unitID, completedValue == "true"); err != nil {
+		log.Printf("set unit completion: %v", err)
+		http.Error(writer, "Unable to update progress", http.StatusInternalServerError)
+		return
+	}
+	fallback := "/learn?path=all&unit=" + strconv.FormatInt(unitID, 10) + "&content=" + strconv.FormatInt(unitID, 10)
+	http.Redirect(writer, request, safeRedirectPath(request.FormValue("return_to"), fallback), http.StatusSeeOther)
 }
 
 func (server *Server) createLearningPath(writer http.ResponseWriter, request *http.Request) {

@@ -281,6 +281,24 @@ func TestCurriculumGraphRendersSafeBundledBezierEdges(t *testing.T) {
 	}
 }
 
+func TestProgressIndicatorsUseComposableConcentricCircles(t *testing.T) {
+	stylesheet, err := os.ReadFile("../../web/static/css/learn.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, contract := range []string{
+		".unit-completion__indicator::before",
+		".unit-completion__indicator.is-completed::before",
+		".curriculum-graph__item.is-path-target .curriculum-graph__anchor::after",
+		"height: 66.6667%;",
+		"width: 33.3333%;",
+	} {
+		if !strings.Contains(string(stylesheet), contract) {
+			t.Errorf("completion indicator is missing radius contract %q", contract)
+		}
+	}
+}
+
 func TestNavigationCounterpartsHaveSharedTransitions(t *testing.T) {
 	stylesheet, err := os.ReadFile("../../web/static/css/shell.css")
 	if err != nil {

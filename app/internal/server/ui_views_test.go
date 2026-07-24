@@ -25,6 +25,8 @@ func TestCurriculumGraphViewPreparesConsumerSpecificNodes(t *testing.T) {
 		layout,
 		focused,
 		map[int64]bool{1: true},
+		map[int64]bool{2: true},
+		true,
 		func(id int64) string { return "/units/" + strconv.FormatInt(id, 10) },
 		func(id int64) string { return "/units/" + strconv.FormatInt(id, 10) + "/content" },
 	)
@@ -35,7 +37,7 @@ func TestCurriculumGraphViewPreparesConsumerSpecificNodes(t *testing.T) {
 	if !view.Nodes[0].IsTarget || view.Nodes[0].IsCurrent {
 		t.Fatalf("unexpected first node state: %#v", view.Nodes[0])
 	}
-	if !view.Nodes[1].IsCurrent ||
+	if !view.Nodes[1].IsCurrent || !view.Nodes[1].IsCompleted || !view.Nodes[1].HasProgress ||
 		view.Nodes[1].NavigateURL != "/units/2" ||
 		view.Nodes[1].ContentURL != "/units/2/content" {
 		t.Fatalf("unexpected second node state: %#v", view.Nodes[1])
@@ -95,6 +97,8 @@ func TestSharedCurriculumGraphTemplateRendersPreparedView(t *testing.T) {
 		},
 		&models.Unit{ID: 1},
 		nil,
+		map[int64]bool{1: true},
+		true,
 		func(int64) string { return "/learn?unit=1" },
 		func(int64) string { return "/learn?unit=1&content=1" },
 	)
@@ -109,6 +113,8 @@ func TestSharedCurriculumGraphTemplateRendersPreparedView(t *testing.T) {
 		`aria-label="Open content for Foundations"`,
 		`aria-current="page"`,
 		`aria-describedby="test-graph-description"`,
+		`has-progress`,
+		`is-completed`,
 	} {
 		if !strings.Contains(output.String(), fragment) {
 			t.Errorf("rendered graph does not contain %q", fragment)

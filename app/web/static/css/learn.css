@@ -425,11 +425,61 @@ a.learning-path-card {
   color: var(--color-ink-strong);
   grid-column: 1;
   grid-row: 1;
-  height: 0.75rem;
+  height: 1.2rem;
   justify-self: end;
   margin-right: calc(var(--curriculum-content-gap) + var(--curriculum-boundary-gutter) + var(--curriculum-node-lane) * var(--curriculum-lane-spacing));
-  width: 0.75rem;
+  width: 1.2rem;
   z-index: 4;
+}
+
+.curriculum-graph__anchor.has-progress {
+  position: relative;
+}
+
+.curriculum-graph__anchor.has-progress::before,
+.unit-completion__indicator::before {
+  background: var(--color-surface);
+  border-radius: 50%;
+  content: "";
+  height: 50%;
+  left: 50%;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 50%;
+}
+
+.curriculum-graph__anchor.has-progress.is-completed::before,
+.unit-completion__indicator.is-completed::before {
+  content: none;
+}
+
+.unit-completion {
+  flex: none;
+  margin-left: auto;
+}
+
+.unit-completion button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: var(--color-ink-strong);
+  display: inline-flex;
+  font-size: 0.75rem;
+  font-weight: 700;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  white-space: nowrap;
+}
+
+.unit-completion__indicator {
+  background: currentColor;
+  border-radius: 50%;
+  display: inline-block;
+  flex: none;
+  height: 1.2rem;
+  position: relative;
+  width: 1.2rem;
 }
 
 .curriculum-graph__row {
@@ -491,16 +541,33 @@ a.learning-path-card {
 }
 
 .curriculum-graph__item.is-path-target .curriculum-graph__anchor {
-  box-shadow: 0 0 0 0.22rem color-mix(in srgb, var(--color-accent) 24%, transparent);
-  color: var(--color-accent);
+  box-shadow: none;
+  color: var(--color-ink-strong);
+  position: relative;
 }
 
-.curriculum-graph__target-label {
-  color: var(--color-accent);
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+.curriculum-graph__item.is-path-target .curriculum-graph__anchor::before {
+  background: var(--color-surface);
+  border-radius: 50%;
+  content: "";
+  height: 66.6667%;
+  left: 50%;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 66.6667%;
+}
+
+.curriculum-graph__item.is-path-target .curriculum-graph__anchor::after {
+  background: currentColor;
+  border-radius: 50%;
+  content: "";
+  height: 33.3333%;
+  left: 50%;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 33.3333%;
 }
 
 .curriculum-graph__row:focus-visible {

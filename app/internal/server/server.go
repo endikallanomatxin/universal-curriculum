@@ -68,6 +68,7 @@ func (server *Server) routes() http.Handler {
 	mux.Handle("POST /learn/paths", requireUser(http.HandlerFunc(server.createLearningPath)))
 	mux.Handle("POST /learn/paths/{id}", requireUser(http.HandlerFunc(server.updateLearningPath)))
 	mux.Handle("POST /learn/paths/{id}/delete", requireUser(http.HandlerFunc(server.deleteLearningPath)))
+	mux.Handle("POST /learn/units/{id}/completion", requireUser(http.HandlerFunc(server.setUnitCompletion)))
 	mux.HandleFunc("GET /auth/login", server.login)
 	mux.HandleFunc("POST /auth/login", server.login)
 	mux.HandleFunc("POST /auth/logout", server.logout)

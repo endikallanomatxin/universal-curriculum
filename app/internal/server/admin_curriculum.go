@@ -343,6 +343,12 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 		http.Error(writer, "Unable to load curriculum", http.StatusInternalServerError)
 		return
 	}
+	completedUnitIDs, err := db.CompletedUnitIDs(server.Database, userID)
+	if err != nil {
+		log.Printf("load curriculum completion indicators: %v", err)
+		http.Error(writer, "Unable to load progress", http.StatusInternalServerError)
+		return
+	}
 	var focusID *int64
 	if unitValue := request.URL.Query().Get("unit"); unitValue != "" {
 		unitID, parseErr := parsePositiveID(unitValue)
@@ -440,6 +446,8 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 		layout,
 		focusedUnit,
 		nil,
+		completedUnitIDs,
+		true,
 		navigateURL,
 		contentURL,
 	)

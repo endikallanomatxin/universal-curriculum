@@ -149,7 +149,7 @@ inventing a mandatory sequence.
 
 ### 5.3 Progress
 
-A student can record units as not started, in progress or completed. Progress is
+A student can mark a unit as completed or return it to pending. Completion is
 private by default and remains distinct from certification.
 
 Sharing progress or exercise submissions with a teacher or institution requires
