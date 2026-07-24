@@ -1,4 +1,5 @@
 .learning-paths {
+  margin: 0;
   max-width: 28rem;
 }
 
@@ -11,6 +12,7 @@
   box-sizing: border-box;
   height: 100%;
   justify-content: flex-end;
+  margin-bottom: 0;
   padding-bottom: calc(3.5rem + 2 * var(--space-3));
 }
 
@@ -40,6 +42,7 @@
   display: flex;
   gap: var(--space-4);
   justify-content: space-between;
+  margin-bottom: var(--space-6);
 }
 
 .learning-paths__header h1,
@@ -47,14 +50,27 @@
   margin: 0;
 }
 
-.learning-paths__introduction {
-  color: var(--color-muted);
-  line-height: 1.55;
-  margin: var(--space-3) 0 var(--space-6);
-}
-
 .learning-path-list {
   border-top: 1px solid color-mix(in srgb, var(--color-ink) 14%, transparent);
+}
+
+.learning-path-list--cards {
+  border-top: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.learning-path-list__heading {
+  color: var(--color-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin: 0 0 var(--space-2);
+  text-transform: uppercase;
+}
+
+.learning-path-list__heading--paths {
+  margin-top: var(--space-5);
 }
 
 .learning-path-card {
@@ -67,6 +83,14 @@
   position: relative;
   text-decoration: none;
   transition: background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.learning-path-list--cards .learning-path-card {
+  background: color-mix(in srgb, var(--color-ink) 2%, var(--color-surface));
+  border-bottom: 0;
+  border-radius: var(--space-3);
+  min-height: 4.25rem;
+  overflow: hidden;
 }
 
 a.learning-path-card,
@@ -99,7 +123,7 @@ a.learning-path-card {
 .learning-path-card > a > .material-symbols-rounded {
   color: var(--color-muted);
   font-size: 1.35rem;
-  transition: color 160ms ease, transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: color 160ms ease;
 }
 
 .learning-path-card strong,
@@ -124,16 +148,25 @@ a.learning-path-card {
 .learning-path-card:focus-visible,
 .learning-path-card:focus-within,
 .learning-path-card.is-selected {
-  background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface));
-  box-shadow: inset 0.2rem 0 var(--color-accent);
+  background: color-mix(in srgb, var(--color-ink) 7%, var(--color-surface));
+  box-shadow: inset 0.2rem 0 var(--color-ink-strong);
+}
+
+.learning-path-list--cards .learning-path-card:hover,
+.learning-path-list--cards .learning-path-card:focus-within {
+  background: var(--color-surface);
+  box-shadow: 0 0.45rem 1.1rem color-mix(in srgb, var(--color-ink-strong) 10%, transparent);
+}
+
+.learning-path-list--cards .learning-path-card.is-selected:not(:hover, :focus-within) {
+  box-shadow: none;
 }
 
 .learning-path-card:hover > .material-symbols-rounded,
 .learning-path-card:hover > a > .material-symbols-rounded,
 .learning-path-card.is-selected > .material-symbols-rounded,
 .learning-path-card.is-selected > a > .material-symbols-rounded {
-  color: var(--color-accent);
-  transform: translateX(0.12rem);
+  color: var(--color-ink-strong);
 }
 
 .learning-paths__create,
@@ -141,7 +174,7 @@ a.learning-path-card {
   align-items: center;
   background: none;
   border: 0;
-  color: var(--color-accent);
+  color: var(--color-ink-strong);
   cursor: pointer;
   display: flex;
   font: inherit;
@@ -293,7 +326,7 @@ a.learning-path-card {
 
 .graph-search input:focus {
   background: var(--color-surface);
-  border-color: color-mix(in srgb, var(--color-accent) 55%, transparent);
+  border-color: color-mix(in srgb, var(--color-ink-strong) 55%, transparent);
   outline: 0;
 }
 
@@ -329,7 +362,7 @@ a.learning-path-card {
 
 .graph-search__results a:hover,
 .graph-search__results a:focus-visible {
-  background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface));
+  background: color-mix(in srgb, var(--color-ink) 7%, var(--color-surface));
 }
 
 .graph-search__results p {
@@ -366,7 +399,7 @@ a.learning-path-card {
 }
 
 .curriculum-graph__arrow--highlighted {
-  fill: var(--color-accent);
+  fill: var(--color-dependency);
 }
 
 .curriculum-graph__arrow--boundary {
@@ -398,11 +431,11 @@ a.learning-path-card {
 }
 
 .curriculum-graph__edge--boundary.is-related {
-  stroke: var(--color-accent);
+  stroke: var(--color-dependency);
 }
 
 .curriculum-graph__boundary-count.is-related {
-  fill: var(--color-accent);
+  fill: var(--color-dependency);
 }
 
 .curriculum-graph__list {
@@ -526,8 +559,8 @@ a.learning-path-card {
 .curriculum-graph__content:hover,
 .curriculum-graph__content:focus-visible {
   background: var(--color-surface);
-  border-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
-  color: var(--color-accent);
+  border-color: color-mix(in srgb, var(--color-ink-strong) 45%, transparent);
+  color: var(--color-ink-strong);
 }
 
 .curriculum-graph__content .material-symbols-rounded {
@@ -536,12 +569,12 @@ a.learning-path-card {
 
 .curriculum-graph__row:hover,
 .curriculum-graph__row[aria-current="page"] {
-  background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface));
-  box-shadow: inset 0.22rem 0 var(--color-accent);
+  background: color-mix(in srgb, var(--color-ink) 7%, var(--color-surface));
+  box-shadow: inset 0.22rem 0 var(--color-ink-strong);
 }
 
 .curriculum-graph__row[aria-current="page"] .curriculum-graph__name {
-  color: var(--color-accent);
+  color: var(--color-ink-strong);
 }
 
 .curriculum-graph__item.is-path-target .curriculum-graph__anchor {
@@ -575,7 +608,7 @@ a.learning-path-card {
 }
 
 .curriculum-graph__row:focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 2px solid var(--color-ink-strong);
   outline-offset: -2px;
 }
 
@@ -594,24 +627,24 @@ a.learning-path-card {
 }
 
 .curriculum-graph__item[data-relation-distance="0"] .curriculum-graph__row {
-  background: color-mix(in srgb, var(--color-accent) 15%, transparent);
+  background: color-mix(in srgb, var(--color-dependency) 15%, transparent);
 }
 
 .curriculum-graph__item[data-relation-distance="1"] .curriculum-graph__row {
-  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  background: color-mix(in srgb, var(--color-dependency) 10%, transparent);
 }
 
 .curriculum-graph__item[data-relation-distance="2"] .curriculum-graph__row {
-  background: color-mix(in srgb, var(--color-accent) 6%, transparent);
+  background: color-mix(in srgb, var(--color-dependency) 6%, transparent);
 }
 
 .curriculum-graph__item[data-relation-distance="3"] .curriculum-graph__row,
 .curriculum-graph__item[data-relation-distance="4"] .curriculum-graph__row {
-  background: color-mix(in srgb, var(--color-accent) 3%, transparent);
+  background: color-mix(in srgb, var(--color-dependency) 3%, transparent);
 }
 
 .curriculum-graph__edge.is-related {
-  stroke: var(--color-accent);
+  stroke: var(--color-dependency);
   stroke-width: 3;
 }
 
@@ -732,12 +765,12 @@ a.learning-path-card {
 }
 
 .unit-content__body a {
-  color: var(--color-accent);
+  color: var(--color-ink-strong);
   text-underline-offset: 0.18em;
 }
 
 .unit-content__body blockquote {
-  border-left: 0.22rem solid var(--color-accent);
+  border-left: 0.22rem solid color-mix(in srgb, var(--color-ink) 30%, transparent);
   color: var(--color-muted);
   margin-left: 0;
   padding: 0.2rem 0 0.2rem var(--space-4);

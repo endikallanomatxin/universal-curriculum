@@ -28,6 +28,7 @@ type learnPageData struct {
 	ContentCompleted bool
 	ReturnURL        string
 	ExploreAll       bool
+	CombinePaths     bool
 	ShowGraph        bool
 }
 
@@ -73,6 +74,15 @@ func (server *Server) learn(writer http.ResponseWriter, request *http.Request) {
 	case pathValue == "all":
 		data.ExploreAll, data.ShowGraph = true, true
 		visibleGraph = curriculum
+	case pathValue == "mine":
+		if !authenticated || len(data.Paths) == 0 {
+			http.Error(writer, "Learning paths not found", http.StatusNotFound)
+			return
+		}
+		targetIDs, targetUnitIDs := combinedLearningPathTargets(data.Paths)
+		data.CombinePaths, data.ShowGraph = true, true
+		data.TargetUnitIDs = targetUnitIDs
+		visibleGraph = services.CurriculumPathSubgraph(curriculum, targetIDs)
 	default:
 		pathID, parseErr := strconv.ParseInt(pathValue, 10, 64)
 		if parseErr != nil || pathID <= 0 || !authenticated {
@@ -149,7 +159,9 @@ func (server *Server) learn(writer http.ResponseWriter, request *http.Request) {
 	}
 	data.Graph.Boundaries = boundaries
 	pathQuery := "all"
-	if data.SelectedPath != nil {
+	if data.CombinePaths {
+		pathQuery = "mine"
+	} else if data.SelectedPath != nil {
 		pathQuery = strconv.FormatInt(data.SelectedPath.ID, 10)
 	}
 	unitURL := func(unitID int64) string {
@@ -175,6 +187,21 @@ func (server *Server) learn(writer http.ResponseWriter, request *http.Request) {
 		navigateURL,
 	)
 	server.render(writer, "learn.html", data)
+}
+
+func combinedLearningPathTargets(paths []models.LearningPath) ([]int64, map[int64]bool) {
+	var ids []int64
+	targets := make(map[int64]bool)
+	for _, path := range paths {
+		for _, unit := range path.Units {
+			if targets[unit.ID] {
+				continue
+			}
+			targets[unit.ID] = true
+			ids = append(ids, unit.ID)
+		}
+	}
+	return ids, targets
 }
 
 func (server *Server) setUnitCompletion(writer http.ResponseWriter, request *http.Request) {

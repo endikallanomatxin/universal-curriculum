@@ -193,6 +193,10 @@ func TestLearningPathsBreadcrumbReturnsToPathList(t *testing.T) {
 		`class="ui-pane__eyebrow">Learning</p>`,
 		`class="learning-paths__breadcrumb-title" href="/learn"`,
 		`>Learning paths</a>`,
+		`<h1 id="learn-graph-title">{{ if .SelectedPath }}{{ .SelectedPath.Name }}{{ else if .CombinePaths }}All my paths{{ else }}Full curriculum{{ end }}</h1>`,
+		`href="/learn?path=mine"`,
+		`>All my paths</strong>`,
+		`>Your paths</p>`,
 	} {
 		if !strings.Contains(source, contract) {
 			t.Errorf("learning paths header is missing %q", contract)

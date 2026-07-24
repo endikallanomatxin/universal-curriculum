@@ -16,13 +16,22 @@
               <a class="learning-paths__breadcrumb-title" href="/learn" {{ template "shell-link-attributes" "/learn" }}>Learning paths</a>
             </div>
           </header>
-          <p class="learning-paths__introduction">Choose a goal-focused view of the curriculum.</p>
-
-          <div class="learning-path-list">
+          <p class="learning-path-list__heading">Views</p>
+          <div class="learning-path-list learning-path-list--cards">
             <a class="learning-path-card {{ if .ExploreAll }}is-selected{{ end }}" href="/learn?path=all" hx-get="/learn?path=all" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true">
-              <span class="material-symbols-rounded" aria-hidden="true">conversion_path</span>
-              <span><strong>Explore full curriculum</strong><small>Start from every entry point</small></span>
+              <span class="material-symbols-rounded" aria-hidden="true">graph_3</span>
+              <span><strong>Full curriculum</strong><small>Explore every unit</small></span>
             </a>
+            {{ if .Paths }}
+              <a class="learning-path-card {{ if .CombinePaths }}is-selected{{ end }}" href="/learn?path=mine" hx-get="/learn?path=mine" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true">
+                <span class="material-symbols-rounded" aria-hidden="true">graph_1</span>
+                <span><strong>All my paths</strong><small>Combine {{ len .Paths }} {{ if eq (len .Paths) 1 }}path{{ else }}paths{{ end }}</small></span>
+              </a>
+            {{ end }}
+          </div>
+          {{ if .Paths }}
+            <p class="learning-path-list__heading learning-path-list__heading--paths">Your paths</p>
+            <div class="learning-path-list learning-path-list--cards">
             {{ range .Paths }}
               {{ $path := . }}
               <article class="learning-path-card {{ with $.SelectedPath }}{{ if eq .ID $path.ID }}is-selected{{ end }}{{ end }}">
@@ -46,7 +55,8 @@
                 </button>
               </article>
             {{ end }}
-          </div>
+            </div>
+          {{ end }}
           {{ if .User }}
             <button class="learning-paths__create" type="button" data-open-panel="learning-path-editor-panel" data-new-learning-path aria-controls="learning-path-editor-panel" aria-expanded="false">
               <span class="material-symbols-rounded" aria-hidden="true">add</span>
@@ -61,10 +71,10 @@
       {{ if .ShowGraph }}
         <section class="ui-pane ui-pane--wide" aria-labelledby="learn-graph-title" data-nested-panel data-layout-panel data-panel-modes="collapsed:0 breadcrumb:4 mobile:20 content:34 wide:46" data-panel-required-mode="mobile" data-panel-fill data-panel-breadcrumb="Curriculum map">
           <div class="ui-pane__inner learn-view">
-            <div class="learn-heading {{ if .SelectedPath }}learn-heading--path{{ end }}">
+            <div class="learn-heading {{ if or .SelectedPath .CombinePaths }}learn-heading--path{{ end }}">
               <div>
                 <p class="ui-pane__eyebrow">Learning path</p>
-                <h1 id="learn-graph-title">{{ if .SelectedPath }}Curriculum map{{ else }}Full curriculum{{ end }}</h1>
+                <h1 id="learn-graph-title">{{ if .SelectedPath }}{{ .SelectedPath.Name }}{{ else if .CombinePaths }}All my paths{{ else }}Full curriculum{{ end }}</h1>
                 {{ with .SelectedPath }}{{ if .Description }}<p>{{ .Description }}</p>{{ end }}{{ end }}
               </div>
             </div>
@@ -81,8 +91,7 @@
                       <span class="material-symbols-rounded" aria-hidden="true">zoom_out_map</span>
                       Entire path
                     </button>
-                    <p>Showing the local neighbourhood within this path.</p>
-                  {{ else if .SelectedPath }}
+                  {{ else if or .SelectedPath .CombinePaths }}
                     <p>Only units leading to the selected targets are shown.</p>
                   {{ else }}
                     <p>Choose an entry point to explore its neighbourhood.</p>

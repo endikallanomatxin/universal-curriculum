@@ -6,7 +6,8 @@
   --color-surface: #ffffff;
   --color-panel-start: #f7f7f7;
   --color-panel-end: #f0f0f0;
-  --color-accent: #5a4ebf;
+  --dependency-purple-hue: 286;
+  --color-dependency: oklch(0.52 0.16 var(--dependency-purple-hue));
   --color-danger: #c93341;
   --radius-card: 1.5rem;
   --radius-control: 999px;
@@ -66,7 +67,7 @@ button {
 }
 
 :focus-visible {
-  outline: 0.2rem solid var(--color-accent);
+  outline: 0.2rem solid var(--color-ink-strong);
   outline-offset: 0.2rem;
 }
 

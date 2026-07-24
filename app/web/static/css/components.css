@@ -69,7 +69,7 @@
 
 .auth-form input:focus {
   background: var(--color-surface);
-  border-color: var(--color-accent);
+  border-color: var(--color-ink-strong);
 }
 
 .primary-button {
@@ -292,7 +292,7 @@
 .editor-form select:focus,
 .editor-form textarea:focus {
   background: var(--color-surface);
-  border-color: var(--color-accent);
+  border-color: var(--color-ink-strong);
 }
 
 .editor-form textarea {

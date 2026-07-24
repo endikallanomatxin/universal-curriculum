@@ -96,7 +96,7 @@
 .unit-content .unit-content__inline-editor--rename textarea {
   background: transparent;
   border: 0;
-  border-bottom: 2px solid var(--color-accent);
+  border-bottom: 2px solid var(--color-ink-strong);
   border-radius: 0;
   color: var(--color-ink-strong);
   font-size: clamp(1.5rem, 3.5vw, 3rem);

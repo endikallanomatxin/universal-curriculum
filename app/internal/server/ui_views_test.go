@@ -75,6 +75,22 @@ func TestCurriculumUnitURLsPreserveContentViewerState(t *testing.T) {
 	}
 }
 
+func TestCombinedLearningPathTargetsDeduplicatesUnits(t *testing.T) {
+	ids, targets := combinedLearningPathTargets([]models.LearningPath{
+		{Units: []models.Unit{{ID: 1}, {ID: 2}}},
+		{Units: []models.Unit{{ID: 2}, {ID: 3}}},
+	})
+
+	if len(ids) != 3 || ids[0] != 1 || ids[1] != 2 || ids[2] != 3 {
+		t.Fatalf("combined target ids = %v, want [1 2 3]", ids)
+	}
+	for _, id := range ids {
+		if !targets[id] {
+			t.Errorf("combined target map is missing %d", id)
+		}
+	}
+}
+
 func TestSharedCurriculumGraphTemplateRendersPreparedView(t *testing.T) {
 	workingDirectory, err := os.Getwd()
 	if err != nil {

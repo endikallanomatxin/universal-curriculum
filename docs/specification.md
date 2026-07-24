@@ -147,6 +147,9 @@ Students choose one or more target units. The platform:
 When several paths are valid, the system presents the alternatives rather than
 inventing a mandatory sequence.
 
+Students can inspect each personal learning path separately or combine all of
+their paths into one graph of targets and required prerequisites.
+
 ### 5.3 Progress
 
 A student can mark a unit as completed or return it to pending. Completion is
