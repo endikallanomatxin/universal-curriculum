@@ -376,8 +376,9 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 			}
 		}
 	}
-	applyCurriculumChangeLabels(activeProposal, graph)
 	workingGraph := curriculumGraphWithProposal(graph, activeProposal)
+	applyCurriculumChangeLabels(activeProposal, workingGraph)
+	visualGraph := curriculumGraphWithRemovedDependencies(workingGraph, graph, activeProposal)
 	var focusID *int64
 	if unitValue := request.URL.Query().Get("unit"); unitValue != "" {
 		unitID, parseErr := parsePositiveID(unitValue)
@@ -387,7 +388,7 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 		}
 		focusID = &unitID
 	}
-	visibleGraph, focusedUnit, boundaries, err := services.CurriculumNeighborhood(workingGraph, focusID)
+	visibleGraph, focusedUnit, boundaries, err := services.CurriculumNeighborhood(visualGraph, focusID)
 	if errors.Is(err, services.ErrCurriculumUnitNotFound) {
 		http.Error(writer, "Curriculum unit not found", http.StatusNotFound)
 		return
@@ -397,7 +398,7 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 		http.Error(writer, "Unable to navigate curriculum", http.StatusInternalServerError)
 		return
 	}
-	includeCreatedProposalUnits(visibleGraph, workingGraph, activeProposal)
+	includeCreatedProposalUnits(visibleGraph, visualGraph, activeProposal)
 	layout, err := services.BuildCurriculumGraphLayoutWithHints(visibleGraph, curriculumLayoutHints(request))
 	if err != nil {
 		log.Printf("layout curriculum graph: %v", err)
@@ -405,6 +406,7 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 		return
 	}
 	layout.Boundaries = boundaries
+	positionIsolatedCreatedUnits(layout, activeProposal)
 	proposals, err := db.ListCurriculumProposals(server.Database, 8)
 	if err != nil {
 		log.Printf("load curriculum proposals: %v", err)
@@ -437,7 +439,6 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 		Error:          message,
 	}
 	data.Units = curriculumUnitViews(workingGraph, layout)
-	applyProposedDependencies(data.Units, activeProposal)
 	if contentValue := request.URL.Query().Get("content"); proposalView == "work" && contentValue != "" {
 		contentID, parseErr := parsePositiveID(contentValue)
 		if parseErr != nil {
@@ -485,37 +486,46 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 }
 
 func curriculumGraphWithProposal(graph *models.CurriculumGraph, proposal *models.CurriculumProposal) *models.CurriculumGraph {
-	if graph == nil || proposal == nil {
-		return graph
+	return services.CurriculumGraphWithProposal(graph, proposal)
+}
+
+func curriculumGraphWithRemovedDependencies(working, published *models.CurriculumGraph, proposal *models.CurriculumProposal) *models.CurriculumGraph {
+	if working == nil || proposal == nil {
+		return working
 	}
-	preview := &models.CurriculumGraph{
-		Units:        append([]models.Unit(nil), graph.Units...),
-		Dependencies: append([]models.UnitDependency(nil), graph.Dependencies...),
+	visual := &models.CurriculumGraph{
+		Units:        append([]models.Unit(nil), working.Units...),
+		Dependencies: append([]models.UnitDependency(nil), working.Dependencies...),
 	}
-	unitIndexes := make(map[int64]int, len(preview.Units))
-	for index := range preview.Units {
-		unitIndexes[preview.Units[index].ID] = index
-	}
-	for _, change := range proposal.Changes {
-		switch change.Kind {
-		case "create_unit":
-			if _, exists := unitIndexes[change.UnitID]; !exists {
-				unitIndexes[change.UnitID] = len(preview.Units)
-				preview.Units = append(preview.Units, models.Unit{
-					ID: change.UnitID, Name: change.UnitName, Content: change.UnitContent,
-				})
-			}
-		case "update_unit":
-			if index, exists := unitIndexes[change.UnitID]; exists {
-				preview.Units[index].Name = change.UnitName
-			}
-		case "update_content":
-			if index, exists := unitIndexes[change.UnitID]; exists {
-				preview.Units[index].Content = change.UnitContent
-			}
+	publishedDependencies := make(map[[2]int64]models.UnitDependency)
+	if published != nil {
+		for _, dependency := range published.Dependencies {
+			publishedDependencies[[2]int64{dependency.PrerequisiteID, dependency.UnitID}] = dependency
 		}
 	}
-	return preview
+	for _, change := range proposal.Changes {
+		if change.Kind != "remove_dependency" || change.PrerequisiteID == nil {
+			continue
+		}
+		key := [2]int64{*change.PrerequisiteID, change.UnitID}
+		dependency, exists := publishedDependencies[key]
+		if !exists {
+			dependency = models.UnitDependency{PrerequisiteID: key[0], UnitID: key[1]}
+		}
+		if !graphHasDependency(visual, key[1], key[0]) {
+			visual.Dependencies = append(visual.Dependencies, dependency)
+		}
+	}
+	return visual
+}
+
+func graphHasDependency(graph *models.CurriculumGraph, unitID, prerequisiteID int64) bool {
+	for _, dependency := range graph.Dependencies {
+		if dependency.UnitID == unitID && dependency.PrerequisiteID == prerequisiteID {
+			return true
+		}
+	}
+	return false
 }
 
 func includeCreatedProposalUnits(visible, working *models.CurriculumGraph, proposal *models.CurriculumProposal) {
@@ -538,6 +548,61 @@ func includeCreatedProposalUnits(visible, working *models.CurriculumGraph, propo
 			}
 		}
 	}
+	createdIDs := make(map[int64]bool)
+	for _, change := range proposal.Changes {
+		if change.Kind == "create_unit" {
+			createdIDs[change.UnitID] = true
+		}
+	}
+	visibleDependencies := make(map[[2]int64]bool, len(visible.Dependencies))
+	for _, dependency := range visible.Dependencies {
+		visibleDependencies[[2]int64{dependency.PrerequisiteID, dependency.UnitID}] = true
+	}
+	for _, dependency := range working.Dependencies {
+		if !createdIDs[dependency.UnitID] && !createdIDs[dependency.PrerequisiteID] {
+			continue
+		}
+		for _, unitID := range []int64{dependency.PrerequisiteID, dependency.UnitID} {
+			if !visibleIDs[unitID] {
+				if unit, exists := workingUnits[unitID]; exists {
+					visible.Units = append(visible.Units, unit)
+					visibleIDs[unitID] = true
+				}
+			}
+		}
+		key := [2]int64{dependency.PrerequisiteID, dependency.UnitID}
+		if !visibleDependencies[key] {
+			visible.Dependencies = append(visible.Dependencies, dependency)
+			visibleDependencies[key] = true
+		}
+	}
+}
+
+func positionIsolatedCreatedUnits(layout *models.CurriculumGraphLayout, proposal *models.CurriculumProposal) {
+	if layout == nil || proposal == nil {
+		return
+	}
+	createdIDs := make(map[int64]bool)
+	for _, change := range proposal.Changes {
+		if change.Kind == "create_unit" {
+			createdIDs[change.UnitID] = true
+		}
+	}
+	connectedIDs := make(map[int64]bool)
+	for _, edge := range layout.Edges {
+		connectedIDs[edge.PrerequisiteID] = true
+		connectedIDs[edge.DependentID] = true
+	}
+	isolated := make([]models.CurriculumGraphNode, 0)
+	connected := make([]models.CurriculumGraphNode, 0, len(layout.Nodes))
+	for _, node := range layout.Nodes {
+		if createdIDs[node.ID] && !connectedIDs[node.ID] {
+			isolated = append(isolated, node)
+		} else {
+			connected = append(connected, node)
+		}
+	}
+	layout.Nodes = append(isolated, connected...)
 }
 
 func applyProposalGraphStates(view *curriculumGraphView, proposal *models.CurriculumProposal) {
@@ -564,6 +629,32 @@ func applyProposalGraphStates(view *curriculumGraphView, proposal *models.Curric
 	}
 	for index := range view.Nodes {
 		view.Nodes[index].ProposalState = states[view.Nodes[index].ID]
+	}
+	connectedIDs := make(map[int64]bool)
+	for _, edge := range view.Edges {
+		connectedIDs[edge.PrerequisiteID] = true
+		connectedIDs[edge.DependentID] = true
+	}
+	for index := range view.Nodes {
+		node := &view.Nodes[index]
+		node.IsProposedIsolated = node.ProposalState == "created" && !connectedIDs[node.ID]
+	}
+	proposedDependencies := make(map[[2]int64]string)
+	for _, change := range proposal.Changes {
+		if change.PrerequisiteID == nil {
+			continue
+		}
+		key := [2]int64{*change.PrerequisiteID, change.UnitID}
+		switch change.Kind {
+		case "add_dependency":
+			proposedDependencies[key] = "created"
+		case "remove_dependency":
+			proposedDependencies[key] = "deleted"
+		}
+	}
+	for index := range view.Edges {
+		edge := &view.Edges[index]
+		edge.ProposalState = proposedDependencies[[2]int64{edge.PrerequisiteID, edge.DependentID}]
 	}
 }
 
@@ -601,49 +692,6 @@ func redirectToProposalPanel(writer http.ResponseWriter, request *http.Request, 
 	target := "/admin/curriculum?proposal=" + strconv.FormatInt(proposalID, 10) +
 		"&view=work&" + panel + "=" + strconv.FormatInt(subjectID, 10)
 	http.Redirect(writer, request, target, http.StatusSeeOther)
-}
-
-func applyProposedDependencies(views []curriculumUnitView, proposal *models.CurriculumProposal) {
-	if proposal == nil {
-		return
-	}
-	byID := make(map[int64]*curriculumUnitView, len(views))
-	units := make(map[int64]models.Unit, len(views))
-	for index := range views {
-		byID[views[index].ID] = &views[index]
-		units[views[index].ID] = views[index].Unit
-	}
-	for _, change := range proposal.Changes {
-		if change.PrerequisiteID == nil {
-			continue
-		}
-		view := byID[change.UnitID]
-		prerequisite, exists := units[*change.PrerequisiteID]
-		if view == nil || !exists {
-			continue
-		}
-		switch change.Kind {
-		case "add_dependency":
-			alreadyPresent := false
-			for _, current := range view.Prerequisites {
-				if current.ID == prerequisite.ID {
-					alreadyPresent = true
-					break
-				}
-			}
-			if !alreadyPresent {
-				view.Prerequisites = append(view.Prerequisites, prerequisite)
-			}
-		case "remove_dependency":
-			filtered := view.Prerequisites[:0]
-			for _, current := range view.Prerequisites {
-				if current.ID != prerequisite.ID {
-					filtered = append(filtered, current)
-				}
-			}
-			view.Prerequisites = filtered
-		}
-	}
 }
 
 func curriculumUnitViews(graph *models.CurriculumGraph, layout *models.CurriculumGraphLayout) []curriculumUnitView {

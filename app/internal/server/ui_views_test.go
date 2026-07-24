@@ -124,6 +124,7 @@ func TestSharedCurriculumGraphTemplateRendersPreparedView(t *testing.T) {
 	}
 	for _, fragment := range []string{
 		`id="test-graph-arrow"`,
+		`id="test-graph-arrow-proposed"`,
 		`href="/learn?unit=1"`,
 		`href="/learn?unit=1&amp;content=1"`,
 		`aria-label="Open content for Foundations"`,

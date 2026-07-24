@@ -554,6 +554,10 @@
   --proposal-change-color: var(--color-proposal-content);
 }
 
+.proposal-list li.proposal-change--dependency {
+  --proposal-change-color: var(--color-dependency);
+}
+
 .proposal-change__badge {
   align-items: center;
   color: var(--proposal-change-color);

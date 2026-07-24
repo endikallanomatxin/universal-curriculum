@@ -224,37 +224,124 @@ func AddUnitDependency(database *sql.DB, authorID, proposalID, unitID, prerequis
 	if unitID == prerequisiteID {
 		return ErrDependencyCycle
 	}
-	for _, id := range []int64{unitID, prerequisiteID} {
-		unit, err := db.GetUnit(database, id)
-		if err != nil {
-			return err
-		}
-		if unit == nil {
-			return ErrUnitNotFound
-		}
-	}
-	cycle, err := db.DependencyCreatesCycle(database, unitID, prerequisiteID)
+	proposal, err := db.GetCurriculumProposal(database, proposalID)
 	if err != nil {
 		return err
 	}
-	if cycle {
+	if proposal == nil || proposal.Status != "draft" || proposal.AuthorID == nil || *proposal.AuthorID != authorID {
+		return ErrProposalNotFound
+	}
+	graph, err := db.GetCurriculumGraph(database)
+	if err != nil {
+		return err
+	}
+	workingGraph := CurriculumGraphWithProposal(graph, proposal)
+	units := make(map[int64]bool, len(workingGraph.Units))
+	deleted := make(map[int64]bool)
+	for _, unit := range workingGraph.Units {
+		units[unit.ID] = true
+	}
+	for _, change := range proposal.Changes {
+		if change.Kind == "delete_unit" {
+			deleted[change.UnitID] = true
+		}
+	}
+	if !units[unitID] || !units[prerequisiteID] || deleted[unitID] || deleted[prerequisiteID] {
+		return ErrUnitNotFound
+	}
+	for _, dependency := range workingGraph.Dependencies {
+		if dependency.UnitID == unitID && dependency.PrerequisiteID == prerequisiteID {
+			return ErrDependencyExists
+		}
+	}
+	if curriculumDependencyCreatesCycle(workingGraph, unitID, prerequisiteID) {
 		return ErrDependencyCycle
-	}
-	exists, err := db.DependencyExists(database, unitID, prerequisiteID)
-	if err != nil {
-		return err
-	}
-	exists, err = proposedDependencyExists(database, authorID, proposalID, unitID, prerequisiteID, exists)
-	if err != nil {
-		return err
-	}
-	if exists {
-		return ErrDependencyExists
 	}
 	id := prerequisiteID
 	return addProposalChange(database, authorID, proposalID, &models.CurriculumProposalChange{
 		Kind: "add_dependency", UnitID: unitID, PrerequisiteID: &id,
 	})
+}
+
+func CurriculumGraphWithProposal(graph *models.CurriculumGraph, proposal *models.CurriculumProposal) *models.CurriculumGraph {
+	if graph == nil || proposal == nil {
+		return graph
+	}
+	preview := &models.CurriculumGraph{
+		Units:        append([]models.Unit(nil), graph.Units...),
+		Dependencies: append([]models.UnitDependency(nil), graph.Dependencies...),
+	}
+	unitIndexes := make(map[int64]int, len(preview.Units))
+	for index := range preview.Units {
+		unitIndexes[preview.Units[index].ID] = index
+	}
+	for _, change := range proposal.Changes {
+		switch change.Kind {
+		case "create_unit":
+			if _, exists := unitIndexes[change.UnitID]; !exists {
+				unitIndexes[change.UnitID] = len(preview.Units)
+				preview.Units = append(preview.Units, models.Unit{
+					ID: change.UnitID, Name: change.UnitName, Content: change.UnitContent,
+				})
+			}
+		case "update_unit":
+			if index, exists := unitIndexes[change.UnitID]; exists {
+				preview.Units[index].Name = change.UnitName
+			}
+		case "update_content":
+			if index, exists := unitIndexes[change.UnitID]; exists {
+				preview.Units[index].Content = change.UnitContent
+			}
+		case "add_dependency":
+			if change.PrerequisiteID != nil && !curriculumDependencyExists(preview, change.UnitID, *change.PrerequisiteID) {
+				preview.Dependencies = append(preview.Dependencies, models.UnitDependency{
+					UnitID: change.UnitID, PrerequisiteID: *change.PrerequisiteID,
+				})
+			}
+		case "remove_dependency":
+			if change.PrerequisiteID != nil {
+				filtered := preview.Dependencies[:0]
+				for _, dependency := range preview.Dependencies {
+					if dependency.UnitID != change.UnitID || dependency.PrerequisiteID != *change.PrerequisiteID {
+						filtered = append(filtered, dependency)
+					}
+				}
+				preview.Dependencies = filtered
+			}
+		}
+	}
+	return preview
+}
+
+func curriculumDependencyExists(graph *models.CurriculumGraph, unitID, prerequisiteID int64) bool {
+	for _, dependency := range graph.Dependencies {
+		if dependency.UnitID == unitID && dependency.PrerequisiteID == prerequisiteID {
+			return true
+		}
+	}
+	return false
+}
+
+func curriculumDependencyCreatesCycle(graph *models.CurriculumGraph, unitID, prerequisiteID int64) bool {
+	dependents := make(map[int64][]int64, len(graph.Dependencies))
+	for _, dependency := range graph.Dependencies {
+		dependents[dependency.PrerequisiteID] = append(dependents[dependency.PrerequisiteID], dependency.UnitID)
+	}
+	pending := []int64{unitID}
+	visited := make(map[int64]bool)
+	for len(pending) > 0 {
+		current := pending[len(pending)-1]
+		pending = pending[:len(pending)-1]
+		if current == prerequisiteID {
+			return true
+		}
+		if visited[current] {
+			continue
+		}
+		visited[current] = true
+		pending = append(pending, dependents[current]...)
+	}
+	return false
 }
 
 func RemoveUnitDependency(database *sql.DB, authorID, proposalID, unitID, prerequisiteID int64) error {

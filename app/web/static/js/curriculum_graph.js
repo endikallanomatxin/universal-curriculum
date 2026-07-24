@@ -19,7 +19,8 @@
     const edges = Array.from(root.querySelectorAll("[data-curriculum-edge]")).map(function (edge) {
       return {
         prerequisiteID: edge.dataset.prerequisiteId,
-        dependentID: edge.dataset.dependentId
+        dependentID: edge.dataset.dependentId,
+        proposalState: edge.dataset.proposalState || ""
       };
     });
     const boundaries = Array.from(root.querySelectorAll("[data-curriculum-boundary]")).map(function (boundary) {
@@ -178,8 +179,14 @@
           if (!source || !target) return;
           const path = document.createElementNS(svgNamespace, "path");
           path.setAttribute("d", edgePath(edge, source, target));
-          path.setAttribute("marker-end", "url(#" + pathLayer.dataset.arrowMarker + ")");
+          const arrowMarker = edge.proposalState
+            ? pathLayer.dataset.proposedArrowMarker
+            : pathLayer.dataset.arrowMarker;
+          path.setAttribute("marker-end", "url(#" + arrowMarker + ")");
           path.classList.add("curriculum-graph__edge");
+          if (edge.proposalState) {
+            path.classList.add("curriculum-graph__edge--proposed", "is-proposal-" + edge.proposalState);
+          }
           pathLayer.appendChild(path);
           if (pathCrossesNode(path, edge)) {
             path.setAttribute("d", straightEdgePath(source, target));
@@ -280,8 +287,12 @@
         rendered.path.classList.toggle("is-related", related);
         if (related) rendered.path.dataset.relationDistance = String(Math.min(distance, 4));
         else delete rendered.path.dataset.relationDistance;
-        rendered.path.setAttribute("marker-end", "url(#" +
-          (related ? pathLayer.dataset.highlightedArrowMarker : pathLayer.dataset.arrowMarker) + ")");
+        const arrowMarker = related
+          ? pathLayer.dataset.highlightedArrowMarker
+          : rendered.edge.proposalState
+            ? pathLayer.dataset.proposedArrowMarker
+            : pathLayer.dataset.arrowMarker;
+        rendered.path.setAttribute("marker-end", "url(#" + arrowMarker + ")");
       });
     }
 

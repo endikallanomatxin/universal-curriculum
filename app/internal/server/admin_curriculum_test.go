@@ -36,6 +36,7 @@ func TestCurriculumGraphWithProposalIncludesAndPreviewsChangedUnits(t *testing.T
 		{Kind: "create_unit", UnitID: 3, UnitName: "Geometry", UnitContent: "New"},
 		{Kind: "update_unit", UnitID: 1, UnitName: "Mathematical foundations"},
 		{Kind: "update_content", UnitID: 2, UnitContent: "Revised"},
+		{Kind: "add_dependency", UnitID: 3, PrerequisiteID: pointerToInt64(1)},
 	}}
 
 	preview := curriculumGraphWithProposal(graph, proposal)
@@ -51,9 +52,16 @@ func TestCurriculumGraphWithProposalIncludesAndPreviewsChangedUnits(t *testing.T
 	if preview.Units[2].Name != "Geometry" || preview.Units[2].Content != "New" {
 		t.Fatalf("created unit = %#v", preview.Units[2])
 	}
+	if len(preview.Dependencies) != 1 || preview.Dependencies[0].UnitID != 3 || preview.Dependencies[0].PrerequisiteID != 1 {
+		t.Fatalf("proposed dependencies = %#v", preview.Dependencies)
+	}
 	if graph.Units[0].Name != "Foundations" {
 		t.Fatal("proposal preview mutated the published graph")
 	}
+}
+
+func pointerToInt64(value int64) *int64 {
+	return &value
 }
 
 func TestCreatedProposalUnitsAreAlwaysIncludedInVisibleGraph(t *testing.T) {
@@ -74,22 +82,102 @@ func TestCreatedProposalUnitsAreAlwaysIncludedInVisibleGraph(t *testing.T) {
 	}
 }
 
+func TestCreatedProposalUnitsBringTheirDependenciesIntoView(t *testing.T) {
+	visible := &models.CurriculumGraph{Units: []models.Unit{{ID: 1, Name: "Focused"}}}
+	working := &models.CurriculumGraph{
+		Units: []models.Unit{
+			{ID: 1, Name: "Focused"},
+			{ID: 2, Name: "Published prerequisite"},
+			{ID: 3, Name: "Proposed dependent"},
+		},
+		Dependencies: []models.UnitDependency{{UnitID: 3, PrerequisiteID: 2}},
+	}
+	proposal := &models.CurriculumProposal{Changes: []models.CurriculumProposalChange{
+		{Kind: "create_unit", UnitID: 3},
+	}}
+
+	includeCreatedProposalUnits(visible, working, proposal)
+
+	if len(visible.Units) != 3 || len(visible.Dependencies) != 1 {
+		t.Fatalf("connected proposed unit was not integrated: %#v", visible)
+	}
+	if visible.Dependencies[0].PrerequisiteID != 2 || visible.Dependencies[0].UnitID != 3 {
+		t.Fatalf("visible proposed dependency = %#v", visible.Dependencies[0])
+	}
+}
+
+func TestIsolatedCreatedUnitsArePositionedBeforeConnectedGraph(t *testing.T) {
+	layout := &models.CurriculumGraphLayout{
+		Nodes: []models.CurriculumGraphNode{
+			{Unit: models.Unit{ID: 1}},
+			{Unit: models.Unit{ID: 2}},
+			{Unit: models.Unit{ID: 3}},
+		},
+		Edges: []models.CurriculumGraphEdge{{PrerequisiteID: 1, DependentID: 2}},
+	}
+	proposal := &models.CurriculumProposal{Changes: []models.CurriculumProposalChange{
+		{Kind: "create_unit", UnitID: 3},
+	}}
+
+	positionIsolatedCreatedUnits(layout, proposal)
+
+	if layout.Nodes[0].ID != 3 || layout.Nodes[1].ID != 1 || layout.Nodes[2].ID != 2 {
+		t.Fatalf("positioned nodes = %#v", layout.Nodes)
+	}
+}
+
+func TestRemovedDependencyBetweenProposedUnitsRemainsVisible(t *testing.T) {
+	working := &models.CurriculumGraph{Units: []models.Unit{
+		{ID: 3, Name: "Proposed prerequisite"},
+		{ID: 4, Name: "Proposed dependent"},
+	}}
+	prerequisiteID := int64(3)
+	proposal := &models.CurriculumProposal{Changes: []models.CurriculumProposalChange{
+		{Kind: "create_unit", UnitID: 3},
+		{Kind: "create_unit", UnitID: 4},
+		{Kind: "add_dependency", UnitID: 4, PrerequisiteID: &prerequisiteID},
+		{Kind: "remove_dependency", UnitID: 4, PrerequisiteID: &prerequisiteID},
+	}}
+
+	visual := curriculumGraphWithRemovedDependencies(working, &models.CurriculumGraph{}, proposal)
+
+	if len(visual.Dependencies) != 1 ||
+		visual.Dependencies[0].PrerequisiteID != 3 ||
+		visual.Dependencies[0].UnitID != 4 {
+		t.Fatalf("removed proposed dependency is not visible: %#v", visual.Dependencies)
+	}
+	view := curriculumGraphView{Edges: []curriculumGraphEdgeView{{
+		CurriculumGraphEdge: models.CurriculumGraphEdge{PrerequisiteID: 3, DependentID: 4},
+	}}}
+	applyProposalGraphStates(&view, proposal)
+	if view.Edges[0].ProposalState != "deleted" {
+		t.Fatalf("removed proposed dependency state = %q", view.Edges[0].ProposalState)
+	}
+}
+
 func TestProposalGraphStatesUseStructuralChangePrecedence(t *testing.T) {
 	view := curriculumGraphView{Nodes: []curriculumGraphNodeView{
 		{CurriculumGraphNode: models.CurriculumGraphNode{Unit: models.Unit{ID: 1}}},
 		{CurriculumGraphNode: models.CurriculumGraphNode{Unit: models.Unit{ID: 2}}},
+	}, Edges: []curriculumGraphEdgeView{
+		{CurriculumGraphEdge: models.CurriculumGraphEdge{PrerequisiteID: 1, DependentID: 2}},
 	}}
+	prerequisiteID := int64(1)
 	proposal := &models.CurriculumProposal{Changes: []models.CurriculumProposalChange{
 		{Kind: "update_content", UnitID: 1},
 		{Kind: "update_unit", UnitID: 1},
 		{Kind: "update_content", UnitID: 2},
 		{Kind: "delete_unit", UnitID: 2},
+		{Kind: "add_dependency", UnitID: 2, PrerequisiteID: &prerequisiteID},
 	}}
 
 	applyProposalGraphStates(&view, proposal)
 
 	if view.Nodes[0].ProposalState != "rename" || view.Nodes[1].ProposalState != "deleted" {
 		t.Fatalf("proposal states = %q, %q", view.Nodes[0].ProposalState, view.Nodes[1].ProposalState)
+	}
+	if view.Edges[0].ProposalState != "created" {
+		t.Fatal("added dependency edge is not marked as proposed")
 	}
 }
 

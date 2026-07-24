@@ -77,6 +77,12 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if err := UpdateCurriculumUnitContent(database, authorID, proposal.ID, foundations.ID, "Learn the core foundations."); err != nil {
 		t.Fatal(err)
 	}
+	if err := AddUnitDependency(database, authorID, proposal.ID, algebra.ID, foundations.ID); err != nil {
+		t.Fatalf("connect units created by the same proposal: %v", err)
+	}
+	if err := AddUnitDependency(database, authorID, proposal.ID, foundations.ID, algebra.ID); err != ErrDependencyCycle {
+		t.Fatalf("cycle between proposed units error = %v, want %v", err, ErrDependencyCycle)
+	}
 	// Draft changes do not mutate the published projection.
 	graph, err := db.GetCurriculumGraph(database)
 	if err != nil {
@@ -103,14 +109,11 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := AddUnitDependency(database, authorID, proposal.ID, algebra.ID, foundations.ID); err != nil {
-		t.Fatal(err)
-	}
 	if err := RemoveUnitDependency(database, authorID, proposal.ID, algebra.ID, foundations.ID); err != nil {
-		t.Fatalf("remove dependency staged in the same proposal: %v", err)
+		t.Fatalf("remove published dependency: %v", err)
 	}
 	if err := AddUnitDependency(database, authorID, proposal.ID, algebra.ID, foundations.ID); err != nil {
-		t.Fatalf("restore dependency staged in the same proposal: %v", err)
+		t.Fatalf("restore dependency in the same proposal: %v", err)
 	}
 	if err := UpdateCurriculumUnit(database, authorID, proposal.ID, algebra.ID, "Introductory algebra"); err != nil {
 		t.Fatal(err)
@@ -185,8 +188,8 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(graph.Dependencies) != 0 {
-		t.Fatalf("revert did not undo whole proposal: %#v", graph)
+	if len(graph.Dependencies) != 1 {
+		t.Fatalf("revert did not restore the prior dependency: %#v", graph)
 	}
 	for _, unit := range graph.Units {
 		if unit.ID == algebra.ID && unit.Content != "Learn variables and equations." {

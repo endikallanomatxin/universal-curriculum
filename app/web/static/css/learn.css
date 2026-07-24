@@ -402,6 +402,10 @@ a.learning-path-card {
   fill: var(--color-dependency);
 }
 
+.curriculum-graph__arrow--proposed {
+  fill: var(--color-dependency);
+}
+
 .curriculum-graph__arrow--boundary {
   fill: color-mix(in srgb, var(--color-muted) 65%, transparent);
 }
@@ -412,6 +416,14 @@ a.learning-path-card {
   stroke-width: 2;
   transition: opacity 120ms ease, stroke 120ms ease, stroke-width 120ms ease;
   vector-effect: non-scaling-stroke;
+}
+
+.curriculum-graph__edge--proposed {
+  stroke: var(--color-dependency);
+}
+
+.curriculum-graph__edge--proposed.is-proposal-deleted {
+  stroke-dasharray: 5 4;
 }
 
 .curriculum-graph__edge--boundary {
@@ -453,6 +465,10 @@ a.learning-path-card {
 
 .curriculum-graph__item + .curriculum-graph__item {
   border-top: 1px solid color-mix(in srgb, var(--color-ink) 10%, transparent);
+}
+
+.curriculum-graph__item.is-proposed-isolated + .curriculum-graph__item:not(.is-proposed-isolated) {
+  margin-top: var(--space-3);
 }
 
 .curriculum-graph__anchor {

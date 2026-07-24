@@ -141,8 +141,11 @@ func TestProposalChangesExposeSemanticVisualStates(t *testing.T) {
 		"proposal-change--removal",
 		"proposal-change--rename",
 		"proposal-change--content",
+		"proposal-change--dependency",
 		"proposal-change__previous",
 		"proposal-change__revert",
+		"Add dependency",
+		"Remove dependency",
 	} {
 		if !strings.Contains(string(template), state) {
 			t.Errorf("proposal change template is missing semantic state %q", state)
@@ -158,6 +161,7 @@ func TestProposalChangesExposeSemanticVisualStates(t *testing.T) {
 		".proposal-list li.proposal-change--removal",
 		".proposal-list li.proposal-change--rename",
 		".proposal-list li.proposal-change--content",
+		".proposal-list li.proposal-change--dependency",
 		"color: var(--proposal-change-color)",
 		".proposal-list.proposal-change-list",
 	} {
@@ -452,6 +456,8 @@ func TestCurriculumGraphRendersSafeBundledBezierEdges(t *testing.T) {
 		`function straightEdgePath(source, target)`,
 		`function pathCrossesNode(path, edge)`,
 		`path.setAttribute("d", straightEdgePath(source, target))`,
+		`: rendered.edge.proposalState`,
+		`? pathLayer.dataset.proposedArrowMarker`,
 	} {
 		if !strings.Contains(source, contract) {
 			t.Errorf("curriculum graph is missing bundled-edge contract %q", contract)

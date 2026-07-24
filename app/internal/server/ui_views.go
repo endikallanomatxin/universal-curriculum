@@ -9,13 +9,19 @@ import (
 
 type curriculumGraphNodeView struct {
 	models.CurriculumGraphNode
-	NavigateURL   string
-	ContentURL    string
+	NavigateURL        string
+	ContentURL         string
+	ProposalState      string
+	IsProposedIsolated bool
+	IsCurrent          bool
+	IsTarget           bool
+	IsCompleted        bool
+	HasProgress        bool
+}
+
+type curriculumGraphEdgeView struct {
+	models.CurriculumGraphEdge
 	ProposalState string
-	IsCurrent     bool
-	IsTarget      bool
-	IsCompleted   bool
-	HasProgress   bool
 }
 
 type curriculumGraphView struct {
@@ -23,6 +29,7 @@ type curriculumGraphView struct {
 	Description string
 	Layout      *models.CurriculumGraphLayout
 	Nodes       []curriculumGraphNodeView
+	Edges       []curriculumGraphEdgeView
 }
 
 type unitNavigationOptionView struct {
@@ -86,6 +93,10 @@ func newCurriculumGraphView(
 			IsCompleted:         completedUnitIDs[node.ID],
 			HasProgress:         hasProgress,
 		})
+	}
+	view.Edges = make([]curriculumGraphEdgeView, 0, len(layout.Edges))
+	for _, edge := range layout.Edges {
+		view.Edges = append(view.Edges, curriculumGraphEdgeView{CurriculumGraphEdge: edge})
 	}
 	return view
 }
