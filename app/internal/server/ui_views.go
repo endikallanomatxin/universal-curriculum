@@ -9,12 +9,13 @@ import (
 
 type curriculumGraphNodeView struct {
 	models.CurriculumGraphNode
-	NavigateURL string
-	ContentURL  string
-	IsCurrent   bool
-	IsTarget    bool
-	IsCompleted bool
-	HasProgress bool
+	NavigateURL   string
+	ContentURL    string
+	ProposalState string
+	IsCurrent     bool
+	IsTarget      bool
+	IsCompleted   bool
+	HasProgress   bool
 }
 
 type curriculumGraphView struct {

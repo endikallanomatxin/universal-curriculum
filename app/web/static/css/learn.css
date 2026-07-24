@@ -469,6 +469,31 @@ a.learning-path-card {
   z-index: 4;
 }
 
+.curriculum-graph__item.is-proposal-created {
+  color: var(--color-proposal-created);
+}
+
+.curriculum-graph__item.is-proposal-deleted {
+  color: var(--color-proposal-deleted);
+}
+
+.curriculum-graph__item.is-proposal-rename {
+  color: var(--color-proposal-rename);
+}
+
+.curriculum-graph__item.is-proposal-content {
+  color: var(--color-proposal-content);
+}
+
+.curriculum-graph__item[class*="is-proposal-"] .curriculum-graph__anchor {
+  color: currentColor;
+}
+
+.curriculum-graph__item[class*="is-proposal-"] .curriculum-graph__name,
+.curriculum-graph__item[class*="is-proposal-"] .curriculum-graph__row[aria-current="page"] .curriculum-graph__name {
+  color: currentColor;
+}
+
 .curriculum-graph__anchor.has-progress {
   position: relative;
 }

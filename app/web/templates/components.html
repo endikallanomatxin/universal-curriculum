@@ -1,6 +1,7 @@
 {{ define "document-head" -}}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="htmx-config" content='{"attributesToSettle":["class","width","height"]}'>
   <title>{{ . }}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -85,7 +86,7 @@
     </svg>
     <ol class="curriculum-graph__list">
       {{ range .Nodes }}
-        <li class="curriculum-graph__item {{ if .IsTarget }}is-path-target{{ end }}"
+        <li class="curriculum-graph__item {{ if .IsTarget }}is-path-target{{ end }} {{ with .ProposalState }}is-proposal-{{ . }}{{ end }}"
             data-curriculum-node
             data-panel-transition-item
             data-unit-id="{{ .ID }}"

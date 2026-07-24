@@ -28,8 +28,10 @@ type adminCurriculumPageData struct {
 	GraphSearch    unitNavigationSearchView
 	FocusedUnit    *models.Unit
 	ContentUnit    *curriculumUnitView
+	DraftProposals []models.CurriculumProposal
 	Proposals      []models.CurriculumProposal
 	ActiveProposal *models.CurriculumProposal
+	ProposalView   string
 	Error          string
 }
 
@@ -202,7 +204,7 @@ func (server *Server) updateCurriculumProposal(writer http.ResponseWriter, reque
 		server.renderCurriculumMutationError(writer, request, err)
 		return
 	}
-	redirectToProposal(writer, request, proposalID)
+	redirectToProposalView(writer, request, proposalID, "details")
 }
 
 func (server *Server) deleteCurriculumProposal(writer http.ResponseWriter, request *http.Request) {
@@ -349,6 +351,33 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 		http.Error(writer, "Unable to load progress", http.StatusInternalServerError)
 		return
 	}
+	var activeProposal *models.CurriculumProposal
+	proposalView := ""
+	if proposalValue := request.URL.Query().Get("proposal"); proposalValue != "" {
+		if proposalID, parseErr := parsePositiveID(proposalValue); parseErr == nil {
+			activeProposal, err = db.GetCurriculumProposal(server.Database, proposalID)
+			if err != nil {
+				log.Printf("load active curriculum proposal: %v", err)
+				http.Error(writer, "Unable to load curriculum proposal", http.StatusInternalServerError)
+				return
+			}
+			if activeProposal != nil && (activeProposal.Status != "draft" || activeProposal.AuthorID == nil || *activeProposal.AuthorID != userID) {
+				activeProposal = nil
+			}
+			if activeProposal != nil {
+				proposalView = request.URL.Query().Get("view")
+				if proposalView == "" {
+					proposalView = "work"
+				}
+				if proposalView != "work" && proposalView != "details" {
+					http.Error(writer, "Invalid proposal view", http.StatusBadRequest)
+					return
+				}
+			}
+		}
+	}
+	applyCurriculumChangeLabels(activeProposal, graph)
+	workingGraph := curriculumGraphWithProposal(graph, activeProposal)
 	var focusID *int64
 	if unitValue := request.URL.Query().Get("unit"); unitValue != "" {
 		unitID, parseErr := parsePositiveID(unitValue)
@@ -358,7 +387,7 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 		}
 		focusID = &unitID
 	}
-	visibleGraph, focusedUnit, boundaries, err := services.CurriculumNeighborhood(graph, focusID)
+	visibleGraph, focusedUnit, boundaries, err := services.CurriculumNeighborhood(workingGraph, focusID)
 	if errors.Is(err, services.ErrCurriculumUnitNotFound) {
 		http.Error(writer, "Curriculum unit not found", http.StatusNotFound)
 		return
@@ -368,6 +397,7 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 		http.Error(writer, "Unable to navigate curriculum", http.StatusInternalServerError)
 		return
 	}
+	includeCreatedProposalUnits(visibleGraph, workingGraph, activeProposal)
 	layout, err := services.BuildCurriculumGraphLayoutWithHints(visibleGraph, curriculumLayoutHints(request))
 	if err != nil {
 		log.Printf("layout curriculum graph: %v", err)
@@ -381,27 +411,18 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 		http.Error(writer, "Unable to load curriculum proposals", http.StatusInternalServerError)
 		return
 	}
+	draftProposals, err := db.ListDraftCurriculumProposalsByAuthor(server.Database, userID)
+	if err != nil {
+		log.Printf("load draft curriculum proposals: %v", err)
+		http.Error(writer, "Unable to load draft curriculum proposals", http.StatusInternalServerError)
+		return
+	}
 	for index := range proposals {
 		if proposals[index].Status == "accepted" && proposals[index].AuthorID != nil {
 			proposals[index].CanRevert = true
 			break
 		}
 	}
-	var activeProposal *models.CurriculumProposal
-	if proposalValue := request.URL.Query().Get("proposal"); proposalValue != "" {
-		if proposalID, parseErr := parsePositiveID(proposalValue); parseErr == nil {
-			activeProposal, err = db.GetCurriculumProposal(server.Database, proposalID)
-			if err != nil {
-				log.Printf("load active curriculum proposal: %v", err)
-				http.Error(writer, "Unable to load curriculum proposal", http.StatusInternalServerError)
-				return
-			}
-			if activeProposal != nil && (activeProposal.Status != "draft" || activeProposal.AuthorID == nil || *activeProposal.AuthorID != userID) {
-				activeProposal = nil
-			}
-		}
-	}
-	applyCurriculumChangeLabels(activeProposal, graph)
 	data := adminCurriculumPageData{
 		userPageData: userPageData{
 			User: user, CSRFToken: sessionCSRFToken(request), CurrentSection: "curriculum",
@@ -410,12 +431,14 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 		Graph:          layout,
 		FocusedUnit:    focusedUnit,
 		Proposals:      proposals,
+		DraftProposals: draftProposals,
 		ActiveProposal: activeProposal,
+		ProposalView:   proposalView,
 		Error:          message,
 	}
-	data.Units = curriculumUnitViews(graph, layout)
+	data.Units = curriculumUnitViews(workingGraph, layout)
 	applyProposedDependencies(data.Units, activeProposal)
-	if contentValue := request.URL.Query().Get("content"); contentValue != "" {
+	if contentValue := request.URL.Query().Get("content"); proposalView == "work" && contentValue != "" {
 		contentID, parseErr := parsePositiveID(contentValue)
 		if parseErr != nil {
 			http.Error(writer, "Invalid curriculum unit", http.StatusBadRequest)
@@ -435,7 +458,7 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 	unitURL := func(unitID int64) string {
 		target := "/admin/curriculum?"
 		if activeProposal != nil {
-			target += "proposal=" + strconv.FormatInt(activeProposal.ID, 10) + "&"
+			target += "proposal=" + strconv.FormatInt(activeProposal.ID, 10) + "&view=work&"
 		}
 		return target + "unit=" + strconv.FormatInt(unitID, 10)
 	}
@@ -451,13 +474,97 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 		navigateURL,
 		contentURL,
 	)
+	applyProposalGraphStates(&data.GraphView, activeProposal)
 	data.GraphSearch = newUnitNavigationSearchView(
 		"admin-graph-search-results",
 		"Find a unit in the curriculum",
-		graph.Units,
+		workingGraph.Units,
 		navigateURL,
 	)
 	server.renderStatus(writer, status, "admin-curriculum.html", data)
+}
+
+func curriculumGraphWithProposal(graph *models.CurriculumGraph, proposal *models.CurriculumProposal) *models.CurriculumGraph {
+	if graph == nil || proposal == nil {
+		return graph
+	}
+	preview := &models.CurriculumGraph{
+		Units:        append([]models.Unit(nil), graph.Units...),
+		Dependencies: append([]models.UnitDependency(nil), graph.Dependencies...),
+	}
+	unitIndexes := make(map[int64]int, len(preview.Units))
+	for index := range preview.Units {
+		unitIndexes[preview.Units[index].ID] = index
+	}
+	for _, change := range proposal.Changes {
+		switch change.Kind {
+		case "create_unit":
+			if _, exists := unitIndexes[change.UnitID]; !exists {
+				unitIndexes[change.UnitID] = len(preview.Units)
+				preview.Units = append(preview.Units, models.Unit{
+					ID: change.UnitID, Name: change.UnitName, Content: change.UnitContent,
+				})
+			}
+		case "update_unit":
+			if index, exists := unitIndexes[change.UnitID]; exists {
+				preview.Units[index].Name = change.UnitName
+			}
+		case "update_content":
+			if index, exists := unitIndexes[change.UnitID]; exists {
+				preview.Units[index].Content = change.UnitContent
+			}
+		}
+	}
+	return preview
+}
+
+func includeCreatedProposalUnits(visible, working *models.CurriculumGraph, proposal *models.CurriculumProposal) {
+	if visible == nil || working == nil || proposal == nil {
+		return
+	}
+	visibleIDs := make(map[int64]bool, len(visible.Units))
+	for _, unit := range visible.Units {
+		visibleIDs[unit.ID] = true
+	}
+	workingUnits := make(map[int64]models.Unit, len(working.Units))
+	for _, unit := range working.Units {
+		workingUnits[unit.ID] = unit
+	}
+	for _, change := range proposal.Changes {
+		if change.Kind == "create_unit" && !visibleIDs[change.UnitID] {
+			if unit, exists := workingUnits[change.UnitID]; exists {
+				visible.Units = append(visible.Units, unit)
+				visibleIDs[change.UnitID] = true
+			}
+		}
+	}
+}
+
+func applyProposalGraphStates(view *curriculumGraphView, proposal *models.CurriculumProposal) {
+	if view == nil || proposal == nil {
+		return
+	}
+	priority := map[string]int{"content": 1, "rename": 2, "created": 3, "deleted": 4}
+	states := make(map[int64]string)
+	for _, change := range proposal.Changes {
+		state := ""
+		switch change.Kind {
+		case "create_unit":
+			state = "created"
+		case "delete_unit":
+			state = "deleted"
+		case "update_unit":
+			state = "rename"
+		case "update_content":
+			state = "content"
+		}
+		if priority[state] > priority[states[change.UnitID]] {
+			states[change.UnitID] = state
+		}
+	}
+	for index := range view.Nodes {
+		view.Nodes[index].ProposalState = states[view.Nodes[index].ID]
+	}
 }
 
 func applyCurriculumChangeLabels(proposal *models.CurriculumProposal, graph *models.CurriculumGraph) {
@@ -476,19 +583,23 @@ func applyCurriculumChangeLabels(proposal *models.CurriculumProposal, graph *mod
 }
 
 func redirectToProposal(writer http.ResponseWriter, request *http.Request, proposalID int64) {
-	http.Redirect(writer, request, "/admin/curriculum?proposal="+strconv.FormatInt(proposalID, 10), http.StatusSeeOther)
+	redirectToProposalView(writer, request, proposalID, "work")
+}
+
+func redirectToProposalView(writer http.ResponseWriter, request *http.Request, proposalID int64, view string) {
+	http.Redirect(writer, request, "/admin/curriculum?proposal="+strconv.FormatInt(proposalID, 10)+"&view="+view, http.StatusSeeOther)
 }
 
 func redirectToProposalUnit(writer http.ResponseWriter, request *http.Request, proposalID, unitID int64) {
 	target := "/admin/curriculum?proposal=" + strconv.FormatInt(proposalID, 10) +
-		"&unit=" + strconv.FormatInt(unitID, 10) +
+		"&view=work&unit=" + strconv.FormatInt(unitID, 10) +
 		"&content=" + strconv.FormatInt(unitID, 10)
 	http.Redirect(writer, request, target, http.StatusSeeOther)
 }
 
 func redirectToProposalPanel(writer http.ResponseWriter, request *http.Request, proposalID int64, panel string, subjectID int64) {
 	target := "/admin/curriculum?proposal=" + strconv.FormatInt(proposalID, 10) +
-		"&" + panel + "=" + strconv.FormatInt(subjectID, 10)
+		"&view=work&" + panel + "=" + strconv.FormatInt(subjectID, 10)
 	http.Redirect(writer, request, target, http.StatusSeeOther)
 }
 

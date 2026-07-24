@@ -55,6 +55,28 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err := UpdateCurriculumUnit(database, authorID, proposal.ID, foundations.ID, "Core foundations"); err != nil {
+		t.Fatalf("rename proposed unit creation: %v", err)
+	}
+	if err := UpdateCurriculumUnitContent(database, authorID, proposal.ID, foundations.ID, "Revised foundations."); err != nil {
+		t.Fatalf("edit proposed unit creation content: %v", err)
+	}
+	draftCreation, err := db.GetCurriculumProposal(database, proposal.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(draftCreation.Changes) != 2 ||
+		draftCreation.Changes[0].Kind != "create_unit" ||
+		draftCreation.Changes[0].UnitName != "Core foundations" ||
+		draftCreation.Changes[0].UnitContent != "Revised foundations." {
+		t.Fatalf("proposed creation was not updated in place: %#v", draftCreation.Changes)
+	}
+	if err := UpdateCurriculumUnit(database, authorID, proposal.ID, foundations.ID, "Foundations"); err != nil {
+		t.Fatal(err)
+	}
+	if err := UpdateCurriculumUnitContent(database, authorID, proposal.ID, foundations.ID, "Learn the core foundations."); err != nil {
+		t.Fatal(err)
+	}
 	// Draft changes do not mutate the published projection.
 	graph, err := db.GetCurriculumGraph(database)
 	if err != nil {

@@ -131,6 +131,25 @@ func AddDraftCurriculumProposalChange(q curriculumExecutor, proposalID, authorID
 	return nil
 }
 
+func UpdateDraftCreatedCurriculumUnit(q curriculumExecutor, proposalID, authorID, unitID int64, name, content string) (bool, error) {
+	result, err := q.Exec(`
+		UPDATE curriculum_proposal_changes change
+		SET unit_name = $4, unit_content = $5
+		FROM curriculum_proposals proposal
+		WHERE change.proposal_id = $1
+		  AND change.unit_id = $3
+		  AND change.kind = 'create_unit'
+		  AND proposal.id = change.proposal_id
+		  AND proposal.author_id = $2
+		  AND proposal.status = 'draft'
+	`, proposalID, authorID, unitID, name, content)
+	if err != nil {
+		return false, fmt.Errorf("update draft created curriculum unit: %w", err)
+	}
+	count, err := result.RowsAffected()
+	return count == 1, err
+}
+
 func DeleteDraftCurriculumProposalChange(q curriculumExecutor, proposalID, changeID, authorID int64) (bool, error) {
 	result, err := q.Exec(`
 		DELETE FROM curriculum_proposal_changes change
@@ -373,7 +392,8 @@ func ListCurriculumProposals(database *sql.DB, limit int) ([]models.CurriculumPr
 		       proposal.reverts_proposal_id, proposal.created_at, proposal.accepted_at
 		FROM curriculum_proposals proposal
 		LEFT JOIN users author ON author.id = proposal.author_id
-		ORDER BY (proposal.status = 'draft') DESC, proposal.created_at DESC
+		WHERE proposal.status <> 'draft'
+		ORDER BY proposal.created_at DESC
 		LIMIT $1
 	`, limit)
 	if err != nil {
@@ -408,6 +428,45 @@ func ListCurriculumProposals(database *sql.DB, limit int) ([]models.CurriculumPr
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("iterate curriculum proposals: %w", err)
+	}
+	return proposals, nil
+}
+
+func ListDraftCurriculumProposalsByAuthor(database *sql.DB, authorID int64) ([]models.CurriculumProposal, error) {
+	rows, err := database.Query(`
+		SELECT proposal.id, proposal.author_id, COALESCE(author.full_name, 'System'),
+		       proposal.title, proposal.rationale, proposal.status,
+		       proposal.base_version, proposal.created_at,
+		       COUNT(change.id)
+		FROM curriculum_proposals proposal
+		LEFT JOIN users author ON author.id = proposal.author_id
+		LEFT JOIN curriculum_proposal_changes change ON change.proposal_id = proposal.id
+		WHERE proposal.status = 'draft' AND proposal.author_id = $1
+		GROUP BY proposal.id, author.full_name
+		ORDER BY proposal.created_at DESC
+	`, authorID)
+	if err != nil {
+		return nil, fmt.Errorf("list draft curriculum proposals by author: %w", err)
+	}
+	defer rows.Close()
+	var proposals []models.CurriculumProposal
+	for rows.Next() {
+		var proposal models.CurriculumProposal
+		var proposalAuthorID sql.NullInt64
+		if err := rows.Scan(
+			&proposal.ID, &proposalAuthorID, &proposal.AuthorName, &proposal.Title,
+			&proposal.Rationale, &proposal.Status, &proposal.BaseVersion,
+			&proposal.CreatedAt, &proposal.ChangeCount,
+		); err != nil {
+			return nil, fmt.Errorf("scan draft curriculum proposal: %w", err)
+		}
+		if proposalAuthorID.Valid {
+			proposal.AuthorID = &proposalAuthorID.Int64
+		}
+		proposals = append(proposals, proposal)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate draft curriculum proposals: %w", err)
 	}
 	return proposals, nil
 }

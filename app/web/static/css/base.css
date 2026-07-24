@@ -8,6 +8,10 @@
   --color-panel-end: #f0f0f0;
   --dependency-purple-hue: 286;
   --color-dependency: oklch(0.52 0.16 var(--dependency-purple-hue));
+  --color-proposal-created: oklch(48% 0.105 148);
+  --color-proposal-deleted: oklch(49% 0.13 25);
+  --color-proposal-rename: oklch(55% 0.12 65);
+  --color-proposal-content: oklch(49% 0.105 250);
   --color-danger: #c93341;
   --radius-card: 1.5rem;
   --radius-control: 999px;

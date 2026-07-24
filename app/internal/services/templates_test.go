@@ -138,8 +138,9 @@ func TestProposalChangesExposeSemanticVisualStates(t *testing.T) {
 	}
 	for _, state := range []string{
 		"proposal-change--addition",
-		"proposal-change--modification",
 		"proposal-change--removal",
+		"proposal-change--rename",
+		"proposal-change--content",
 		"proposal-change__previous",
 		"proposal-change__revert",
 	} {
@@ -153,13 +154,66 @@ func TestProposalChangesExposeSemanticVisualStates(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, contract := range []string{
-		".proposal-change--addition",
-		".proposal-change--removal",
+		".proposal-list li.proposal-change--addition",
+		".proposal-list li.proposal-change--removal",
+		".proposal-list li.proposal-change--rename",
+		".proposal-list li.proposal-change--content",
 		"color: var(--proposal-change-color)",
 		".proposal-list.proposal-change-list",
 	} {
 		if !strings.Contains(string(stylesheet), contract) {
 			t.Errorf("proposal change styles are missing %q", contract)
+		}
+	}
+}
+
+func TestDraftProposalsAreListedOutsideProposalHistory(t *testing.T) {
+	template, err := os.ReadFile("../../web/templates/admin-curriculum.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(template)
+	for _, contract := range []string{
+		`id="active-proposals-title"`,
+		`class="ui-pane proposal-index-pane"`,
+		`data-panel-modes="collapsed:0 breadcrumb:4 mobile:20 content:24 wide:28"`,
+		`class="proposal-index__breadcrumb-title"`,
+		`{{ if .DraftProposals }}`,
+		`class="active-proposal-card`,
+		`href="/admin/curriculum?proposal={{ .ID }}&amp;view=work"`,
+		`href="/admin/curriculum?proposal={{ .ID }}&amp;view=details"`,
+		`{{ if and .ActiveProposal (eq .ProposalView "work") }}`,
+		`data-panel-breadcrumb="Working on {{ .ActiveProposal.Title }}"`,
+		`class="proposal-workspace__breadcrumb-title"`,
+		`Working on {{ .ActiveProposal.Title }}</a>`,
+		`{{ if ne .ProposalView "details" }}hidden{{ end }}`,
+		`Inspect the latest published curriculum versions.`,
+	} {
+		if !strings.Contains(source, contract) {
+			t.Errorf("proposal navigation is missing %q", contract)
+		}
+	}
+	if strings.Contains(source, `{{ if eq .Status "draft" }}<a href="/admin/curriculum?proposal=`) {
+		t.Error("proposal history should not remain responsible for selecting drafts")
+	}
+	if strings.Contains(source, `active-proposal-card__workspace`) {
+		t.Error("active proposal cards should navigate to right-hand views instead of expanding inline")
+	}
+}
+
+func TestAdminContentViewerCloseClearsOpenViewerState(t *testing.T) {
+	template, err := os.ReadFile("../../web/templates/admin-curriculum.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(template)
+	for _, contract := range []string{
+		`href="/admin/curriculum?proposal={{ $.ActiveProposal.ID }}&amp;view=work&amp;unit={{ .ID }}"`,
+		`hx-push-url="true"`,
+		`aria-label="Close unit content"`,
+	} {
+		if !strings.Contains(source, contract) {
+			t.Errorf("admin content viewer close is missing %q", contract)
 		}
 	}
 }
@@ -346,6 +400,37 @@ func TestRestorableControllersDoNotSerializeInitializationState(t *testing.T) {
 			strings.Contains(string(controller), "dataset.menuInitialized") ||
 			strings.Contains(string(controller), "dataset.breadcrumbSignature") {
 			t.Errorf("%s serializes controller initialization state into HTMX history", controllerPath)
+		}
+	}
+}
+
+func TestShellReconcilesPanelGeometryBeforeRestoringTransitions(t *testing.T) {
+	controller, err := os.ReadFile("../../web/static/js/shell.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(controller)
+	refresh := strings.Index(source, `if (window.panelLayout) window.panelLayout.refresh();`)
+	restore := strings.Index(source, `shell.classList.remove("is-shell-navigation");`)
+	if refresh < 0 || restore < 0 || refresh > restore {
+		t.Error("shell must reconcile settled panel widths before restoring CSS transitions")
+	}
+}
+
+func TestHTMXKeepsCalculatedPanelGeometryDuringViewTransitions(t *testing.T) {
+	template, err := os.ReadFile("../../web/templates/components.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(template)
+	for _, contract := range []string{
+		`<meta name="htmx-config" content='{"attributesToSettle":["class","width","height"]}'>`,
+		"hx-swap=\"outerHTML transition:true\"\n         hx-push-url=\"true\"\n         data-graph-search-option",
+		"hx-swap=\"outerHTML transition:true\"\n             hx-push-url=\"true\"\n             {{ if .IsCurrent }}",
+		"hx-swap=\"outerHTML transition:true\"\n             hx-push-url=\"true\"\n             aria-label=\"Open content",
+	} {
+		if !strings.Contains(source, contract) {
+			t.Errorf("stable HTMX transition contract is missing %q", contract)
 		}
 	}
 }

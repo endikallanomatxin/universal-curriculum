@@ -7,10 +7,13 @@
     {{ template "primary-navigation" . }}
     <main class="pane-stack" id="workspace" data-shell-view="detail" data-document-title="Curriculum modification · Universal Curriculum" data-layout-panel data-panel-modes="mobile:20 content:34 wide:46" data-panel-required-mode="content" data-panel-fill data-panel-group>
       <nav class="mobile-panel-breadcrumbs" data-mobile-panel-breadcrumbs aria-label="Current location" hidden></nav>
-      <section class="ui-pane ui-pane--wide" aria-labelledby="curriculum-title" data-layout-panel data-panel-modes="collapsed:0 breadcrumb:4 mobile:20 content:34 wide:46" data-panel-required-mode="mobile" data-panel-fill data-panel-breadcrumb="Curriculum modification">
-        <div class="ui-pane__inner curriculum-editor" id="curriculum-editor">
-          <header class="curriculum-editor__header">
-            <h1 class="curriculum-editor__title" id="curriculum-title">Curriculum modification</h1>
+      <section class="ui-pane proposal-index-pane" aria-labelledby="curriculum-title" data-layout-panel data-panel-modes="collapsed:0 breadcrumb:4 mobile:20 content:24 wide:28" data-panel-required-mode="mobile" data-panel-fill data-panel-breadcrumb="Proposals">
+        <div class="ui-pane__inner curriculum-editor proposal-index" id="curriculum-editor">
+          <header class="curriculum-editor__header proposal-index__header">
+            <div>
+              <h1 class="curriculum-editor__title" id="curriculum-title">Curriculum modification</h1>
+              <a class="proposal-index__breadcrumb-title" href="/admin/curriculum" hx-get="/admin/curriculum" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true">Proposals</a>
+            </div>
             <button class="secondary-button" type="button" data-open-panel="proposal-history-panel" aria-controls="proposal-history-panel" aria-expanded="false">
               <span class="material-symbols-rounded" aria-hidden="true">history</span>
               History
@@ -19,24 +22,67 @@
 
           {{ if .Error }}<p class="form-error curriculum-editor__error" role="alert">{{ .Error }}</p>{{ end }}
 
-          <section class="proposal-history" aria-labelledby="proposal-workspace-title">
-            {{ if .ActiveProposal }}
-              <div class="proposal-workspace__header">
-                <div class="proposal-workspace__identity">
-                  <p class="proposal-workspace__status"><span>Draft</span><span>{{ len .ActiveProposal.Changes }} {{ if eq (len .ActiveProposal.Changes) 1 }}change{{ else }}changes{{ end }}</span></p>
-                  <div class="proposal-workspace__title-row">
-                    <h2 id="proposal-workspace-title">{{ .ActiveProposal.Title }}</h2>
-                    <button class="secondary-button" type="button" data-open-panel="proposal-details-panel" aria-controls="proposal-details-panel" aria-expanded="false">
-                      <span class="material-symbols-rounded" aria-hidden="true">description</span>
-                      Proposal details
-                    </button>
-                  </div>
-                </div>
+          <section class="active-proposals" aria-labelledby="active-proposals-title">
+            <div class="section-heading">
+              <h2 id="active-proposals-title">Active proposals</h2>
+              <button class="secondary-button" type="button" data-open-panel="new-proposal-panel" aria-controls="new-proposal-panel" aria-expanded="false">
+                <span class="material-symbols-rounded" aria-hidden="true">add</span>
+                New proposal
+              </button>
+            </div>
+            {{ if .DraftProposals }}
+              <div class="active-proposal-list">
+                {{ range .DraftProposals }}
+                  {{ $proposal := . }}
+                  <article class="active-proposal-card {{ with $.ActiveProposal }}{{ if eq .ID $proposal.ID }}is-selected{{ end }}{{ end }}">
+                    <div class="active-proposal-card__identity">
+                      <span class="material-symbols-rounded active-proposal-card__icon" aria-hidden="true">rebase_edit</span>
+                      <span class="active-proposal-card__body">
+                        <strong>{{ .Title }}</strong>
+                        <span>{{ .Rationale }}</span>
+                      </span>
+                    </div>
+                    <span class="active-proposal-card__meta">{{ .ChangeCount }} {{ if eq .ChangeCount 1 }}change{{ else }}changes{{ end }}</span>
+                    <div class="active-proposal-card__actions">
+                      <a class="secondary-button {{ with $.ActiveProposal }}{{ if and (eq .ID $proposal.ID) (eq $.ProposalView "work") }}is-selected{{ end }}{{ end }}" href="/admin/curriculum?proposal={{ .ID }}&amp;view=work" hx-get="/admin/curriculum?proposal={{ .ID }}&amp;view=work" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true">
+                        <span class="material-symbols-rounded" aria-hidden="true">edit</span>
+                        Work
+                      </a>
+                      <a class="secondary-button {{ with $.ActiveProposal }}{{ if and (eq .ID $proposal.ID) (eq $.ProposalView "details") }}is-selected{{ end }}{{ end }}" href="/admin/curriculum?proposal={{ .ID }}&amp;view=details" hx-get="/admin/curriculum?proposal={{ .ID }}&amp;view=details" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true">
+                        <span class="material-symbols-rounded" aria-hidden="true">description</span>
+                        Details
+                      </a>
+                    </div>
+                  </article>
+                {{ end }}
               </div>
+            {{ else }}
+              <p class="empty-message">No active proposals. Create one to start collecting curriculum changes.</p>
+            {{ end }}
+          </section>
+        </div>
+      </section>
+
+      {{ if and .ActiveProposal (eq .ProposalView "work") }}
+        <section class="ui-pane ui-pane--wide proposal-workspace-pane" id="proposal-workspace-panel" data-nested-panel data-layout-panel data-panel-modes="collapsed:0 breadcrumb:4 mobile:20 content:34 wide:46" data-panel-required-mode="mobile" data-panel-fill data-panel-breadcrumb="Working on {{ .ActiveProposal.Title }}" aria-labelledby="proposal-workspace-title">
+          <div class="ui-pane__inner curriculum-editor">
+            <header class="nested-panel__header curriculum-editor__header proposal-workspace__main-header">
+              <div>
+                <p class="ui-pane__eyebrow">Work</p>
+                <h1 id="proposal-workspace-title">{{ .ActiveProposal.Title }}</h1>
+                <a class="proposal-workspace__breadcrumb-title" href="/admin/curriculum?proposal={{ .ActiveProposal.ID }}&amp;view=work" hx-get="/admin/curriculum?proposal={{ .ActiveProposal.ID }}&amp;view=work" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true">Working on {{ .ActiveProposal.Title }}</a>
+              </div>
+              <a class="icon-button nested-panel__close" href="/admin/curriculum" hx-get="/admin/curriculum" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true" aria-label="Close proposal workspace">
+                <span class="material-symbols-rounded" aria-hidden="true">close</span>
+              </a>
+            </header>
+
+            <section class="proposal-workspace__changes" aria-labelledby="proposal-changes-title">
+              <h2 id="proposal-changes-title">Proposed changes</h2>
               {{ if .ActiveProposal.Changes }}
                 <ol class="proposal-list proposal-change-list">
                   {{ range .ActiveProposal.Changes }}
-                    <li class="proposal-change {{ if or (eq .Kind "create_unit") (eq .Kind "add_dependency") }}proposal-change--addition{{ else if or (eq .Kind "delete_unit") (eq .Kind "remove_dependency") }}proposal-change--removal{{ else }}proposal-change--modification{{ end }}">
+                    <li class="proposal-change {{ if or (eq .Kind "create_unit") (eq .Kind "add_dependency") }}proposal-change--addition{{ else if or (eq .Kind "delete_unit") (eq .Kind "remove_dependency") }}proposal-change--removal{{ else if eq .Kind "update_unit" }}proposal-change--rename{{ else if eq .Kind "update_content" }}proposal-change--content{{ end }}">
                       <span class="proposal-change__badge">
                         <span class="material-symbols-rounded" aria-hidden="true">{{ if eq .Kind "create_unit" }}add{{ else if eq .Kind "update_unit" }}edit{{ else if eq .Kind "update_content" }}description{{ else if eq .Kind "delete_unit" }}delete{{ else if eq .Kind "add_dependency" }}arrow_downward{{ else }}link_off{{ end }}</span>
                         <span>{{ if eq .Kind "create_unit" }}Create unit{{ else if eq .Kind "update_unit" }}Rename{{ else if eq .Kind "update_content" }}Edit content{{ else if eq .Kind "delete_unit" }}Delete unit{{ else if eq .Kind "add_dependency" }}Add prerequisite{{ else }}Remove prerequisite{{ end }}</span>
@@ -55,44 +101,24 @@
                     </li>
                   {{ end }}
                 </ol>
-              {{ else }}<p class="empty-message">This draft has no changes yet.</p>{{ end }}
-            {{ else }}
-              <div class="proposal-workspace__header">
-                <div class="proposal-workspace__identity">
-                  <p class="proposal-workspace__status"><span>No active draft</span></p>
-                  <h2 id="proposal-workspace-title">Choose a working proposal</h2>
-                </div>
-                <div class="proposal-workspace__actions">
-                  <button class="secondary-button" type="button" data-open-panel="new-proposal-panel" aria-controls="new-proposal-panel" aria-expanded="false">
-                    <span class="material-symbols-rounded" aria-hidden="true">add</span>
-                    New proposal
-                  </button>
-                </div>
-              </div>
-              <p class="empty-message">Select an existing draft below or create one to start collecting curriculum changes.</p>
-            {{ end }}
-          </section>
+              {{ else }}
+                <p class="empty-message">This proposal has no changes yet.</p>
+              {{ end }}
+            </section>
 
-          <div class="curriculum-editor__layout">
-            <section class="curriculum-units" aria-labelledby="units-title">
-              <div class="section-heading">
-                <h2 id="units-title">Published curriculum</h2>
-                {{ if .ActiveProposal }}
-                  <div class="curriculum-units__heading-actions">
-                    <button class="secondary-button" type="button" data-open-panel="new-unit-panel" aria-controls="new-unit-panel" aria-expanded="false">
-                      <span class="material-symbols-rounded" aria-hidden="true">add</span>
-                      Add unit creation
-                    </button>
-                  </div>
-                {{ end }}
+            <div class="curriculum-editor__layout">
+            <section class="curriculum-units" aria-label="Curriculum">
+              <div class="curriculum-units__heading-actions">
+                <button class="secondary-button" type="button" data-open-panel="new-unit-panel" aria-controls="new-unit-panel" aria-expanded="false">
+                  <span class="material-symbols-rounded" aria-hidden="true">add</span>
+                  Add unit creation
+                </button>
               </div>
 
               {{ if .Graph.Nodes }}
                 <section class="curriculum-explorer" id="curriculum-explorer" aria-live="polite">
                   <nav class="learn-navigation" aria-label="Curriculum navigation">
-                    {{ if .FocusedUnit }}
-                      <p>Showing the local neighbourhood around {{ .FocusedUnit.Name }}.</p>
-                    {{ else }}
+                    {{ if not .FocusedUnit }}
                       <p>Choose a unit to navigate its neighbourhood and read its content.</p>
                     {{ end }}
                     {{ template "unit-navigation-search" .GraphSearch }}
@@ -107,10 +133,10 @@
                 </div>
               {{ end }}
             </section>
-
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      {{ end }}
 
       {{ with .ContentUnit }}
         <section class="ui-pane ui-pane--wide unit-content-pane" data-nested-panel data-layout-panel data-panel-modes="collapsed:0 breadcrumb:4 mobile:20 content:32 wide:42" data-panel-required-mode="mobile" data-panel-fill data-panel-breadcrumb="{{ .Name }}" aria-labelledby="admin-unit-content-title">
@@ -132,7 +158,16 @@
                   </form>
                 {{ end }}
               </div>
-              <button class="icon-button nested-panel__close" type="button" data-close-panel aria-label="Close unit content"><span class="material-symbols-rounded" aria-hidden="true">close</span></button>
+              <a class="icon-button nested-panel__close"
+                 href="/admin/curriculum?proposal={{ $.ActiveProposal.ID }}&amp;view=work&amp;unit={{ .ID }}"
+                 hx-get="/admin/curriculum?proposal={{ $.ActiveProposal.ID }}&amp;view=work&amp;unit={{ .ID }}"
+                 hx-target="#workspace"
+                 hx-select="#workspace"
+                 hx-swap="outerHTML transition:true"
+                 hx-push-url="true"
+                 aria-label="Close unit content">
+                <span class="material-symbols-rounded" aria-hidden="true">close</span>
+              </a>
             </header>
             {{ if $.ActiveProposal }}
               <div class="unit-content__admin-actions">
@@ -165,16 +200,16 @@
       {{ end }}
 
       {{ if .ActiveProposal }}
-        <section class="ui-pane ui-pane--form" id="proposal-details-panel" data-nested-panel data-layout-panel data-panel-modes="collapsed:0 compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-max="34" data-panel-breadcrumb="Proposal details" hidden aria-labelledby="proposal-details-title">
+        <section class="ui-pane ui-pane--form" id="proposal-details-panel" data-nested-panel data-layout-panel data-panel-modes="collapsed:0 compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-max="34" data-panel-breadcrumb="{{ .ActiveProposal.Title }}" {{ if ne .ProposalView "details" }}hidden{{ end }} aria-labelledby="proposal-details-title">
           <div class="ui-pane__inner nested-panel">
             <header class="nested-panel__header">
               <div>
                 <p class="ui-pane__eyebrow">Working proposal</p>
                 <h1 id="proposal-details-title">Proposal details</h1>
               </div>
-              <button class="icon-button nested-panel__close" type="button" data-close-panel aria-label="Close proposal details">
+              <a class="icon-button nested-panel__close" href="/admin/curriculum" hx-get="/admin/curriculum" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true" aria-label="Close proposal details">
                 <span class="material-symbols-rounded" aria-hidden="true">close</span>
-              </button>
+              </a>
             </header>
             <dl class="proposal-details">
               <div><dt>Status</dt><dd>{{ .ActiveProposal.Status }}</dd></div>
@@ -218,13 +253,13 @@
               <span class="material-symbols-rounded" aria-hidden="true">close</span>
             </button>
           </header>
-          <p class="nested-panel__introduction">Select a draft to continue working or inspect the latest published versions.</p>
+          <p class="nested-panel__introduction">Inspect the latest published curriculum versions.</p>
           {{ if .Proposals }}
             <ol class="proposal-list proposal-list--panel">
               {{ range .Proposals }}
                 <li>
                   <div>
-                    <strong>{{ if eq .Status "draft" }}<a href="/admin/curriculum?proposal={{ .ID }}">{{ .Title }}</a>{{ else }}{{ .Title }}{{ end }}</strong>
+                    <strong>{{ .Title }}</strong>
                     <span>{{ if .PublishedVersion }}v{{ .PublishedVersion }} · {{ end }}{{ .AuthorName }}</span>
                   </div>
                   <div class="proposal-list__actions">

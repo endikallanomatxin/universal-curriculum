@@ -114,6 +114,22 @@ func UpdateCurriculumUnit(database *sql.DB, authorID, proposalID, unitID int64, 
 	if name == "" {
 		return ErrUnitNameRequired
 	}
+	created, err := draftCreatedCurriculumUnit(database, authorID, proposalID, unitID)
+	if err != nil {
+		return err
+	}
+	if created != nil {
+		updated, err := db.UpdateDraftCreatedCurriculumUnit(
+			database, proposalID, authorID, unitID, name, created.UnitContent,
+		)
+		if err != nil {
+			return err
+		}
+		if !updated {
+			return ErrProposalNotFound
+		}
+		return nil
+	}
 	unit, err := db.GetUnit(database, unitID)
 	if err != nil {
 		return err
@@ -136,6 +152,22 @@ func UpdateCurriculumUnitContent(database *sql.DB, authorID, proposalID, unitID 
 	if content == "" {
 		return ErrUnitContentRequired
 	}
+	created, err := draftCreatedCurriculumUnit(database, authorID, proposalID, unitID)
+	if err != nil {
+		return err
+	}
+	if created != nil {
+		updated, err := db.UpdateDraftCreatedCurriculumUnit(
+			database, proposalID, authorID, unitID, created.UnitName, content,
+		)
+		if err != nil {
+			return err
+		}
+		if !updated {
+			return ErrProposalNotFound
+		}
+		return nil
+	}
 	unit, err := db.GetUnit(database, unitID)
 	if err != nil {
 		return err
@@ -151,6 +183,23 @@ func UpdateCurriculumUnitContent(database *sql.DB, authorID, proposalID, unitID 
 		}
 	}
 	return replaceUnitProposalChange(database, authorID, proposalID, unitID, "update_content", change)
+}
+
+func draftCreatedCurriculumUnit(database *sql.DB, authorID, proposalID, unitID int64) (*models.CurriculumProposalChange, error) {
+	proposal, err := db.GetCurriculumProposal(database, proposalID)
+	if err != nil {
+		return nil, err
+	}
+	if proposal == nil || proposal.Status != "draft" || proposal.AuthorID == nil || *proposal.AuthorID != authorID {
+		return nil, ErrProposalNotFound
+	}
+	for index := range proposal.Changes {
+		change := &proposal.Changes[index]
+		if change.Kind == "create_unit" && change.UnitID == unitID {
+			return change, nil
+		}
+	}
+	return nil, nil
 }
 
 func DeleteCurriculumUnit(database *sql.DB, authorID, proposalID, unitID int64) error {

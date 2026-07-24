@@ -15,6 +15,7 @@ type CurriculumProposal struct {
 	CreatedAt         time.Time
 	AcceptedAt        *time.Time
 	Changes           []CurriculumProposalChange
+	ChangeCount       int
 	CanRevert         bool
 }
 

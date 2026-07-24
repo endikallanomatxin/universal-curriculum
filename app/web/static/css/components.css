@@ -93,6 +93,7 @@
   font-weight: 700;
   gap: 0.3rem;
   padding: 0.55rem 0.75rem;
+  text-decoration: none;
 }
 
 .secondary-button:hover {
@@ -123,6 +124,7 @@
   background: transparent;
   border: 0;
   border-radius: 50%;
+  text-decoration: none;
   color: var(--color-muted);
   display: inline-flex;
   padding: 0.35rem;
@@ -369,6 +371,10 @@
   font-size: 0.74rem;
   line-height: 1.45;
   margin: calc(-1 * var(--space-2)) 0 0;
+}
+
+.editor-form--panel label + .editor-form__hint {
+  margin-top: 0;
 }
 
 .editor-form__hint code {

@@ -69,7 +69,15 @@
   });
   document.addEventListener("htmx:afterSettle", function (event) {
     const shell = document.querySelector("#app-shell");
-    if (shell && targetsWorkspace(event)) shell.classList.remove("is-shell-navigation");
+    if (!shell || !targetsWorkspace(event)) return;
+    if (window.panelLayout) window.panelLayout.refresh();
+    window.requestAnimationFrame(function () {
+      if (window.panelLayout) window.panelLayout.refresh();
+      window.requestAnimationFrame(function () {
+        if (window.panelLayout) window.panelLayout.refresh();
+        shell.classList.remove("is-shell-navigation");
+      });
+    });
   });
   window.addEventListener("popstate", function () {
     window.setTimeout(function () {
