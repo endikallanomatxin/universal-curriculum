@@ -40,7 +40,7 @@ func TestApplicationShellTemplates(t *testing.T) {
 				Home            bool
 				Recommendations []any
 			}{User: user, CurrentSection: "home", Home: true},
-			contains: []string{`id="app-shell"`, `class="app-shell app-shell--home"`, `>Learn</span>`, `>book_5</span>`, `>Account<`, `>Log out</span>`, `Material+Symbols+Rounded`, `/static/css/base.css?v=`, `/static/js/shell.js?v=`},
+			contains: []string{`id="app-shell"`, `class="app-shell app-shell--home"`, `>universal curriculum</span>`, `>Learn</span>`, `>book_5</span>`, `>Account<`, `>Log out</span>`, `Material+Symbols+Rounded`, `/static/css/base.css?v=`, `/static/js/shell.js?v=`},
 		},
 		{
 			name: "account.html",
@@ -202,6 +202,9 @@ func TestLearningPathsBreadcrumbReturnsToPathList(t *testing.T) {
 		strings.Contains(source, `data-panel-max="28"`) {
 		t.Error("learning paths panel should not retain the old narrow maximum")
 	}
+	if strings.Contains(source, "units in view") {
+		t.Error("curriculum map should not show a redundant unit count")
+	}
 
 	stylesheet, err := os.ReadFile("../../web/static/css/learn.css")
 	if err != nil {
@@ -213,6 +216,36 @@ func TestLearningPathsBreadcrumbReturnsToPathList(t *testing.T) {
 	} {
 		if !strings.Contains(string(stylesheet), contract) {
 			t.Errorf("learning paths breadcrumb positioning is missing %q", contract)
+		}
+	}
+}
+
+func TestCollapsedPrimaryMenuPreservesVerticalSpacing(t *testing.T) {
+	stylesheet, err := os.ReadFile("../../web/static/css/shell.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(stylesheet)
+	selector := `.primary-navigation[data-panel-mode="icons"] .primary-menu > li {`
+	start := strings.Index(source, selector)
+	if start < 0 {
+		t.Fatalf("shell styles are missing %q", selector)
+	}
+	end := strings.Index(source[start:], "}")
+	if end < 0 {
+		t.Fatal("collapsed primary menu rule is not closed")
+	}
+	if strings.Contains(source[start:start+end], "margin-top") {
+		t.Error("collapsed primary menu overrides vertical spacing")
+	}
+	for _, contract := range []string{
+		`justify-content: center;`,
+		`position: relative;`,
+		`transform: translateX(-50%);`,
+		`line-height: 1;`,
+	} {
+		if !strings.Contains(source, contract) {
+			t.Errorf("collapsed primary menu alignment is missing %q", contract)
 		}
 	}
 }

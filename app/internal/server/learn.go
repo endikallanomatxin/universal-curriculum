@@ -14,23 +14,21 @@ import (
 
 type learnPageData struct {
 	userPageData
-	Graph             *models.CurriculumGraphLayout
-	GraphView         curriculumGraphView
-	GraphSearch       unitNavigationSearchView
-	FocusedUnit       *models.Unit
-	ContentUnit       *models.Unit
-	Paths             []models.LearningPath
-	SelectedPath      *models.LearningPath
-	AllUnits          []models.Unit
-	NavigableUnits    []models.Unit
-	TargetUnitIDs     map[int64]bool
-	CompletedUnitIDs  map[int64]bool
-	ContentCompleted  bool
-	ReturnURL         string
-	ExploreAll        bool
-	ShowGraph         bool
-	TotalUnits        int
-	TotalDependencies int
+	Graph            *models.CurriculumGraphLayout
+	GraphView        curriculumGraphView
+	GraphSearch      unitNavigationSearchView
+	FocusedUnit      *models.Unit
+	ContentUnit      *models.Unit
+	Paths            []models.LearningPath
+	SelectedPath     *models.LearningPath
+	AllUnits         []models.Unit
+	NavigableUnits   []models.Unit
+	TargetUnitIDs    map[int64]bool
+	CompletedUnitIDs map[int64]bool
+	ContentCompleted bool
+	ReturnURL        string
+	ExploreAll       bool
+	ShowGraph        bool
 }
 
 func (server *Server) learn(writer http.ResponseWriter, request *http.Request) {
@@ -47,10 +45,8 @@ func (server *Server) learn(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 	data := learnPageData{
-		userPageData:      page,
-		AllUnits:          curriculum.Units,
-		TotalUnits:        len(curriculum.Units),
-		TotalDependencies: len(curriculum.Dependencies),
+		userPageData: page,
+		AllUnits:     curriculum.Units,
 	}
 	userID, authenticated := services.SessionUserID(request)
 	if authenticated {

@@ -5,7 +5,7 @@
 <body>
   <main class="auth-page">
     <form class="auth-form" action="/auth/login" method="post">
-      <a class="brand" href="/">Universal Curriculum</a>
+      <a class="brand" href="/">universal curriculum</a>
       <h1>Log in</h1>
       {{ if .Error }}<p class="form-error" role="alert">{{ .Error }}</p>{{ end }}
       <input type="hidden" name="next" value="{{ .Next }}">

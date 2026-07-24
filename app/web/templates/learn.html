@@ -67,7 +67,6 @@
                 <h1 id="learn-graph-title">{{ if .SelectedPath }}Curriculum map{{ else }}Full curriculum{{ end }}</h1>
                 {{ with .SelectedPath }}{{ if .Description }}<p>{{ .Description }}</p>{{ end }}{{ end }}
               </div>
-              <p>{{ len .Graph.Nodes }} units in view</p>
             </div>
 
             <section class="curriculum-explorer" id="curriculum-explorer" aria-live="polite">

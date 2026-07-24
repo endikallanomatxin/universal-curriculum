@@ -177,22 +177,24 @@
 .primary-navigation[data-panel-mode="icons"] .brand {
   align-self: center;
   height: 2rem;
+  position: relative;
   width: 2rem;
 }
 
 .primary-navigation[data-panel-mode="icons"] .brand::before {
+  left: 50%;
   opacity: 1;
-  transform: translateX(0);
+  transform: translateX(-50%);
 }
 
 .primary-navigation[data-panel-mode="icons"] .primary-menu > li {
-  margin-top: 0;
   width: 100%;
 }
 
 .app-shell:not(.app-shell--home) .primary-navigation[data-panel-mode="icons"] .primary-menu__link {
   gap: 0;
   grid-template-columns: 1.5rem 0;
+  justify-content: center;
   padding-inline: 0.75rem;
   width: 100%;
 }
@@ -481,6 +483,7 @@
 
 .primary-menu__admin-item .primary-menu__label {
   font-size: 0.8rem;
+  line-height: 1;
 }
 
 .menu-form {
