@@ -36,14 +36,21 @@
               {{ if .ActiveProposal.Changes }}
                 <ol class="proposal-list proposal-change-list">
                   {{ range .ActiveProposal.Changes }}
-                    <li>
-                      <div>
+                    <li class="proposal-change {{ if or (eq .Kind "create_unit") (eq .Kind "add_dependency") }}proposal-change--addition{{ else if or (eq .Kind "delete_unit") (eq .Kind "remove_dependency") }}proposal-change--removal{{ else }}proposal-change--modification{{ end }}">
+                      <span class="proposal-change__badge">
+                        <span class="material-symbols-rounded" aria-hidden="true">{{ if eq .Kind "create_unit" }}add{{ else if eq .Kind "update_unit" }}edit{{ else if eq .Kind "update_content" }}description{{ else if eq .Kind "delete_unit" }}delete{{ else if eq .Kind "add_dependency" }}arrow_downward{{ else }}link_off{{ end }}</span>
                         <span>{{ if eq .Kind "create_unit" }}Create unit{{ else if eq .Kind "update_unit" }}Rename{{ else if eq .Kind "update_content" }}Edit content{{ else if eq .Kind "delete_unit" }}Delete unit{{ else if eq .Kind "add_dependency" }}Add prerequisite{{ else }}Remove prerequisite{{ end }}</span>
-                        <strong>{{ if .UnitName }}{{ .UnitName }}{{ else }}Unit #{{ .UnitID }}{{ end }}</strong>
+                      </span>
+                      <div class="proposal-change__description">
+                        <strong class="proposal-change__subject">{{ if .UnitName }}{{ .UnitName }}{{ else }}Unit #{{ .UnitID }}{{ end }}</strong>
+                        {{ if and (eq .Kind "update_unit") .PreviousUnitName }}<span class="proposal-change__previous">Previously {{ .PreviousUnitName }}</span>{{ end }}
                       </div>
                       <form action="/admin/curriculum/proposals/{{ $.ActiveProposal.ID }}/changes/{{ .ID }}/delete" method="post">
                         <input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}">
-                        <button class="icon-button icon-button--danger" type="submit" aria-label="Remove proposed change"><span class="material-symbols-rounded" aria-hidden="true">close</span></button>
+                        <button class="proposal-change__revert" type="submit" aria-label="Revert proposed change">
+                          <span class="material-symbols-rounded" aria-hidden="true">undo</span>
+                          <span>Revert</span>
+                        </button>
                       </form>
                     </li>
                   {{ end }}

@@ -130,6 +130,39 @@ func TestSharedCurriculumUITemplatesAreRegistered(t *testing.T) {
 	}
 }
 
+func TestProposalChangesExposeSemanticVisualStates(t *testing.T) {
+	template, err := os.ReadFile("../../web/templates/admin-curriculum.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, state := range []string{
+		"proposal-change--addition",
+		"proposal-change--modification",
+		"proposal-change--removal",
+		"proposal-change__previous",
+		"proposal-change__revert",
+	} {
+		if !strings.Contains(string(template), state) {
+			t.Errorf("proposal change template is missing semantic state %q", state)
+		}
+	}
+
+	stylesheet, err := os.ReadFile("../../web/static/css/curriculum.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, contract := range []string{
+		".proposal-change--addition",
+		".proposal-change--removal",
+		"color: var(--proposal-change-color)",
+		".proposal-list.proposal-change-list",
+	} {
+		if !strings.Contains(string(stylesheet), contract) {
+			t.Errorf("proposal change styles are missing %q", contract)
+		}
+	}
+}
+
 func TestPanelControllerDoesNotOwnCurriculumEditing(t *testing.T) {
 	controller, err := os.ReadFile("../../web/static/js/panels.js")
 	if err != nil {
