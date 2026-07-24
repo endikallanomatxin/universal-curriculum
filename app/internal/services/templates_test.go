@@ -34,10 +34,11 @@ func TestApplicationShellTemplates(t *testing.T) {
 		{
 			name: "index.html",
 			data: struct {
-				User           *models.User
-				CSRFToken      string
-				CurrentSection string
-				Home           bool
+				User            *models.User
+				CSRFToken       string
+				CurrentSection  string
+				Home            bool
+				Recommendations []any
 			}{User: user, CurrentSection: "home", Home: true},
 			contains: []string{`id="app-shell"`, `class="app-shell app-shell--home"`, `>Learn</span>`, `>book_5</span>`, `>Account<`, `>Log out</span>`, `Material+Symbols+Rounded`, `/static/css/base.css?v=`, `/static/js/shell.js?v=`},
 		},
@@ -159,6 +160,59 @@ func TestProposalChangesExposeSemanticVisualStates(t *testing.T) {
 	} {
 		if !strings.Contains(string(stylesheet), contract) {
 			t.Errorf("proposal change styles are missing %q", contract)
+		}
+	}
+}
+
+func TestHomeRecommendationsAvoidViewTransitionsFromHiddenWorkspace(t *testing.T) {
+	components, err := os.ReadFile("../../web/templates/components.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(components)
+	for _, contract := range []string{
+		`define "shell-link-attributes-without-view-transition"`,
+		`hx-swap="outerHTML"`,
+		`template "shell-link-attributes-without-view-transition" .URL`,
+	} {
+		if !strings.Contains(source, contract) {
+			t.Errorf("home recommendation navigation is missing %q", contract)
+		}
+	}
+}
+
+func TestLearningPathsBreadcrumbReturnsToPathList(t *testing.T) {
+	template, err := os.ReadFile("../../web/templates/learn.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(template)
+	for _, contract := range []string{
+		`data-panel-breadcrumb="Learning paths"`,
+		`data-panel-required-mode="mobile" data-panel-fill data-panel-breadcrumb="Learning paths"`,
+		`class="ui-pane__eyebrow">Learning</p>`,
+		`class="learning-paths__breadcrumb-title" href="/learn"`,
+		`>Learning paths</a>`,
+	} {
+		if !strings.Contains(source, contract) {
+			t.Errorf("learning paths header is missing %q", contract)
+		}
+	}
+	if strings.Contains(source, `class="ui-pane learning-paths-pane"`) &&
+		strings.Contains(source, `data-panel-max="28"`) {
+		t.Error("learning paths panel should not retain the old narrow maximum")
+	}
+
+	stylesheet, err := os.ReadFile("../../web/static/css/learn.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, contract := range []string{
+		"align-items: flex-end;",
+		"padding-bottom: calc(3.5rem + 2 * var(--space-3));",
+	} {
+		if !strings.Contains(string(stylesheet), contract) {
+			t.Errorf("learning paths breadcrumb positioning is missing %q", contract)
 		}
 	}
 }

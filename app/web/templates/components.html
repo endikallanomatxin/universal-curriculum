@@ -32,6 +32,7 @@
 {{- end }}
 
 {{ define "shell-link-attributes" }}hx-get="{{ . }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true"{{ end }}
+{{ define "shell-link-attributes-without-view-transition" }}hx-get="{{ . }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML" hx-push-url="true"{{ end }}
 
 {{ define "unit-navigation-search" -}}
 <div class="graph-search" data-graph-search>
@@ -124,7 +125,7 @@
 {{- end }}
 
 {{ define "primary-navigation" -}}
-<aside class="primary-navigation"
+<aside class="primary-navigation {{ if and .Home .Recommendations }}primary-navigation--with-recommendations{{ end }}"
        data-layout-panel
        data-panel-modes="mobile:0 icons:5 sidebar:17"
        data-panel-required-mode="icons">
@@ -140,6 +141,31 @@
     {{ if .User }}
       <div class="navigation-introduction">
         <p>Welcome, <strong>{{ .User.DisplayName }}</strong>.</p>
+        {{ if and .Home .Recommendations }}
+          <section class="home-recommendations" aria-labelledby="home-recommendations-title">
+            <h2 id="home-recommendations-title">Continue learning</h2>
+            <div class="home-recommendations__paths">
+              {{ range .Recommendations }}
+                <article class="home-recommendation">
+                  <a class="home-recommendation__path" href="{{ .URL }}" {{ template "shell-link-attributes-without-view-transition" .URL }}>
+                    <strong>{{ .Name }}</strong>
+                    <span>{{ .PendingCount }} {{ if eq .PendingCount 1 }}unit{{ else }}units{{ end }} remaining</span>
+                  </a>
+                  <ul>
+                    {{ range .NextUnits }}
+                      <li>
+                        <a href="{{ .URL }}" {{ template "shell-link-attributes-without-view-transition" .URL }}>
+                          <span class="home-recommendation__indicator" aria-hidden="true"></span>
+                          <span>{{ .Name }}</span>
+                        </a>
+                      </li>
+                    {{ end }}
+                  </ul>
+                </article>
+              {{ end }}
+            </div>
+          </section>
+        {{ end }}
       </div>
     {{ end }}
 

@@ -7,13 +7,13 @@
     {{ template "primary-navigation" . }}
     <main class="pane-stack" id="workspace" data-shell-view="detail" data-document-title="Learn · Universal Curriculum" data-layout-panel data-panel-modes="mobile:20 content:34 wide:46" data-panel-required-mode="content" data-panel-fill data-panel-group>
       <nav class="mobile-panel-breadcrumbs" data-mobile-panel-breadcrumbs aria-label="Current location" hidden></nav>
-      <section class="ui-pane learning-paths-pane" aria-labelledby="learning-paths-title" data-layout-panel data-panel-modes="collapsed:0 breadcrumb:4 mobile:20 content:24 wide:28" data-panel-required-mode="mobile" data-panel-max="28" data-panel-breadcrumb="{{ if .SelectedPath }}{{ .SelectedPath.Name }}{{ else }}{{ if .ExploreAll }}Full curriculum{{ else }}Paths{{ end }}{{ end }}">
+      <section class="ui-pane learning-paths-pane" aria-labelledby="learning-paths-title" data-layout-panel data-panel-modes="collapsed:0 breadcrumb:4 mobile:20 content:24 wide:28" data-panel-required-mode="mobile" data-panel-fill data-panel-breadcrumb="Learning paths">
         <div class="ui-pane__inner learning-paths">
           <header class="learning-paths__header">
             <div>
-              <p class="ui-pane__eyebrow">Learn</p>
+              <p class="ui-pane__eyebrow">Learning</p>
               <h1 id="learning-paths-title">Paths</h1>
-              <span class="learning-paths__breadcrumb-title">{{ if .SelectedPath }}{{ .SelectedPath.Name }}{{ else }}{{ if .ExploreAll }}Full curriculum{{ else }}Paths{{ end }}{{ end }}</span>
+              <a class="learning-paths__breadcrumb-title" href="/learn" {{ template "shell-link-attributes" "/learn" }}>Learning paths</a>
             </div>
           </header>
           <p class="learning-paths__introduction">Choose a goal-focused view of the curriculum.</p>

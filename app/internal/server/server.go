@@ -101,14 +101,29 @@ func (server *Server) health(writer http.ResponseWriter, request *http.Request) 
 }
 
 type userPageData struct {
-	User           *models.User
-	CSRFToken      string
-	CurrentSection string
-	Home           bool
+	User            *models.User
+	CSRFToken       string
+	CurrentSection  string
+	Home            bool
+	Recommendations []homeLearningPathRecommendation
 }
 
 func (server *Server) index(writer http.ResponseWriter, request *http.Request) {
-	server.renderUserPage(writer, request, "index.html", "home", true)
+	data, err := server.loadUserPageData(request, "home", true)
+	if err != nil {
+		log.Printf("load home user: %v", err)
+		http.Error(writer, "Unable to load home", http.StatusInternalServerError)
+		return
+	}
+	if data.User != nil {
+		data.Recommendations, err = server.homeLearningRecommendations(data.User.ID)
+		if err != nil {
+			log.Printf("load home recommendations: %v", err)
+			http.Error(writer, "Unable to load recommendations", http.StatusInternalServerError)
+			return
+		}
+	}
+	server.render(writer, "index.html", data)
 }
 
 func (server *Server) account(writer http.ResponseWriter, request *http.Request) {

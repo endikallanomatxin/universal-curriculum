@@ -137,3 +137,29 @@ func CurriculumPathSubgraph(graph *models.CurriculumGraph, targetIDs []int64) *m
 	}
 	return subgraph
 }
+
+func AvailableLearningPathUnits(
+	graph *models.CurriculumGraph,
+	targetIDs []int64,
+	completedUnitIDs map[int64]bool,
+) ([]models.Unit, int) {
+	path := CurriculumPathSubgraph(graph, targetIDs)
+	pendingCount := 0
+	blocked := make(map[int64]bool)
+	for _, dependency := range path.Dependencies {
+		if !completedUnitIDs[dependency.PrerequisiteID] {
+			blocked[dependency.UnitID] = true
+		}
+	}
+	var available []models.Unit
+	for _, unit := range path.Units {
+		if completedUnitIDs[unit.ID] {
+			continue
+		}
+		pendingCount++
+		if !blocked[unit.ID] {
+			available = append(available, unit)
+		}
+	}
+	return available, pendingCount
+}

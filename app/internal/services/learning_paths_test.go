@@ -58,3 +58,35 @@ func TestCurriculumPathSubgraphIgnoresMissingAndRepeatedTargets(t *testing.T) {
 		t.Fatalf("unexpected path subgraph: %#v", subgraph)
 	}
 }
+
+func TestAvailableLearningPathUnitsRequiresCompletedPrerequisites(t *testing.T) {
+	graph := &models.CurriculumGraph{
+		Units: []models.Unit{
+			{ID: 1, Name: "Foundation"},
+			{ID: 2, Name: "First branch"},
+			{ID: 3, Name: "Second branch"},
+			{ID: 4, Name: "Target"},
+		},
+		Dependencies: []models.UnitDependency{
+			{UnitID: 2, PrerequisiteID: 1},
+			{UnitID: 3, PrerequisiteID: 1},
+			{UnitID: 4, PrerequisiteID: 2},
+			{UnitID: 4, PrerequisiteID: 3},
+		},
+	}
+
+	available, pending := AvailableLearningPathUnits(graph, []int64{4}, nil)
+	if pending != 4 || len(available) != 1 || available[0].ID != 1 {
+		t.Fatalf("initial recommendations = %#v pending=%d, want foundation and four pending", available, pending)
+	}
+
+	available, pending = AvailableLearningPathUnits(graph, []int64{4}, map[int64]bool{1: true})
+	if pending != 3 || len(available) != 2 || available[0].ID != 2 || available[1].ID != 3 {
+		t.Fatalf("branch recommendations = %#v pending=%d, want both branches and three pending", available, pending)
+	}
+
+	available, pending = AvailableLearningPathUnits(graph, []int64{4}, map[int64]bool{1: true, 2: true, 3: true, 4: true})
+	if pending != 0 || len(available) != 0 {
+		t.Fatalf("completed path recommendations = %#v pending=%d, want none", available, pending)
+	}
+}
