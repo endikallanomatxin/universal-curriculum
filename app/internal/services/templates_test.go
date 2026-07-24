@@ -40,7 +40,7 @@ func TestApplicationShellTemplates(t *testing.T) {
 				Home            bool
 				Recommendations []any
 			}{User: user, CurrentSection: "home", Home: true},
-			contains: []string{`id="app-shell"`, `class="app-shell app-shell--home"`, `>universal curriculum</span>`, `>Learn</span>`, `>book_5</span>`, `>Account<`, `>Log out</span>`, `Material+Symbols+Rounded`, `/static/css/base.css?v=`, `/static/js/shell.js?v=`},
+			contains: []string{`id="app-shell"`, `class="app-shell app-shell--home"`, `class="brand__mark"`, `/static/images/universal-curriculum-logo.svg?v=`, `>universal curriculum</span>`, `>Learn</span>`, `>book_5</span>`, `>Account<`, `>Log out</span>`, `Material+Symbols+Rounded`, `/static/css/base.css?v=`, `/static/js/shell.js?v=`},
 		},
 		{
 			name: "account.html",
@@ -247,6 +247,18 @@ func TestCollapsedPrimaryMenuPreservesVerticalSpacing(t *testing.T) {
 		if !strings.Contains(source, contract) {
 			t.Errorf("collapsed primary menu alignment is missing %q", contract)
 		}
+	}
+	if strings.Count(source, "view-transition-name: brand;") != 1 {
+		t.Error("brand view transition should belong only to the visible name")
+	}
+	nameStart := strings.LastIndex(source, ".brand span {")
+	if nameStart < 0 {
+		t.Fatal("brand name styles are missing")
+	}
+	nameEnd := strings.Index(source[nameStart:], "}")
+	if nameEnd < 0 ||
+		!strings.Contains(source[nameStart:nameStart+nameEnd], "view-transition-name: brand;") {
+		t.Error("brand name does not own its view transition")
 	}
 }
 
