@@ -32,6 +32,12 @@ topology without subsequently packing or shifting lanes according to indirect
 geometric metrics. This preserves the allocator's existing breathing room and
 keeps dense converging branches from becoming a compact braid.
 
+The browser groups dependencies with a shared source or target into short
+common trunks and joins their branch points with monotone cubic Bézier curves.
+Each edge remains an independent SVG path so relation highlighting can still
+isolate it. A candidate curve is sampled against the measured node circles and
+falls back to its straight segment if bundling would introduce a node collision.
+
 Learn and Curriculum Modification render the same `curriculum-graph` and
 `unit-navigation-search` templates. Server view models prepare consumer-specific
 navigation and content URLs, current state and optional path targets; the

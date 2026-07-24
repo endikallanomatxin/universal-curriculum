@@ -84,25 +84,106 @@
           };
         }
 
-        function edgePath(source, target) {
+        const nodePoints = new Map();
+        nodes.forEach(function (item, unitID) {
+          nodePoints.set(unitID, anchorPoint(item));
+        });
+        const orderedPoints = Array.from(nodePoints.values()).filter(Boolean);
+        const rowSpacing = orderedPoints.length > 1
+          ? orderedPoints[1].y - orderedPoints[0].y
+          : 48;
+        const branchInset = rowSpacing * 0.35;
+        const sourceYs = new Map();
+        const targetYs = new Map();
+        nodePoints.forEach(function (point, unitID) {
+          if (!point) return;
+          sourceYs.set(unitID, point.y + point.height / 2);
+          targetYs.set(unitID, point.y - point.height / 2 - 5);
+        });
+        const outgoingHubs = new Map();
+        outgoing.forEach(function (sourceEdges, unitID) {
+          if (sourceEdges.length < 2) return;
+          const sourceY = sourceYs.get(unitID);
+          const firstTargetY = Math.min(...sourceEdges.map(function (edge) {
+            return targetYs.get(edge.dependentID);
+          }));
+          outgoingHubs.set(unitID, Math.max(sourceY, firstTargetY - branchInset));
+        });
+        const incomingHubs = new Map();
+        incoming.forEach(function (targetEdges, unitID) {
+          if (targetEdges.length < 2) return;
+          const targetY = targetYs.get(unitID);
+          const lastSourceY = Math.max(...targetEdges.map(function (edge) {
+            return sourceYs.get(edge.prerequisiteID);
+          }));
+          incomingHubs.set(unitID, Math.min(targetY, lastSourceY + branchInset));
+        });
+
+        function directBezierPath(source, target) {
+          const sourceY = source.y + source.height / 2;
+          const targetY = target.y - target.height / 2 - 5;
+          const easing = (targetY - sourceY) * 0.35;
+          return "M " + source.x + " " + sourceY +
+            " C " + source.x + " " + (sourceY + easing) +
+            " " + target.x + " " + (targetY - easing) +
+            " " + target.x + " " + targetY;
+        }
+
+        function edgePath(edge, source, target) {
+          const sourceY = source.y + source.height / 2;
+          const targetY = target.y - target.height / 2 - 5;
+          const sourceHubY = outgoingHubs.get(edge.prerequisiteID) || sourceY;
+          const targetHubY = incomingHubs.get(edge.dependentID) || targetY;
+          const hubSpan = targetHubY - sourceHubY;
+          if (hubSpan < branchInset) {
+            return directBezierPath(source, target);
+          }
+          const easing = hubSpan * 0.35;
+          let path = "M " + source.x + " " + sourceY;
+          if (sourceHubY > sourceY) {
+            path += " V " + sourceHubY;
+          }
+          path += " C " + source.x + " " + (sourceHubY + easing) +
+            " " + target.x + " " + (targetHubY - easing) +
+            " " + target.x + " " + targetHubY;
+          if (targetY > targetHubY) {
+            path += " V " + targetY;
+          }
+          return path;
+        }
+
+        function straightEdgePath(source, target) {
           const sourceY = source.y + source.height / 2;
           const targetY = target.y - target.height / 2 - 5;
           return "M " + source.x + " " + sourceY +
             " L " + target.x + " " + targetY;
         }
 
+        function pathCrossesNode(path, edge) {
+          const length = path.getTotalLength();
+          for (const [unitID, point] of nodePoints) {
+            if (!point || unitID === edge.prerequisiteID || unitID === edge.dependentID) continue;
+            const radius = point.width / 2 + 2;
+            for (let distance = 0; distance <= length; distance += 2) {
+              const sample = path.getPointAtLength(distance);
+              if (Math.hypot(sample.x - point.x, sample.y - point.y) <= radius) return true;
+            }
+          }
+          return false;
+        }
+
         edges.forEach(function (edge) {
-          const prerequisite = nodes.get(edge.prerequisiteID);
-          const dependent = nodes.get(edge.dependentID);
-          if (!prerequisite || !dependent) return;
-          const source = anchorPoint(prerequisite);
-          const target = anchorPoint(dependent);
+          const source = nodePoints.get(edge.prerequisiteID);
+          const target = nodePoints.get(edge.dependentID);
           if (!source || !target) return;
           const path = document.createElementNS(svgNamespace, "path");
-          path.setAttribute("d", edgePath(source, target));
+          path.setAttribute("d", edgePath(edge, source, target));
           path.setAttribute("marker-end", "url(#" + pathLayer.dataset.arrowMarker + ")");
           path.classList.add("curriculum-graph__edge");
           pathLayer.appendChild(path);
+          if (pathCrossesNode(path, edge)) {
+            path.setAttribute("d", straightEdgePath(source, target));
+          }
           renderedPaths.push({ edge: edge, path: path });
         });
         boundaries.forEach(function (boundary) {
