@@ -7,6 +7,7 @@
     <form class="auth-form" action="/auth/login" method="post">
       <a class="brand" href="/">universal curriculum</a>
       <h1>Log in</h1>
+      {{ if .Notice }}<p class="form-notice" role="status">{{ .Notice }}</p>{{ end }}
       {{ if .Error }}<p class="form-error" role="alert">{{ .Error }}</p>{{ end }}
       <input type="hidden" name="next" value="{{ .Next }}">
       <label for="email">Email</label>
@@ -14,6 +15,7 @@
       <label for="password">Password</label>
       <input id="password" name="password" type="password" autocomplete="current-password" required>
       <button class="primary-button" type="submit">Log in</button>
+      <p class="auth-alternative">New to Universal Curriculum? <a href="/auth/register?next={{ .Next }}">Create an account</a></p>
     </form>
   </main>
 </body>

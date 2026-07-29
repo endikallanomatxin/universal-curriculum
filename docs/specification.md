@@ -172,6 +172,13 @@ can either:
 Labour-market information guides students but does not determine curriculum
 content or override their goals.
 
+### 5.5 Accounts
+
+Anyone may create an account with their name, email address and a password.
+Email addresses identify local accounts case-insensitively and cannot be shared
+by multiple accounts. Public registration creates a regular member account and
+never grants administrative access.
+
 ## 6. Exercises and feedback
 
 Exercises help students verify understanding. They are not certification exams

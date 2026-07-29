@@ -6,10 +6,56 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/lib/pq"
 	"universal-curriculum/internal/models"
 )
 
-var ErrBootstrapAdminConflict = errors.New("users already exist but the bootstrap administrator does not")
+var (
+	ErrBootstrapAdminConflict = errors.New("users already exist but the bootstrap administrator does not")
+	ErrEmailAlreadyRegistered = errors.New("email is already registered")
+)
+
+func CreateLocalUser(database *sql.DB, fullName, email string, passwordHash []byte) (*models.User, error) {
+	tx, err := database.Begin()
+	if err != nil {
+		return nil, fmt.Errorf("begin local user transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	var user models.User
+	var alias sql.NullString
+	err = tx.QueryRow(`
+		INSERT INTO users (full_name)
+		VALUES ($1)
+		RETURNING id, full_name, alias, is_admin, created_at, updated_at
+	`, strings.TrimSpace(fullName)).Scan(
+		&user.ID, &user.FullName, &alias, &user.IsAdmin, &user.CreatedAt, &user.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("create local user: %w", err)
+	}
+
+	email = models.NormalizeEmail(email)
+	if _, err := tx.Exec(`
+		INSERT INTO local_authentications (user_id, email, password_hash)
+		VALUES ($1, $2, $3)
+	`, user.ID, email, passwordHash); err != nil {
+		var postgresError *pq.Error
+		if errors.As(err, &postgresError) &&
+			postgresError.Code == "23505" &&
+			postgresError.Constraint == "local_authentications_email_unique" {
+			return nil, ErrEmailAlreadyRegistered
+		}
+		return nil, fmt.Errorf("create local user credentials: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit local user: %w", err)
+	}
+
+	user.Email = email
+	user.Alias = nullStringPointer(alias)
+	return &user, nil
+}
 
 func CreateBootstrapAdmin(database *sql.DB, fullName, alias, email string, passwordHash []byte) (*models.User, error) {
 	tx, err := database.Begin()

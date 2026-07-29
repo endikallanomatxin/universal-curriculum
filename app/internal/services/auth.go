@@ -5,6 +5,7 @@ import (
 	"crypto/subtle"
 	"database/sql"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -41,6 +42,25 @@ func EnsureBootstrapAdmin(database *sql.DB, fullName, alias, email, password str
 	}
 	_, err = db.CreateBootstrapAdmin(database, fullName, alias, email, passwordHash)
 	return err
+}
+
+func RegisterLocalUser(database *sql.DB, fullName, email, password string) (*models.User, error) {
+	fullName = strings.TrimSpace(fullName)
+	email = models.NormalizeEmail(email)
+	if err := models.ValidateFullName(fullName); err != nil {
+		return nil, err
+	}
+	if err := models.ValidateEmail(email); err != nil {
+		return nil, err
+	}
+	if err := models.ValidatePassword(password); err != nil {
+		return nil, err
+	}
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, fmt.Errorf("hash local user password: %w", err)
+	}
+	return db.CreateLocalUser(database, fullName, email, passwordHash)
 }
 
 func AuthenticateLocal(database *sql.DB, email, password string) (*models.User, error) {

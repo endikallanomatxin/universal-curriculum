@@ -85,6 +85,28 @@
   border-color: var(--color-ink-strong);
 }
 
+.auth-form__hint {
+  color: var(--color-muted);
+  font-size: 0.72rem;
+  margin: calc(-1 * var(--space-1)) 0 var(--space-1);
+}
+
+.auth-alternative {
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  margin: var(--space-3) 0 0;
+  text-align: center;
+}
+
+.auth-alternative a {
+  color: var(--color-ink-strong);
+  font-weight: 700;
+}
+
+.form-notice {
+  margin: 0;
+}
+
 .primary-button {
   background: var(--color-ink-strong);
   border: 0;

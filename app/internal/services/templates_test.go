@@ -131,6 +131,33 @@ func TestSharedCurriculumUITemplatesAreRegistered(t *testing.T) {
 	}
 }
 
+func TestEmailRegistrationIsAvailableFromLogin(t *testing.T) {
+	login, err := os.ReadFile("../../web/templates/auth/login.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(login), `href="/auth/register?next={{ .Next }}"`) {
+		t.Error("login does not offer account creation while preserving the destination")
+	}
+
+	registration, err := os.ReadFile("../../web/templates/auth/register.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, contract := range []string{
+		`define "register.html"`,
+		`action="/auth/register"`,
+		`name="full_name"`,
+		`name="email" type="email"`,
+		`name="password" type="password" autocomplete="new-password"`,
+		`href="/auth/login?next={{ .Next }}"`,
+	} {
+		if !strings.Contains(string(registration), contract) {
+			t.Errorf("registration template is missing %q", contract)
+		}
+	}
+}
+
 func TestProposalChangesExposeSemanticVisualStates(t *testing.T) {
 	template, err := os.ReadFile("../../web/templates/admin-curriculum.html")
 	if err != nil {

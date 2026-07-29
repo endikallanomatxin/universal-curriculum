@@ -1,0 +1,25 @@
+{{ define "register.html" -}}
+<!doctype html>
+<html lang="en">
+<head>{{ template "document-head" "Create account · Universal Curriculum" }}</head>
+<body>
+  <main class="auth-page">
+    <form class="auth-form" action="/auth/register" method="post">
+      <a class="brand" href="/">universal curriculum</a>
+      <h1>Create account</h1>
+      {{ if .Error }}<p class="form-error" role="alert">{{ .Error }}</p>{{ end }}
+      <input type="hidden" name="next" value="{{ .Next }}">
+      <label for="full-name">Name</label>
+      <input id="full-name" name="full_name" autocomplete="name" maxlength="200" required autofocus>
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" autocomplete="email" maxlength="320" required>
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="new-password" required aria-describedby="password-requirements">
+      <p class="auth-form__hint" id="password-requirements">Use at least 10 characters.</p>
+      <button class="primary-button" type="submit">Create account</button>
+      <p class="auth-alternative">Already have an account? <a href="/auth/login?next={{ .Next }}">Log in</a></p>
+    </form>
+  </main>
+</body>
+</html>
+{{- end }}
