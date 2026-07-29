@@ -251,6 +251,7 @@
 }
 
 .brand span {
+  line-height: 0.95;
   max-width: 15rem;
   opacity: 1;
   transition: max-width var(--motion-duration) var(--motion-easing), opacity 160ms ease, transform 240ms var(--motion-easing);

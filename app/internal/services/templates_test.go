@@ -40,7 +40,7 @@ func TestApplicationShellTemplates(t *testing.T) {
 				Home            bool
 				Recommendations []any
 			}{User: user, CurrentSection: "home", Home: true},
-			contains: []string{`id="app-shell"`, `class="app-shell app-shell--home"`, `class="brand__mark"`, `/static/images/universal-curriculum-logo.svg?v=`, `>universal curriculum</span>`, `>Learn</span>`, `>book_5</span>`, `>Account<`, `>Log out</span>`, `Material+Symbols+Rounded`, `/static/css/base.css?v=`, `/static/js/shell.js?v=`},
+			contains: []string{`id="app-shell"`, `class="app-shell app-shell--home"`, `class="brand__mark"`, `/static/images/universal-curriculum-logo.svg?v=`, `>universal<br>curriculum</span>`, `>Learn</span>`, `>book_5</span>`, `>Account<`, `>Log out</span>`, `Material+Symbols+Rounded`, `/static/css/base.css?v=`, `/static/js/shell.js?v=`},
 		},
 		{
 			name: "account.html",
@@ -50,7 +50,7 @@ func TestApplicationShellTemplates(t *testing.T) {
 				CurrentSection string
 				Home           bool
 			}{User: user, CurrentSection: "account"},
-			contains: []string{`data-panel-group`, `data-panel-modes="mobile:0 icons:5 sidebar:17"`, `data-mobile-menu-toggle`, `data-panel-fill`, `class="pane-stack"`, `hx-target="#workspace"`, `hx-swap="outerHTML transition:true"`, `/static/js/panel_breadcrumbs.js?v=`, `>person</span>`},
+			contains: []string{`data-panel-group`, `data-panel-modes="mobile:0 icons:5 sidebar:15"`, `data-mobile-menu-toggle`, `data-panel-fill`, `class="pane-stack"`, `hx-target="#workspace"`, `hx-swap="outerHTML transition:true"`, `/static/js/panel_breadcrumbs.js?v=`, `>person</span>`},
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -380,6 +380,24 @@ func TestPanelControllerDoesNotOwnCurriculumEditing(t *testing.T) {
 		if strings.Contains(string(controller), domainDetail) {
 			t.Errorf("generic panel controller contains domain detail %q", domainDetail)
 		}
+	}
+}
+
+func TestExpandedNavigationHasOneWidthContract(t *testing.T) {
+	template, err := os.ReadFile("../../web/templates/components.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(template), `data-panel-modes="mobile:0 icons:5 sidebar:15"`) {
+		t.Error("primary navigation does not declare the 15rem sidebar mode")
+	}
+
+	stylesheet, err := os.ReadFile("../../web/static/css/base.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(stylesheet), "--sidebar-width: 15rem;") {
+		t.Error("initial navigation width does not match the negotiated sidebar mode")
 	}
 }
 
