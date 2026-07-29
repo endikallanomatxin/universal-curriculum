@@ -220,9 +220,6 @@ func TestDraftProposalsAreListedOutsideProposalHistory(t *testing.T) {
 	for _, contract := range []string{
 		".active-proposal-card__work::after",
 		".active-proposal-card__details {",
-		"box-shadow: inset 0 0 0 2px var(--color-ink-strong)",
-		".active-proposal-card.is-selected:has(.active-proposal-card__work:hover)",
-		"transform: translateY(-0.12rem);",
 	} {
 		if !strings.Contains(string(stylesheet), contract) {
 			t.Errorf("active proposal card styles are missing %q", contract)
@@ -232,6 +229,16 @@ func TestDraftProposalsAreListedOutsideProposalHistory(t *testing.T) {
 	components, err := os.ReadFile("../../web/static/css/components.css")
 	if err != nil {
 		t.Fatal(err)
+	}
+	for _, contract := range []string{
+		".selectable-surface.is-selected {",
+		"box-shadow: inset 0 0 0 2px var(--color-selection-outline)",
+		".selectable-surface.is-selected:hover,",
+		"transform: translateY(-0.12rem);",
+	} {
+		if !strings.Contains(string(components), contract) {
+			t.Errorf("shared selected surface styles are missing %q", contract)
+		}
 	}
 	horizontalPanelAnimationStart := strings.Index(string(components), "@keyframes horizontal-panel-enter")
 	if horizontalPanelAnimationStart < 0 {
@@ -514,6 +521,46 @@ func TestWhiteSurfacesShareOneRadius(t *testing.T) {
 	menuEnd := strings.Index(string(shell)[menuStart:], "}")
 	if menuEnd < 0 || !strings.Contains(string(shell)[menuStart:menuStart+menuEnd], "border-radius: var(--radius-surface);") {
 		t.Error("primary menu options do not use the shared surface radius")
+	}
+}
+
+func TestSelectableSurfacesShareOneState(t *testing.T) {
+	for _, test := range []struct {
+		path     string
+		contract string
+	}{
+		{path: "../../web/templates/learn.html", contract: "learning-path-card selectable-surface"},
+		{path: "../../web/templates/admin-curriculum.html", contract: "active-proposal-card selectable-surface"},
+	} {
+		source, err := os.ReadFile(test.path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(source), test.contract) {
+			t.Errorf("%s does not use shared selection surface %q", test.path, test.contract)
+		}
+	}
+
+	base, err := os.ReadFile("../../web/static/css/base.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(base), "--color-selection-outline: oklch(") {
+		t.Error("selection outline is not defined as a shared neutral oklch color")
+	}
+
+	for _, path := range []string{
+		"../../web/static/css/learn.css",
+		"../../web/static/css/curriculum.css",
+	} {
+		source, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(source), "box-shadow: inset 0.2rem 0") ||
+			strings.Contains(string(source), "box-shadow: inset 0 0 0 2px") {
+			t.Errorf("%s retains a local selected-card outline", path)
+		}
 	}
 }
 

@@ -81,10 +81,9 @@
   min-height: 4.75rem;
   position: relative;
   text-decoration: none;
-  transition: background-color 160ms ease, box-shadow 160ms ease;
 }
 
-.learning-path-list--cards .learning-path-card {
+:where(.learning-path-list--cards) .learning-path-card {
   background: color-mix(in srgb, var(--color-ink) 2%, var(--color-surface));
   border-bottom: 0;
   border-radius: var(--radius-surface);
@@ -141,24 +140,6 @@ a.learning-path-card {
   font-size: 0.75rem;
   margin-top: 0.25rem;
   white-space: nowrap;
-}
-
-.learning-path-card:hover,
-.learning-path-card:focus-visible,
-.learning-path-card:focus-within,
-.learning-path-card.is-selected {
-  background: color-mix(in srgb, var(--color-ink) 7%, var(--color-surface));
-  box-shadow: inset 0.2rem 0 var(--color-ink-strong);
-}
-
-.learning-path-list--cards .learning-path-card:hover,
-.learning-path-list--cards .learning-path-card:focus-within {
-  background: var(--color-surface);
-  box-shadow: 0 0.45rem 1.1rem color-mix(in srgb, var(--color-ink-strong) 10%, transparent);
-}
-
-.learning-path-list--cards .learning-path-card.is-selected:not(:hover, :focus-within) {
-  box-shadow: none;
 }
 
 .learning-path-card:hover > .material-symbols-rounded,

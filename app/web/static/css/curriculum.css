@@ -276,7 +276,6 @@
   min-height: 5rem;
   padding: var(--space-3);
   position: relative;
-  transition: background-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
 }
 
 .active-proposal-card__identity {
@@ -287,23 +286,6 @@
   grid-template-columns: 1.5rem minmax(0, 1fr);
   min-width: 0;
   text-decoration: none;
-}
-
-.active-proposal-card:has(.active-proposal-card__work:hover),
-.active-proposal-card:focus-within {
-  background: var(--color-surface);
-  box-shadow: 0 0.55rem 1.25rem color-mix(in srgb, var(--color-ink-strong) 12%, transparent);
-  transform: translateY(-0.12rem);
-}
-
-.active-proposal-card.is-selected {
-  background: var(--color-surface);
-  box-shadow: inset 0 0 0 2px var(--color-ink-strong), 0 0.35rem 0.9rem color-mix(in srgb, var(--color-ink-strong) 7%, transparent);
-}
-
-.active-proposal-card.is-selected:has(.active-proposal-card__work:hover),
-.active-proposal-card.is-selected:focus-within {
-  box-shadow: inset 0 0 0 2px var(--color-ink-strong), 0 0.55rem 1.25rem color-mix(in srgb, var(--color-ink-strong) 12%, transparent);
 }
 
 .active-proposal-card__work::after {

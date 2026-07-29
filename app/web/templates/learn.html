@@ -18,12 +18,12 @@
           </header>
           <p class="learning-path-list__heading">Views</p>
           <div class="learning-path-list learning-path-list--cards">
-            <a class="learning-path-card {{ if .ExploreAll }}is-selected{{ end }}" href="/learn?path=all" hx-get="/learn?path=all" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true">
+            <a class="learning-path-card selectable-surface {{ if .ExploreAll }}is-selected{{ end }}" href="/learn?path=all" hx-get="/learn?path=all" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true">
               <span class="material-symbols-rounded" aria-hidden="true">graph_3</span>
               <span><strong>Full curriculum</strong><small>Explore every unit</small></span>
             </a>
             {{ if .Paths }}
-              <a class="learning-path-card {{ if .CombinePaths }}is-selected{{ end }}" href="/learn?path=mine" hx-get="/learn?path=mine" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true">
+              <a class="learning-path-card selectable-surface {{ if .CombinePaths }}is-selected{{ end }}" href="/learn?path=mine" hx-get="/learn?path=mine" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true">
                 <span class="material-symbols-rounded" aria-hidden="true">graph_1</span>
                 <span><strong>All my paths</strong><small>Combine {{ len .Paths }} {{ if eq (len .Paths) 1 }}path{{ else }}paths{{ end }}</small></span>
               </a>
@@ -34,7 +34,7 @@
             <div class="learning-path-list learning-path-list--cards">
             {{ range .Paths }}
               {{ $path := . }}
-              <article class="learning-path-card {{ with $.SelectedPath }}{{ if eq .ID $path.ID }}is-selected{{ end }}{{ end }}">
+              <article class="learning-path-card selectable-surface {{ with $.SelectedPath }}{{ if eq .ID $path.ID }}is-selected{{ end }}{{ end }}">
                 <a href="/learn?path={{ .ID }}" hx-get="/learn?path={{ .ID }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true">
                   <span class="material-symbols-rounded" aria-hidden="true">route</span>
                   <span>

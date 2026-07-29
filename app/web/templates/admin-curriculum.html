@@ -34,7 +34,7 @@
               <div class="active-proposal-list">
                 {{ range .DraftProposals }}
                   {{ $proposal := . }}
-                  <article class="active-proposal-card {{ with $.ActiveProposal }}{{ if eq .ID $proposal.ID }}is-selected{{ end }}{{ end }}">
+                  <article class="active-proposal-card selectable-surface {{ with $.ActiveProposal }}{{ if eq .ID $proposal.ID }}is-selected{{ end }}{{ end }}">
                     <a class="active-proposal-card__identity active-proposal-card__work"
                        href="/curriculum-modification?proposal={{ .ID }}&amp;view=work"
                        hx-get="/curriculum-modification?proposal={{ .ID }}&amp;view=work"
