@@ -282,6 +282,53 @@ func TestLearningPathsBreadcrumbReturnsToPathList(t *testing.T) {
 	}
 }
 
+func TestPaneCapacityIsIndependentFromContentMeasure(t *testing.T) {
+	for _, templatePath := range []string{
+		"../../web/templates/account.html",
+		"../../web/templates/admin-curriculum.html",
+		"../../web/templates/learn.html",
+	} {
+		template, err := os.ReadFile(templatePath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(template), "data-panel-max") {
+			t.Errorf("%s retains a hard panel maximum", templatePath)
+		}
+	}
+
+	account, err := os.ReadFile("../../web/templates/account.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(account), `data-panel-fill data-panel-breadcrumb="Account"`) ||
+		!strings.Contains(string(account), `data-pane-content-width="standard"`) {
+		t.Error("account must fill its pane while retaining a standard content measure")
+	}
+
+	learn, err := os.ReadFile("../../web/templates/learn.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, measure := range []string{
+		`data-pane-content-width="narrow"`,
+		`data-pane-content-width="reading"`,
+		`data-pane-content-width="wide"`,
+	} {
+		if !strings.Contains(string(learn), measure) {
+			t.Errorf("learn is missing shared content measure %q", measure)
+		}
+	}
+
+	layout, err := os.ReadFile("../../web/static/js/panel_layout.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(layout), "panelMax") {
+		t.Error("panel allocator must not combine fill capacity with a hard maximum")
+	}
+}
+
 func TestCollapsedPrimaryMenuPreservesVerticalSpacing(t *testing.T) {
 	stylesheet, err := os.ReadFile("../../web/static/css/shell.css")
 	if err != nil {

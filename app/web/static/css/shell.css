@@ -665,8 +665,23 @@ button.primary-menu__link {
 }
 
 .ui-pane__inner {
-  margin: 0 auto;
-  max-width: 58rem;
+  --pane-content-max: 58rem;
+
+  margin: 0;
+  max-width: var(--pane-content-max);
+  width: 100%;
+}
+
+.ui-pane__inner[data-pane-content-width="narrow"] {
+  --pane-content-max: 28rem;
+}
+
+.ui-pane__inner[data-pane-content-width="reading"] {
+  --pane-content-max: 46rem;
+}
+
+.ui-pane__inner[data-pane-content-width="wide"] {
+  --pane-content-max: 72rem;
 }
 
 .ui-pane__eyebrow {

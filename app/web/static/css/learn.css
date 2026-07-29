@@ -1,6 +1,5 @@
 .learning-paths {
   margin: 0;
-  max-width: 28rem;
 }
 
 .learning-paths-pane[data-panel-mode="breadcrumb"] .learning-paths > :not(.learning-paths__header) {
@@ -196,10 +195,6 @@ a.learning-path-card {
 
 .learning-path-form + [data-learning-path-delete-form] {
   margin-top: var(--space-5);
-}
-
-.learn-view {
-  max-width: 72rem;
 }
 
 .learn-heading {
@@ -734,10 +729,6 @@ a.learning-path-card {
 
 .learn-empty p {
   color: var(--color-muted);
-}
-
-.unit-content {
-  max-width: 46rem;
 }
 
 .unit-content h1 {

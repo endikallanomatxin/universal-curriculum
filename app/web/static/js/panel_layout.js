@@ -38,10 +38,7 @@
   }
 
   function ownDesiredWidth(definition) {
-    const declaredMaximum = Number(definition.panel.dataset.panelMax);
-    const ownMaximum = Number.isFinite(declaredMaximum)
-      ? declaredMaximum
-      : definition.modes[definition.modes.length - 1].width;
+    const ownMaximum = definition.modes[definition.modes.length - 1].width;
     const childrenDesiredWidth = Number(definition.panel.dataset.panelChildrenDesiredWidth);
     return Math.max(
       ownMaximum,
@@ -204,8 +201,7 @@
       const definition = definitions[index];
       const panel = definition.panel;
       let maximum = definition.modes[definition.modes.length - 1].width;
-      if (panel.hasAttribute("data-panel-max")) maximum = Number(panel.dataset.panelMax);
-      else if (panel.hasAttribute("data-panel-fill")) maximum = Infinity;
+      if (panel.hasAttribute("data-panel-fill")) maximum = Infinity;
       const capacity = Number.isFinite(maximum) ? Math.max(0, maximum - widths[index]) : spare;
       const addition = Math.min(spare, capacity);
       widths[index] += addition;

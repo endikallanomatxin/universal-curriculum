@@ -14,9 +14,8 @@ Every layout participant declares ordered width modes in rem through
 2. satisfies required modes from right to left;
 3. attempts larger desired modes in the same order, collapsing lower-priority
    panes on the left when necessary;
-4. distributes remaining space from right to left, respecting
-   `data-panel-max`; and
-5. lets `data-panel-fill` absorb otherwise unused space.
+4. distributes remaining space from right to left; and
+5. lets `data-panel-fill` absorb all otherwise unused space.
 
 A zero-width mode is reserved for the narrow mobile composition and does not
 participate in normal desktop and tablet negotiation. `data-panel-required-mode`
@@ -44,6 +43,15 @@ The negotiated mode controls the pane's role in the workspace. Content inside
 a pane should respond to the space actually assigned to it, using container
 queries where appropriate rather than duplicating the global allocation
 algorithm with viewport media queries.
+
+Panel capacity and content measure are independent. A terminal pane normally
+declares `data-panel-fill` and may therefore grow to the remaining workspace
+width without a hard maximum. Its `.ui-pane__inner` declares a shared readable
+measure through `data-pane-content-width`: `narrow` for navigation and forms,
+`reading` for long-form material, the default `standard` measure, or `wide` for
+graphs and dense workspaces. Content stays aligned to the pane's leading edge;
+unused width remains part of the pane rather than becoming an unrelated gap in
+the shell.
 
 The shared navigation supports full, sidebar, icon-only and mobile-launcher
 presentations. Content panes that cannot remain useful at narrow widths may

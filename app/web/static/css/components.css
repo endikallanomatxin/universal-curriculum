@@ -331,10 +331,6 @@
   pointer-events: none;
 }
 
-.nested-panel {
-  max-width: 28rem;
-}
-
 .nested-panel__header {
   align-items: start;
   display: flex;

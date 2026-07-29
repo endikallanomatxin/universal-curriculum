@@ -1,14 +1,9 @@
-.ui-pane--wide .ui-pane__inner {
-  max-width: 72rem;
-}
-
 .curriculum-editor {
   container: curriculum-editor / inline-size;
 }
 
 .proposal-index {
   margin: 0;
-  max-width: 28rem;
 }
 
 .proposal-index-pane[data-panel-mode="breadcrumb"] .proposal-index > :not(.proposal-index__header) {

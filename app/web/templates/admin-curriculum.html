@@ -8,7 +8,7 @@
     <main class="pane-stack" id="workspace" data-shell-view="detail" data-document-title="Curriculum modification · Universal Curriculum" data-layout-panel data-panel-modes="mobile:20 content:34 wide:46" data-panel-required-mode="content" data-panel-fill data-panel-group>
       <nav class="mobile-panel-breadcrumbs" data-mobile-panel-breadcrumbs aria-label="Current location" hidden></nav>
       <section class="ui-pane proposal-index-pane" aria-labelledby="curriculum-title" data-layout-panel data-panel-modes="collapsed:0 breadcrumb:4 mobile:20 content:24 wide:28" data-panel-required-mode="mobile" data-panel-fill data-panel-breadcrumb="Proposals">
-        <div class="ui-pane__inner curriculum-editor proposal-index" id="curriculum-editor">
+        <div class="ui-pane__inner curriculum-editor proposal-index" id="curriculum-editor" data-pane-content-width="narrow">
           <header class="curriculum-editor__header proposal-index__header">
             <div>
               <h1 class="curriculum-editor__title" id="curriculum-title">Curriculum modification</h1>
@@ -65,7 +65,7 @@
 
       {{ if and .ActiveProposal (eq .ProposalView "work") }}
         <section class="ui-pane ui-pane--wide proposal-workspace-pane" id="proposal-workspace-panel" data-nested-panel data-layout-panel data-panel-modes="collapsed:0 breadcrumb:4 mobile:20 content:34 wide:46" data-panel-required-mode="mobile" data-panel-fill data-panel-breadcrumb="Working on {{ .ActiveProposal.Title }}" aria-labelledby="proposal-workspace-title">
-          <div class="ui-pane__inner curriculum-editor">
+          <div class="ui-pane__inner curriculum-editor" data-pane-content-width="wide">
             <header class="nested-panel__header curriculum-editor__header proposal-workspace__main-header">
               <div>
                 <p class="ui-pane__eyebrow">Work</p>
@@ -140,7 +140,7 @@
 
       {{ with .ContentUnit }}
         <section class="ui-pane ui-pane--wide unit-content-pane" data-nested-panel data-layout-panel data-panel-modes="collapsed:0 breadcrumb:4 mobile:20 content:32 wide:42" data-panel-required-mode="mobile" data-panel-fill data-panel-breadcrumb="{{ .Name }}" aria-labelledby="admin-unit-content-title">
-          <article class="ui-pane__inner unit-content" data-inline-editing>
+          <article class="ui-pane__inner unit-content" data-pane-content-width="reading" data-inline-editing>
             <header class="nested-panel__header">
               <div>
                 <p class="ui-pane__eyebrow">Published unit content</p>
@@ -200,8 +200,8 @@
       {{ end }}
 
       {{ if .ActiveProposal }}
-        <section class="ui-pane ui-pane--form" id="proposal-details-panel" data-nested-panel data-layout-panel data-panel-modes="collapsed:0 compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-max="34" data-panel-breadcrumb="{{ .ActiveProposal.Title }}" {{ if ne .ProposalView "details" }}hidden{{ end }} aria-labelledby="proposal-details-title">
-          <div class="ui-pane__inner nested-panel">
+        <section class="ui-pane ui-pane--form" id="proposal-details-panel" data-nested-panel data-layout-panel data-panel-modes="collapsed:0 compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-breadcrumb="{{ .ActiveProposal.Title }}" {{ if ne .ProposalView "details" }}hidden{{ end }} aria-labelledby="proposal-details-title">
+          <div class="ui-pane__inner nested-panel" data-pane-content-width="narrow">
             <header class="nested-panel__header">
               <div>
                 <p class="ui-pane__eyebrow">Working proposal</p>
@@ -242,8 +242,8 @@
         </section>
       {{ end }}
 
-      <section class="ui-pane ui-pane--form" id="proposal-history-panel" data-nested-panel data-layout-panel data-panel-modes="collapsed:0 compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-max="34" data-panel-breadcrumb="History" hidden aria-labelledby="proposal-history-title">
-        <div class="ui-pane__inner nested-panel">
+      <section class="ui-pane ui-pane--form" id="proposal-history-panel" data-nested-panel data-layout-panel data-panel-modes="collapsed:0 compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-breadcrumb="History" hidden aria-labelledby="proposal-history-title">
+        <div class="ui-pane__inner nested-panel" data-pane-content-width="narrow">
           <header class="nested-panel__header">
             <div>
               <p class="ui-pane__eyebrow">Curriculum modification</p>
@@ -280,8 +280,8 @@
         </div>
       </section>
 
-      <section class="ui-pane ui-pane--form" id="new-proposal-panel" data-nested-panel data-layout-panel data-panel-modes="collapsed:0 compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-max="34" data-panel-breadcrumb="New proposal" hidden aria-labelledby="create-proposal-title">
-        <div class="ui-pane__inner nested-panel">
+      <section class="ui-pane ui-pane--form" id="new-proposal-panel" data-nested-panel data-layout-panel data-panel-modes="collapsed:0 compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-breadcrumb="New proposal" hidden aria-labelledby="create-proposal-title">
+        <div class="ui-pane__inner nested-panel" data-pane-content-width="narrow">
           <header class="nested-panel__header">
             <div>
               <p class="ui-pane__eyebrow">Curriculum modification</p>
@@ -303,8 +303,8 @@
         </div>
       </section>
 
-      <section class="ui-pane ui-pane--form" id="new-unit-panel" data-nested-panel data-layout-panel data-panel-modes="collapsed:0 compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-max="34" data-panel-breadcrumb="New unit" hidden aria-labelledby="create-unit-title">
-        <div class="ui-pane__inner nested-panel">
+      <section class="ui-pane ui-pane--form" id="new-unit-panel" data-nested-panel data-layout-panel data-panel-modes="collapsed:0 compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-breadcrumb="New unit" hidden aria-labelledby="create-unit-title">
+        <div class="ui-pane__inner nested-panel" data-pane-content-width="narrow">
           <header class="nested-panel__header">
             <div>
               <p class="ui-pane__eyebrow">Curriculum modification</p>
@@ -328,8 +328,8 @@
         </div>
       </section>
 
-      <section class="ui-pane ui-pane--form" id="edit-dependencies-panel" data-nested-panel data-layout-panel data-panel-modes="collapsed:0 compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-max="34" data-panel-breadcrumb="Dependencies" hidden aria-labelledby="edit-dependencies-title">
-        <div class="ui-pane__inner nested-panel">
+      <section class="ui-pane ui-pane--form" id="edit-dependencies-panel" data-nested-panel data-layout-panel data-panel-modes="collapsed:0 compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-breadcrumb="Dependencies" hidden aria-labelledby="edit-dependencies-title">
+        <div class="ui-pane__inner nested-panel" data-pane-content-width="narrow">
           <header class="nested-panel__header">
             <div>
               <p class="ui-pane__eyebrow">Edit dependencies</p>
