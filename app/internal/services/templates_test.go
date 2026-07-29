@@ -184,8 +184,8 @@ func TestDraftProposalsAreListedOutsideProposalHistory(t *testing.T) {
 		`class="proposal-index__breadcrumb-title"`,
 		`{{ if .DraftProposals }}`,
 		`class="active-proposal-card`,
-		`href="/admin/curriculum?proposal={{ .ID }}&amp;view=work"`,
-		`href="/admin/curriculum?proposal={{ .ID }}&amp;view=details"`,
+		`href="/curriculum-modification?proposal={{ .ID }}&amp;view=work"`,
+		`href="/curriculum-modification?proposal={{ .ID }}&amp;view=details"`,
 		`{{ if and .ActiveProposal (eq .ProposalView "work") }}`,
 		`data-panel-breadcrumb="Working on {{ .ActiveProposal.Title }}"`,
 		`class="proposal-workspace__breadcrumb-title"`,
@@ -197,7 +197,7 @@ func TestDraftProposalsAreListedOutsideProposalHistory(t *testing.T) {
 			t.Errorf("proposal navigation is missing %q", contract)
 		}
 	}
-	if strings.Contains(source, `{{ if eq .Status "draft" }}<a href="/admin/curriculum?proposal=`) {
+	if strings.Contains(source, `{{ if eq .Status "draft" }}<a href="/curriculum-modification?proposal=`) {
 		t.Error("proposal history should not remain responsible for selecting drafts")
 	}
 	if strings.Contains(source, `active-proposal-card__workspace`) {
@@ -212,7 +212,7 @@ func TestAdminContentViewerCloseClearsOpenViewerState(t *testing.T) {
 	}
 	source := string(template)
 	for _, contract := range []string{
-		`href="/admin/curriculum?proposal={{ $.ActiveProposal.ID }}&amp;view=work&amp;unit={{ .ID }}"`,
+		`href="/curriculum-modification?proposal={{ $.ActiveProposal.ID }}&amp;view=work&amp;unit={{ .ID }}"`,
 		`hx-push-url="true"`,
 		`aria-label="Close unit content"`,
 	} {
@@ -376,7 +376,7 @@ func TestPanelControllerDoesNotOwnCurriculumEditing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, domainDetail := range []string{"dependentId", "prerequisite", "/admin/curriculum"} {
+	for _, domainDetail := range []string{"dependentId", "prerequisite", "/curriculum-modification"} {
 		if strings.Contains(string(controller), domainDetail) {
 			t.Errorf("generic panel controller contains domain detail %q", domainDetail)
 		}

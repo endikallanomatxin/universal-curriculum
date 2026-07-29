@@ -216,7 +216,7 @@
         </li>
         {{ if and .User .User.IsAdmin }}
           <li class="primary-menu__admin-item">
-            <a class="primary-menu__link primary-menu__link--curriculum primary-menu__link--session-action" href="/admin/curriculum" {{ if eq .CurrentSection "curriculum" }}aria-current="page"{{ end }} {{ template "shell-link-attributes" "/admin/curriculum" }}>
+            <a class="primary-menu__link primary-menu__link--curriculum primary-menu__link--session-action" href="/curriculum-modification" {{ if eq .CurrentSection "curriculum" }}aria-current="page"{{ end }} {{ template "shell-link-attributes" "/curriculum-modification" }}>
               {{ template "icon-curriculum" }}
               <span class="primary-menu__label">Curriculum<br>modification</span>
             </a>

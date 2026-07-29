@@ -221,7 +221,7 @@ func (server *Server) deleteCurriculumProposal(writer http.ResponseWriter, reque
 		server.renderCurriculumMutationError(writer, request, err)
 		return
 	}
-	http.Redirect(writer, request, "/admin/curriculum", http.StatusSeeOther)
+	http.Redirect(writer, request, "/curriculum-modification", http.StatusSeeOther)
 }
 
 func (server *Server) publishCurriculumProposal(writer http.ResponseWriter, request *http.Request) {
@@ -238,7 +238,7 @@ func (server *Server) publishCurriculumProposal(writer http.ResponseWriter, requ
 		server.renderCurriculumMutationError(writer, request, err)
 		return
 	}
-	http.Redirect(writer, request, "/admin/curriculum", http.StatusSeeOther)
+	http.Redirect(writer, request, "/curriculum-modification", http.StatusSeeOther)
 }
 
 func (server *Server) deleteCurriculumProposalChange(writer http.ResponseWriter, request *http.Request) {
@@ -273,7 +273,7 @@ func (server *Server) revertCurriculumProposal(writer http.ResponseWriter, reque
 		server.renderCurriculumMutationError(writer, request, err)
 		return
 	}
-	http.Redirect(writer, request, "/admin/curriculum", http.StatusSeeOther)
+	http.Redirect(writer, request, "/curriculum-modification", http.StatusSeeOther)
 }
 
 func (server *Server) parseAdminMutation(writer http.ResponseWriter, request *http.Request) bool {
@@ -457,7 +457,7 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 		}
 	}
 	unitURL := func(unitID int64) string {
-		target := "/admin/curriculum?"
+		target := "/curriculum-modification?"
 		if activeProposal != nil {
 			target += "proposal=" + strconv.FormatInt(activeProposal.ID, 10) + "&view=work&"
 		}
@@ -678,18 +678,18 @@ func redirectToProposal(writer http.ResponseWriter, request *http.Request, propo
 }
 
 func redirectToProposalView(writer http.ResponseWriter, request *http.Request, proposalID int64, view string) {
-	http.Redirect(writer, request, "/admin/curriculum?proposal="+strconv.FormatInt(proposalID, 10)+"&view="+view, http.StatusSeeOther)
+	http.Redirect(writer, request, "/curriculum-modification?proposal="+strconv.FormatInt(proposalID, 10)+"&view="+view, http.StatusSeeOther)
 }
 
 func redirectToProposalUnit(writer http.ResponseWriter, request *http.Request, proposalID, unitID int64) {
-	target := "/admin/curriculum?proposal=" + strconv.FormatInt(proposalID, 10) +
+	target := "/curriculum-modification?proposal=" + strconv.FormatInt(proposalID, 10) +
 		"&view=work&unit=" + strconv.FormatInt(unitID, 10) +
 		"&content=" + strconv.FormatInt(unitID, 10)
 	http.Redirect(writer, request, target, http.StatusSeeOther)
 }
 
 func redirectToProposalPanel(writer http.ResponseWriter, request *http.Request, proposalID int64, panel string, subjectID int64) {
-	target := "/admin/curriculum?proposal=" + strconv.FormatInt(proposalID, 10) +
+	target := "/curriculum-modification?proposal=" + strconv.FormatInt(proposalID, 10) +
 		"&view=work&" + panel + "=" + strconv.FormatInt(subjectID, 10)
 	http.Redirect(writer, request, target, http.StatusSeeOther)
 }
