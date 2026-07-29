@@ -50,7 +50,7 @@ func TestApplicationShellTemplates(t *testing.T) {
 				CurrentSection string
 				Home           bool
 			}{User: user, CurrentSection: "account"},
-			contains: []string{`data-panel-group`, `data-panel-modes="mobile:0 icons:5 sidebar:15"`, `data-mobile-menu-toggle`, `data-panel-fill`, `class="pane-stack"`, `hx-target="#workspace"`, `hx-swap="outerHTML transition:true"`, `/static/js/panel_breadcrumbs.js?v=`, `>person</span>`},
+			contains: []string{`data-panel-group`, `data-panel-modes="mobile:0 icons:5 sidebar:13"`, `data-mobile-menu-toggle`, `data-panel-fill`, `class="pane-stack"`, `hx-target="#workspace"`, `hx-swap="outerHTML transition:true"`, `/static/js/panel_breadcrumbs.js?v=`, `>person</span>`},
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -492,15 +492,15 @@ func TestExpandedNavigationHasOneWidthContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(template), `data-panel-modes="mobile:0 icons:5 sidebar:15"`) {
-		t.Error("primary navigation does not declare the 15rem sidebar mode")
+	if !strings.Contains(string(template), `data-panel-modes="mobile:0 icons:5 sidebar:13"`) {
+		t.Error("primary navigation does not declare the 13rem sidebar mode")
 	}
 
 	stylesheet, err := os.ReadFile("../../web/static/css/base.css")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(stylesheet), "--sidebar-width: 15rem;") {
+	if !strings.Contains(string(stylesheet), "--sidebar-width: 13rem;") {
 		t.Error("initial navigation width does not match the negotiated sidebar mode")
 	}
 }
