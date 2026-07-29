@@ -401,6 +401,48 @@ func TestExpandedNavigationHasOneWidthContract(t *testing.T) {
 	}
 }
 
+func TestWhiteSurfacesShareOneRadius(t *testing.T) {
+	stylesheets := []string{
+		"../../web/static/css/components.css",
+		"../../web/static/css/shell.css",
+		"../../web/static/css/learn.css",
+		"../../web/static/css/curriculum.css",
+	}
+	for _, path := range stylesheets {
+		source, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(source), "border-radius: var(--radius-surface);") {
+			t.Errorf("%s does not use the shared surface radius", path)
+		}
+	}
+
+	base, err := os.ReadFile("../../web/static/css/base.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(base), "--radius-surface: 1rem;") {
+		t.Error("shared surface radius token is missing")
+	}
+	if strings.Contains(string(base), "--radius-card") {
+		t.Error("legacy card-only radius remains defined")
+	}
+
+	shell, err := os.ReadFile("../../web/static/css/shell.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	menuStart := strings.Index(string(shell), "\n.primary-menu__link {")
+	if menuStart < 0 {
+		t.Fatal("primary menu link styles are missing")
+	}
+	menuEnd := strings.Index(string(shell)[menuStart:], "}")
+	if menuEnd < 0 || !strings.Contains(string(shell)[menuStart:menuStart+menuEnd], "border-radius: var(--radius-surface);") {
+		t.Error("primary menu options do not use the shared surface radius")
+	}
+}
+
 func TestMobilePanelBreadcrumbsUseTheSharedLayoutContract(t *testing.T) {
 	layout, err := os.ReadFile("../../web/static/js/panel_layout.js")
 	if err != nil {

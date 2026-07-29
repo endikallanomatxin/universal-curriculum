@@ -13,7 +13,7 @@
   --color-proposal-rename: oklch(55% 0.12 65);
   --color-proposal-content: oklch(49% 0.105 250);
   --color-danger: #c93341;
-  --radius-card: 1.5rem;
+  --radius-surface: 1rem;
   --radius-control: 999px;
   --space-1: 0.5rem;
   --space-2: 0.75rem;

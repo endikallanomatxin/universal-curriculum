@@ -87,7 +87,7 @@
 .learning-path-list--cards .learning-path-card {
   background: color-mix(in srgb, var(--color-ink) 2%, var(--color-surface));
   border-bottom: 0;
-  border-radius: var(--space-3);
+  border-radius: var(--radius-surface);
   min-height: 4.25rem;
   overflow: hidden;
 }
@@ -328,7 +328,7 @@ a.learning-path-card {
 .graph-search__results {
   background: var(--color-surface);
   border: 1px solid color-mix(in srgb, var(--color-ink) 14%, transparent);
-  border-radius: 0.45rem;
+  border-radius: var(--radius-surface);
   box-shadow: 0 0.65rem 1.5rem color-mix(in srgb, var(--color-ink-strong) 12%, transparent);
   display: grid;
   left: 0;

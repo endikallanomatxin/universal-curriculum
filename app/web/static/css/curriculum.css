@@ -171,7 +171,7 @@
 .unit-content__inline-editor--content {
   background: color-mix(in srgb, var(--color-surface) 72%, transparent);
   border: 1px solid color-mix(in srgb, var(--color-ink) 14%, transparent);
-  border-radius: 0.55rem;
+  border-radius: var(--radius-surface);
   margin-top: 0;
   overflow: hidden;
   padding: 0;
@@ -268,7 +268,7 @@
 .active-proposal-card {
   align-items: center;
   background: color-mix(in srgb, var(--color-ink) 2%, var(--color-surface));
-  border-radius: var(--space-3);
+  border-radius: var(--radius-surface);
   color: inherit;
   display: grid;
   gap: var(--space-3);
@@ -356,7 +356,7 @@
 
 .proposal-history {
   background: color-mix(in srgb, var(--color-surface) 58%, transparent);
-  border-radius: 0.75rem;
+  border-radius: var(--radius-surface);
   margin-bottom: var(--space-6);
   padding: var(--space-4);
 }
