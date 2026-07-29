@@ -286,6 +286,32 @@
   font-size: 0.85rem;
 }
 
+.pane-list-actions {
+  align-items: start;
+  display: grid;
+  justify-items: start;
+  margin-top: var(--space-4);
+}
+
+.pane-list-action {
+  align-items: center;
+  background: none;
+  border: 0;
+  color: var(--color-ink-strong);
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  text-align: left;
+}
+
+.pane-list-action .material-symbols-rounded {
+  font-size: 1.15rem;
+}
+
 .editor-form {
   display: grid;
   gap: var(--space-2);

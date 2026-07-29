@@ -184,6 +184,10 @@ func TestDraftProposalsAreListedOutsideProposalHistory(t *testing.T) {
 		`class="proposal-index__breadcrumb-title"`,
 		`{{ if .DraftProposals }}`,
 		`class="active-proposal-card`,
+		`class="pane-list-actions"`,
+		`class="pane-list-action" type="button" data-open-panel="new-proposal-panel"`,
+		`class="pane-list-action" type="button" data-open-panel="proposal-history-panel"`,
+		`Show history`,
 		`class="active-proposal-card__identity active-proposal-card__work"`,
 		`aria-label="Work on {{ .Title }}"`,
 		`data-panel-navigation="{{ if $.ActiveProposal }}replace{{ else }}open{{ end }}"`,
@@ -212,6 +216,16 @@ func TestDraftProposalsAreListedOutsideProposalHistory(t *testing.T) {
 	if strings.Contains(source, `active-proposal-card__actions`) || strings.Contains(source, ">Work</a>") {
 		t.Error("active proposal cards should open work directly instead of presenting a Work button")
 	}
+	for _, redundantHeading := range []string{
+		`class="curriculum-editor__title"`,
+		`class="ui-pane__eyebrow">Work</p>`,
+		`class="ui-pane__eyebrow">Working proposal</p>`,
+		`class="ui-pane__eyebrow">Curriculum modification</p>`,
+	} {
+		if strings.Contains(source, redundantHeading) {
+			t.Errorf("proposal views should not repeat contextual heading %q", redundantHeading)
+		}
+	}
 
 	stylesheet, err := os.ReadFile("../../web/static/css/curriculum.css")
 	if err != nil {
@@ -235,10 +249,19 @@ func TestDraftProposalsAreListedOutsideProposalHistory(t *testing.T) {
 		"box-shadow: inset 0 0 0 2px var(--color-selection-outline)",
 		".selectable-surface.is-selected:hover,",
 		"transform: translateY(-0.12rem);",
+		".pane-list-actions {",
+		".pane-list-action {",
 	} {
 		if !strings.Contains(string(components), contract) {
 			t.Errorf("shared selected surface styles are missing %q", contract)
 		}
+	}
+	learnTemplate, err := os.ReadFile("../../web/templates/learn.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(learnTemplate), `class="pane-list-action" type="button" data-open-panel="learning-path-editor-panel"`) {
+		t.Error("new learning paths and proposals should use the same list action")
 	}
 	horizontalPanelAnimationStart := strings.Index(string(components), "@keyframes horizontal-panel-enter")
 	if horizontalPanelAnimationStart < 0 {
