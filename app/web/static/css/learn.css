@@ -44,8 +44,7 @@
   margin-bottom: var(--space-6);
 }
 
-.learning-paths__header h1,
-.learning-paths__header p {
+.learning-paths__header h1 {
   margin: 0;
 }
 
@@ -182,11 +181,6 @@ a.learning-path-card {
 
 .learn-heading h1 {
   margin: 0;
-}
-
-.learn-heading--path h1 {
-  font-size: 1.15rem;
-  letter-spacing: -0.01em;
 }
 
 .learn-heading > div {
@@ -701,6 +695,10 @@ a.learning-path-card {
 .learn-empty h2,
 .learn-empty p {
   margin: var(--space-2) 0 0;
+}
+
+.learn-empty h2 {
+  font-size: var(--font-size-section-title);
 }
 
 .learn-empty p {

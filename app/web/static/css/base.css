@@ -16,6 +16,9 @@
   --color-selection-outline: oklch(0.58 0 0);
   --radius-surface: 1rem;
   --radius-control: 999px;
+  --font-size-pane-title: clamp(2rem, 3vw, 3rem);
+  --font-size-section-title: 1.5rem;
+  --font-size-subsection-title: 1rem;
   --space-1: 0.5rem;
   --space-2: 0.75rem;
   --space-3: 1rem;

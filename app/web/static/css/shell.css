@@ -750,10 +750,10 @@ button.primary-menu__link {
 
 .ui-pane h1 {
   color: var(--color-ink-strong);
-  font-size: clamp(2rem, 5vw, 4.5rem);
+  font-size: var(--font-size-pane-title);
   letter-spacing: -0.045em;
   line-height: 1;
-  margin: 0 0 clamp(2rem, 7vh, 5rem);
+  margin: 0 0 clamp(2rem, 5vh, 3rem);
 }
 
 @keyframes pane-enter {

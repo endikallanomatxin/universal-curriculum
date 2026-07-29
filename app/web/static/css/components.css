@@ -70,7 +70,7 @@
 }
 
 .auth-form h1 {
-  font-size: clamp(2rem, 7vw, 3.5rem);
+  font-size: var(--font-size-pane-title);
   letter-spacing: -0.04em;
   margin: var(--space-4) 0 var(--space-3);
 }
@@ -277,7 +277,7 @@
 }
 
 .section-heading h2 {
-  font-size: 1.5rem;
+  font-size: var(--font-size-section-title);
   margin: 0;
 }
 
@@ -414,7 +414,7 @@
 }
 
 .nested-panel__header h1 {
-  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-size: var(--font-size-pane-title);
   margin-bottom: var(--space-4);
   overflow-wrap: anywhere;
 }
@@ -455,10 +455,6 @@
 @container form-pane (max-width: 24rem) {
   .nested-panel__header {
     gap: var(--space-2);
-  }
-
-  .nested-panel__header h1 {
-    font-size: clamp(1.8rem, 12cqi, 2.5rem);
   }
 
   .nested-panel__introduction {

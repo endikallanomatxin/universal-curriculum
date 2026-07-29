@@ -352,7 +352,7 @@ func TestLearningPathsBreadcrumbReturnsToPathList(t *testing.T) {
 	for _, contract := range []string{
 		`data-panel-breadcrumb="Learning paths"`,
 		`data-panel-required-mode="mobile" data-panel-fill data-panel-breadcrumb="Learning paths"`,
-		`class="ui-pane__eyebrow">Learning</p>`,
+		`<h1 id="learning-paths-title">Learning paths</h1>`,
 		`class="learning-paths__breadcrumb-title" href="/learn"`,
 		`>Learning paths</a>`,
 		`<h1 id="learn-graph-title">{{ if .SelectedPath }}{{ .SelectedPath.Name }}{{ else if .CombinePaths }}All my paths{{ else }}Full curriculum{{ end }}</h1>`,
@@ -363,6 +363,9 @@ func TestLearningPathsBreadcrumbReturnsToPathList(t *testing.T) {
 		if !strings.Contains(source, contract) {
 			t.Errorf("learning paths header is missing %q", contract)
 		}
+	}
+	if strings.Contains(source, `class="ui-pane__eyebrow">Learning</p>`) {
+		t.Error("learning paths should use one title instead of splitting its name across two styles")
 	}
 	if strings.Contains(source, `class="ui-pane learning-paths-pane"`) &&
 		strings.Contains(source, `data-panel-max="28"`) {
@@ -502,6 +505,58 @@ func TestExpandedNavigationHasOneWidthContract(t *testing.T) {
 	}
 	if !strings.Contains(string(stylesheet), "--sidebar-width: 13rem;") {
 		t.Error("initial navigation width does not match the negotiated sidebar mode")
+	}
+}
+
+func TestInterfaceHeadingsShareOneTypeScale(t *testing.T) {
+	base, err := os.ReadFile("../../web/static/css/base.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, token := range []string{
+		"--font-size-pane-title: clamp(2rem, 3vw, 3rem);",
+		"--font-size-section-title: 1.5rem;",
+		"--font-size-subsection-title: 1rem;",
+	} {
+		if !strings.Contains(string(base), token) {
+			t.Errorf("interface type scale is missing %q", token)
+		}
+	}
+
+	stylesheets := map[string][]string{
+		"../../web/static/css/shell.css": {
+			".ui-pane h1 {",
+			"font-size: var(--font-size-pane-title);",
+		},
+		"../../web/static/css/components.css": {
+			".auth-form h1 {",
+			".section-heading h2 {",
+			".nested-panel__header h1 {",
+			"font-size: var(--font-size-section-title);",
+		},
+		"../../web/static/css/curriculum.css": {
+			".proposal-workspace__changes h2 {",
+			"font-size: var(--font-size-subsection-title);",
+		},
+	}
+	for path, contracts := range stylesheets {
+		stylesheet, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, contract := range contracts {
+			if !strings.Contains(string(stylesheet), contract) {
+				t.Errorf("%s is missing shared heading contract %q", path, contract)
+			}
+		}
+	}
+
+	learn, err := os.ReadFile("../../web/static/css/learn.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(learn), ".learn-heading--path h1") {
+		t.Error("selected learning paths should not shrink the shared pane title")
 	}
 }
 

@@ -145,7 +145,7 @@
   border-bottom: 2px solid var(--color-ink-strong);
   border-radius: 0;
   color: var(--color-ink-strong);
-  font-size: clamp(1.5rem, 3.5vw, 3rem);
+  font-size: var(--font-size-pane-title);
   font-weight: 700;
   letter-spacing: -0.045em;
   line-height: 1;
@@ -334,7 +334,7 @@
 }
 
 .proposal-workspace__changes h2 {
-  font-size: 1rem;
+  font-size: var(--font-size-subsection-title);
   margin: 0;
 }
 
