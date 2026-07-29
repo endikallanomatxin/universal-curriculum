@@ -83,6 +83,11 @@ Opening an editor or detail from a pane normally replaces the visible panes to
 the right of the pane containing the trigger. It does not accumulate unrelated
 editors. Closing a right-hand pane restores the space to the remaining panes.
 
+An editor or detail that users can reasonably expect to survive a reload must
+encode its identity in the URL and be rendered open by the server. Use
+client-only `data-open-panel` state only for short-lived auxiliary panels whose
+loss on reload is intentional.
+
 `web/static/js/panels.js` owns this interaction. New panel interactions should
 reuse its declarative triggers and stable panel boundaries rather than adding
 page-specific show/hide code. It dispatches `panel:configure` before revealing

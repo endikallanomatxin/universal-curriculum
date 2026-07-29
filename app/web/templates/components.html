@@ -160,6 +160,17 @@
 {{ template "curriculum-graph-anchor" .Anchor }}
 {{- end }}
 
+{{ define "learning-path-save-status" -}}
+<span class="learning-path-save-status {{ if .Error }}is-error{{ end }}" id="learning-path-save-status" role="status" aria-live="polite">
+  {{ if .Error }}
+    {{ .Error }}
+  {{ else }}
+    <span data-save-state-saved>Saved</span>
+    <span data-save-state-saving>Saving…</span>
+  {{ end }}
+</span>
+{{- end }}
+
 {{ define "primary-navigation" -}}
 <aside class="primary-navigation {{ if and .Home .Recommendations }}primary-navigation--with-recommendations{{ end }}"
        data-layout-panel
@@ -262,7 +273,6 @@
   <script src="/static/js/inline_editing.js?v={{ assetVersion }}" defer></script>
   <script src="/static/js/unit_picker.js?v={{ assetVersion }}" defer></script>
   <script src="/static/js/curriculum_editor.js?v={{ assetVersion }}" defer></script>
-  <script src="/static/js/learning_paths.js?v={{ assetVersion }}" defer></script>
   <script src="/static/js/curriculum_graph.js?v={{ assetVersion }}" defer></script>
   <script src="/static/vendor/katex/katex.min.js?v={{ assetVersion }}" defer></script>
   <script src="/static/vendor/katex/auto-render.min.js?v={{ assetVersion }}" defer></script>

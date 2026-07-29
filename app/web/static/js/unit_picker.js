@@ -51,6 +51,12 @@
         remove.className = "secondary-button";
         remove.textContent = "Remove";
         remove.addEventListener("click", function () {
+          if (selectedIDs.size === 1 && picker.dataset.unitPickerRequiredMessage) {
+            input.setCustomValidity(picker.dataset.unitPickerRequiredMessage);
+            input.reportValidity();
+            input.setCustomValidity("");
+            return;
+          }
           const event = new CustomEvent("unit-picker:remove", {
             bubbles: true,
             cancelable: true,
@@ -60,6 +66,7 @@
           selectedIDs.delete(option.dataset.unitId);
           renderSelection();
           filterOptions();
+          notifyChange();
         });
         row.append(title, remove);
         if (picker.dataset.unitPickerInputName) {
@@ -78,6 +85,10 @@
         current.append(message);
       }
       if (count) count.textContent = selectedIDs.size + " selected";
+    }
+
+    function notifyChange() {
+      picker.dispatchEvent(new CustomEvent("unit-picker:change", { bubbles: true }));
     }
 
     function configure(configuration) {
@@ -102,6 +113,7 @@
         input.value = "";
         closeResults();
         input.focus();
+        notifyChange();
       });
     });
     input.addEventListener("focus", filterOptions);
@@ -134,7 +146,10 @@
       });
     }
     picker.unitPicker = { configure: configure };
-    configure({ selectedIDs: [], excludedIDs: [] });
+    configure({
+      selectedIDs: (picker.dataset.unitPickerSelectedIds || "").split(",").filter(Boolean),
+      excludedIDs: []
+    });
   }
 
   function initializeAll(root) {

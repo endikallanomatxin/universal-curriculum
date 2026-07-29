@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -21,14 +22,21 @@ type learnPageData struct {
 	ContentUnit       *models.Unit
 	Paths             []models.LearningPath
 	SelectedPath      *models.LearningPath
+	EditingPath       *models.LearningPath
 	AllUnits          []models.Unit
 	NavigableUnits    []models.Unit
 	TargetUnitIDs     map[int64]bool
 	CompletedUnitIDs  map[int64]bool
 	ContentCompletion *unitCompletionView
+	PathSaveStatus    learningPathSaveStatusView
 	ExploreAll        bool
 	CombinePaths      bool
 	ShowGraph         bool
+	ShowPathEditor    bool
+}
+
+type learningPathSaveStatusView struct {
+	Error string
 }
 
 func (server *Server) learn(writer http.ResponseWriter, request *http.Request) {
@@ -62,6 +70,33 @@ func (server *Server) learn(writer http.ResponseWriter, request *http.Request) {
 			http.Error(writer, "Unable to load progress", http.StatusInternalServerError)
 			return
 		}
+	}
+
+	if editValue := request.URL.Query().Get("edit"); editValue != "" {
+		if !authenticated {
+			http.Redirect(writer, request, "/auth/login?next="+url.QueryEscape(request.URL.RequestURI()), http.StatusSeeOther)
+			return
+		}
+		data.ShowPathEditor = true
+		if editValue != "new" {
+			pathID, parseErr := strconv.ParseInt(editValue, 10, 64)
+			if parseErr != nil || pathID <= 0 {
+				http.Error(writer, "Learning path not found", http.StatusNotFound)
+				return
+			}
+			for index := range data.Paths {
+				if data.Paths[index].ID == pathID {
+					data.EditingPath = &data.Paths[index]
+					break
+				}
+			}
+			if data.EditingPath == nil {
+				http.Error(writer, "Learning path not found", http.StatusNotFound)
+				return
+			}
+		}
+		server.render(writer, "learn.html", data)
+		return
 	}
 
 	pathValue := request.URL.Query().Get("path")
@@ -297,11 +332,21 @@ func (server *Server) updateLearningPath(writer http.ResponseWriter, request *ht
 		parseLearningPathUnitIDs(request.Form["unit_ids"]),
 	)
 	if err != nil {
+		if request.Header.Get("HX-Request") == "true" {
+			server.render(writer, "learning-path-save-status", learningPathSaveStatusView{
+				Error: learningPathError(err),
+			})
+			return
+		}
 		status := http.StatusBadRequest
 		if errors.Is(err, services.ErrLearningPathNotFound) {
 			status = http.StatusNotFound
 		}
 		http.Error(writer, learningPathError(err), status)
+		return
+	}
+	if request.Header.Get("HX-Request") == "true" {
+		server.render(writer, "learning-path-save-status", learningPathSaveStatusView{})
 		return
 	}
 	http.Redirect(writer, request, "/learn?path="+strconv.FormatInt(pathID, 10), http.StatusSeeOther)

@@ -320,6 +320,7 @@
   gap: var(--space-2);
   padding: var(--space-2) 0;
   text-align: left;
+  text-decoration: none;
 }
 
 .pane-list-action .material-symbols-rounded {
@@ -331,10 +332,24 @@
   gap: var(--space-2);
 }
 
-.editor-form label {
+.editor-form label,
+.editor-form__label {
   font-size: 0.72rem;
   font-weight: 700;
+}
+
+.editor-form label {
   margin-top: var(--space-1);
+}
+
+.editor-form__field {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.editor-form__field label,
+.editor-form__label {
+  margin: 0;
 }
 
 .editor-form input,
@@ -375,6 +390,49 @@
 .editor-form .primary-button:disabled {
   cursor: not-allowed;
   opacity: 0.4;
+}
+
+.editor-form-actions {
+  align-items: center;
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-start;
+  margin-top: var(--space-4);
+}
+
+.editor-form-actions form {
+  margin: 0;
+}
+
+.editor-form-actions .primary-button,
+.editor-form-actions .secondary-button {
+  font-size: 0.8rem;
+  height: 2.625rem;
+  justify-content: center;
+  margin: 0;
+  padding: 0.65rem 0.9rem;
+}
+
+.learning-path-save-status {
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.learning-path-save-status [data-save-state-saving] {
+  display: none;
+}
+
+.learning-path-form.htmx-request + .editor-form-actions .learning-path-save-status [data-save-state-saved] {
+  display: none;
+}
+
+.learning-path-form.htmx-request + .editor-form-actions .learning-path-save-status [data-save-state-saving] {
+  display: inline;
+}
+
+.learning-path-save-status.is-error {
+  color: var(--color-danger);
 }
 
 .ui-pane--form {
@@ -451,6 +509,10 @@
   margin-bottom: calc(-1 * var(--space-2));
 }
 
+.editor-form--panel .editor-form__field label {
+  margin: 0;
+}
+
 .editor-form__hint {
   color: var(--color-muted);
   font-size: 0.74rem;
@@ -477,6 +539,16 @@
 
   .editor-form .primary-button {
     justify-self: stretch;
+  }
+
+  .editor-form-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .editor-form-actions form,
+  .editor-form-actions button {
+    width: 100%;
   }
 }
 

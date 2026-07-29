@@ -91,7 +91,7 @@
 }
 
 a.learning-path-card,
-.learning-path-card > a {
+.learning-path-card > a:not(.icon-button) {
   align-items: center;
   color: inherit;
   display: grid;
@@ -107,7 +107,9 @@ a.learning-path-card {
 }
 
 .learning-path-card > .icon-button {
+  align-self: start;
   margin-right: var(--space-2);
+  margin-top: var(--space-2);
 }
 
 .learning-path-card > .icon-button:hover,
@@ -165,10 +167,43 @@ a.learning-path-card {
 }
 
 .learning-path-targets {
-  margin-top: var(--space-3);
+  border-bottom: 0;
+  margin: 0;
+  padding-bottom: 0;
 }
 
-.learning-path-form + [data-learning-path-delete-form] {
+.learning-path-form {
+  gap: var(--space-5);
+}
+
+.learning-path-form .editor-form__field {
+  gap: var(--space-2);
+}
+
+.learning-path-form__targets {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.learning-path-targets .section-heading {
+  align-items: baseline;
+  margin-bottom: var(--space-1);
+}
+
+.learning-path-targets .section-heading h2 {
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+.learning-path-targets .section-heading > span {
+  font-size: 0.72rem;
+}
+
+.learning-path-form__targets .editor-form__field {
+  gap: var(--space-1);
+}
+
+.learning-path-form__actions {
   margin-top: var(--space-5);
 }
 

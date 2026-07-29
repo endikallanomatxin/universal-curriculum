@@ -287,7 +287,8 @@ func TestDraftProposalsAreListedOutsideProposalHistory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(learnTemplate), `class="pane-list-action" type="button" data-open-panel="learning-path-editor-panel"`) {
+	if !strings.Contains(string(learnTemplate), `class="pane-list-action"`) ||
+		!strings.Contains(string(learnTemplate), `href="/learn?edit=new"`) {
 		t.Error("new learning paths and proposals should use the same list action")
 	}
 	horizontalPanelAnimationStart := strings.Index(string(components), "@keyframes horizontal-panel-enter")
@@ -412,6 +413,121 @@ func TestLearningPathsBreadcrumbReturnsToPathList(t *testing.T) {
 	} {
 		if !strings.Contains(string(stylesheet), contract) {
 			t.Errorf("learning paths breadcrumb positioning is missing %q", contract)
+		}
+	}
+}
+
+func TestLearningPathEditorUsesOneActionRowAndDirectHeadings(t *testing.T) {
+	template, err := os.ReadFile("../../web/templates/learn.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(template)
+	for _, contract := range []string{
+		`<h1 id="learning-path-editor-title">{{ if .EditingPath }}Edit path{{ else }}New path{{ end }}</h1>`,
+		`<h2 class="editor-form__label" id="learning-path-targets-title">Target units</h2>`,
+		`id="learning-path-form"`,
+		`class="learning-path-form__targets"`,
+		`class="editor-form-actions learning-path-form__actions"`,
+		`type="submit" form="learning-path-form">Create learning path</button>`,
+		`data-learning-path-delete-form`,
+		`hx-trigger="input changed delay:600ms`,
+		`hx-target="#learning-path-save-status"`,
+		`template "learning-path-save-status" .PathSaveStatus`,
+		`href="/learn?edit={{ .ID }}"`,
+		`href="/learn?edit=new"`,
+		`data-panel-motion="horizontal"`,
+		`data-panel-navigation="close"`,
+		`data-unit-picker-selected-ids="`,
+	} {
+		if !strings.Contains(source, contract) {
+			t.Errorf("learning path editor is missing %q", contract)
+		}
+	}
+	for _, redundantHeading := range []string{
+		`class="ui-pane__eyebrow">Learn</p>`,
+		`class="section-heading__eyebrow">Current selection</p>`,
+		`data-open-panel="learning-path-editor-panel"`,
+		`data-learning-path-editor-title`,
+		`form="learning-path-form">Save learning path`,
+	} {
+		if strings.Contains(source, redundantHeading) {
+			t.Errorf("learning path editor retains redundant heading %q", redundantHeading)
+		}
+	}
+	handler, err := os.ReadFile("../../internal/server/learn.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, contract := range []string{
+		`request.URL.Query().Get("edit")`,
+		"data.ShowPathEditor = true",
+		"data.EditingPath = &data.Paths[index]",
+		`server.render(writer, "learning-path-save-status"`,
+	} {
+		if !strings.Contains(string(handler), contract) {
+			t.Errorf("server-rendered learning path editor is missing %q", contract)
+		}
+	}
+
+	stylesheet, err := os.ReadFile("../../web/static/css/components.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, contract := range []string{
+		".editor-form-actions {",
+		"justify-content: flex-start;",
+		"height: 2.625rem;",
+		".editor-form-actions form,",
+		".editor-form__label {",
+	} {
+		if !strings.Contains(string(stylesheet), contract) {
+			t.Errorf("shared editor actions are missing %q", contract)
+		}
+	}
+
+	learnStylesheet, err := os.ReadFile("../../web/static/css/learn.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, contract := range []string{
+		".learning-path-form {\n  gap: var(--space-5);",
+		".learning-path-form__targets {\n  display: grid;\n  gap: var(--space-1);",
+		".learning-path-form__targets .editor-form__field {\n  gap: var(--space-1);",
+		".learning-path-card > a:not(.icon-button) {",
+	} {
+		if !strings.Contains(string(learnStylesheet), contract) {
+			t.Errorf("learning path form spacing is missing %q", contract)
+		}
+	}
+
+	components, err := os.ReadFile("../../web/templates/components.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(components), "learning_paths.js") {
+		t.Error("learning path editor should not retain the ephemeral client-only controller")
+	}
+	for _, contract := range []string{
+		`define "learning-path-save-status"`,
+		`data-save-state-saved`,
+		`data-save-state-saving`,
+	} {
+		if !strings.Contains(string(components), contract) {
+			t.Errorf("learning path autosave status is missing %q", contract)
+		}
+	}
+
+	picker, err := os.ReadFile("../../web/static/js/unit_picker.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, contract := range []string{
+		`new CustomEvent("unit-picker:change"`,
+		"selectedIDs.size === 1",
+	} {
+		if !strings.Contains(string(picker), contract) {
+			t.Errorf("unit picker autosave contract is missing %q", contract)
 		}
 	}
 }
