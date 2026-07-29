@@ -602,6 +602,10 @@ func TestCollapsedPrimaryMenuPreservesVerticalSpacing(t *testing.T) {
 		`position: relative;`,
 		`transform: translateX(-50%);`,
 		`line-height: 1;`,
+		`.app-shell:not(.app-shell--home) .brand {`,
+		`padding: 0.5rem 0.75rem;`,
+		`.primary-navigation[data-panel-mode="icons"] .brand {`,
+		`padding: 0;`,
 	} {
 		if !strings.Contains(source, contract) {
 			t.Errorf("collapsed primary menu alignment is missing %q", contract)
