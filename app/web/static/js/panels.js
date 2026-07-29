@@ -99,11 +99,60 @@
     });
   }
 
+  function animateServerPanels(root) {
+    if (document.serverPanelContinuity) {
+      document.serverPanelContinuity = false;
+      return;
+    }
+    root.querySelectorAll("[data-panel-enter]:not([hidden])").forEach(function (panel) {
+      if (panel.serverPanelEntered) return;
+      panel.serverPanelEntered = true;
+      panel.classList.add("is-opening");
+      panel.addEventListener("animationend", function () {
+        panel.classList.remove("is-opening");
+      }, { once: true });
+    });
+  }
+
+  function initializeServerPanelClose(root) {
+    root.querySelectorAll("[data-server-panel-close]").forEach(function (trigger) {
+      if (trigger.serverPanelCloseInitialized) return;
+      trigger.serverPanelCloseInitialized = true;
+      trigger.addEventListener("click", function (event) {
+        event.preventDefault();
+        const panel = trigger.closest("[data-panel-enter]");
+        if (!panel || panel.classList.contains("is-closing")) return;
+
+        panel.classList.remove("is-opening");
+        panel.classList.add("is-closing");
+        let navigated = false;
+        const navigate = function () {
+          if (navigated) return;
+          navigated = true;
+          window.clearTimeout(panel.serverPanelCloseTimer);
+          htmx.trigger(trigger, "panel-close");
+        };
+        panel.addEventListener("animationend", navigate, { once: true });
+        panel.serverPanelCloseTimer = window.setTimeout(navigate, closeDuration + 50);
+      });
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
     initializePanels(document);
+    initializeServerPanelClose(document);
   });
   document.addEventListener("htmx:load", function (event) {
-    initializePanels(event.detail.elt || document);
+    const root = event.detail.elt || document;
+    initializePanels(root);
+    initializeServerPanelClose(root);
+  });
+  document.addEventListener("htmx:beforeRequest", function (event) {
+    const trigger = event.detail && event.detail.elt;
+    document.serverPanelContinuity = !!(trigger && trigger.matches("[data-panel-continuity]"));
+  });
+  document.addEventListener("htmx:afterSwap", function (event) {
+    if (event.target && event.target.id === "workspace") animateServerPanels(event.target);
   });
   document.addEventListener("panel:navigate", function (event) {
     closePanelsAfter(event.detail && event.detail.panel);

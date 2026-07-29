@@ -184,12 +184,19 @@ func TestDraftProposalsAreListedOutsideProposalHistory(t *testing.T) {
 		`class="proposal-index__breadcrumb-title"`,
 		`{{ if .DraftProposals }}`,
 		`class="active-proposal-card`,
-		`href="/curriculum-modification?proposal={{ .ID }}&amp;view=work"`,
+		`class="active-proposal-card__identity active-proposal-card__work"`,
+		`aria-label="Work on {{ .Title }}"`,
+		`hx-swap="outerHTML{{ if $.ActiveProposal }} transition:true{{ end }}"`,
+		`{{ if $.ActiveProposal }}data-panel-continuity{{ end }}`,
 		`href="/curriculum-modification?proposal={{ .ID }}&amp;view=details"`,
+		`class="secondary-button active-proposal-card__details`,
 		`{{ if and .ActiveProposal (eq .ProposalView "work") }}`,
+		`id="proposal-workspace-panel" data-nested-panel data-panel-enter`,
 		`data-panel-breadcrumb="Working on {{ .ActiveProposal.Title }}"`,
 		`class="proposal-workspace__breadcrumb-title"`,
 		`Working on {{ .ActiveProposal.Title }}</a>`,
+		`hx-trigger="panel-close"`,
+		`data-server-panel-close`,
 		`{{ if ne .ProposalView "details" }}hidden{{ end }}`,
 		`Inspect the latest published curriculum versions.`,
 	} {
@@ -202,6 +209,63 @@ func TestDraftProposalsAreListedOutsideProposalHistory(t *testing.T) {
 	}
 	if strings.Contains(source, `active-proposal-card__workspace`) {
 		t.Error("active proposal cards should navigate to right-hand views instead of expanding inline")
+	}
+	if strings.Contains(source, `active-proposal-card__actions`) || strings.Contains(source, ">Work</a>") {
+		t.Error("active proposal cards should open work directly instead of presenting a Work button")
+	}
+
+	stylesheet, err := os.ReadFile("../../web/static/css/curriculum.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, contract := range []string{
+		".active-proposal-card__work::after",
+		".active-proposal-card__details {",
+		"box-shadow: inset 0 0 0 2px var(--color-ink-strong)",
+		".active-proposal-card.is-selected:has(.active-proposal-card__work:hover)",
+		"transform: translateY(-0.12rem);",
+	} {
+		if !strings.Contains(string(stylesheet), contract) {
+			t.Errorf("active proposal card styles are missing %q", contract)
+		}
+	}
+
+	components, err := os.ReadFile("../../web/static/css/components.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	serverPanelAnimationStart := strings.Index(string(components), "@keyframes server-panel-enter")
+	if serverPanelAnimationStart < 0 {
+		t.Fatal("server-rendered panel animation is missing")
+	}
+	serverPanelAnimationEnd := strings.Index(string(components)[serverPanelAnimationStart:], "\n}")
+	if serverPanelAnimationEnd < 0 {
+		t.Fatal("server-rendered panel animation is incomplete")
+	}
+	serverPanelAnimation := string(components)[serverPanelAnimationStart : serverPanelAnimationStart+serverPanelAnimationEnd]
+	if !strings.Contains(serverPanelAnimation, "transform: translateX(100%);") {
+		t.Error("server-rendered panels do not enter from beyond the right edge")
+	}
+	if strings.Contains(serverPanelAnimation, "opacity") || strings.Contains(serverPanelAnimation, "clip-path") {
+		t.Error("server-rendered panel entry should not fade or reveal disconnected states")
+	}
+
+	panels, err := os.ReadFile("../../web/static/js/panels.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, contract := range []string{
+		`function animateServerPanels(root)`,
+		`function initializeServerPanelClose(root)`,
+		`[data-panel-enter]:not([hidden])`,
+		`document.serverPanelContinuity`,
+		`trigger.matches("[data-panel-continuity]")`,
+		`htmx.trigger(trigger, "panel-close")`,
+		`event.target.id === "workspace"`,
+	} {
+		if !strings.Contains(string(panels), contract) {
+			t.Errorf("server-rendered panel entry is missing %q", contract)
+		}
 	}
 }
 

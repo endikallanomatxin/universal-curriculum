@@ -331,6 +331,34 @@
   pointer-events: none;
 }
 
+@keyframes server-panel-enter {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes server-panel-exit {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.ui-pane[data-panel-enter].is-opening {
+  animation: server-panel-enter var(--panel-motion-duration) var(--panel-motion-easing);
+  overflow: hidden;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.ui-pane[data-panel-enter].is-closing {
+  animation: server-panel-exit var(--panel-motion-duration) var(--panel-motion-easing) forwards;
+  clip-path: none;
+  opacity: 1;
+  overflow: hidden;
+  pointer-events: none;
+  will-change: transform;
+}
+
 .nested-panel__header {
   align-items: start;
   display: flex;

@@ -275,7 +275,8 @@
   grid-template-columns: minmax(0, 1fr) auto auto;
   min-height: 5rem;
   padding: var(--space-3);
-  transition: background-color 160ms ease, box-shadow 160ms ease;
+  position: relative;
+  transition: background-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
 }
 
 .active-proposal-card__identity {
@@ -285,17 +286,30 @@
   gap: var(--space-3);
   grid-template-columns: 1.5rem minmax(0, 1fr);
   min-width: 0;
+  text-decoration: none;
 }
 
-.active-proposal-card:hover,
+.active-proposal-card:has(.active-proposal-card__work:hover),
 .active-proposal-card:focus-within {
   background: var(--color-surface);
-  box-shadow: 0 0.45rem 1.1rem color-mix(in srgb, var(--color-ink-strong) 10%, transparent);
+  box-shadow: 0 0.55rem 1.25rem color-mix(in srgb, var(--color-ink-strong) 12%, transparent);
+  transform: translateY(-0.12rem);
 }
 
 .active-proposal-card.is-selected {
   background: var(--color-surface);
-  box-shadow: 0 0.35rem 0.9rem color-mix(in srgb, var(--color-ink-strong) 7%, transparent);
+  box-shadow: inset 0 0 0 2px var(--color-ink-strong), 0 0.35rem 0.9rem color-mix(in srgb, var(--color-ink-strong) 7%, transparent);
+}
+
+.active-proposal-card.is-selected:has(.active-proposal-card__work:hover),
+.active-proposal-card.is-selected:focus-within {
+  box-shadow: inset 0 0 0 2px var(--color-ink-strong), 0 0.55rem 1.25rem color-mix(in srgb, var(--color-ink-strong) 12%, transparent);
+}
+
+.active-proposal-card__work::after {
+  content: "";
+  inset: 0;
+  position: absolute;
 }
 
 .active-proposal-card__icon {
@@ -331,16 +345,13 @@
   white-space: nowrap;
 }
 
-.active-proposal-card__actions {
-  display: flex;
-  gap: var(--space-1);
-}
-
-.active-proposal-card__actions .secondary-button {
+.active-proposal-card__details {
+  position: relative;
   white-space: nowrap;
+  z-index: 1;
 }
 
-.active-proposal-card__actions .secondary-button.is-selected {
+.active-proposal-card__details.is-selected {
   background: var(--color-ink-strong);
   color: var(--color-surface);
 }
@@ -860,8 +871,9 @@
     grid-template-columns: minmax(0, 1fr) auto;
   }
 
-  .active-proposal-card__actions {
+  .active-proposal-card__details {
     grid-column: 1 / -1;
+    justify-self: start;
   }
 }
 
