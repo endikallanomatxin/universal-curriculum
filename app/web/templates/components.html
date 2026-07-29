@@ -96,7 +96,7 @@
             data-unit-id="{{ .ID }}"
             data-node-lane="{{ .Lane }}"
             style="--curriculum-node-lane:{{ .Lane }}; view-transition-name:curriculum-unit-{{ .ID }};">
-          <span class="curriculum-graph__anchor {{ if .HasProgress }}has-progress{{ end }} {{ if .IsCompleted }}is-completed{{ end }}" data-curriculum-anchor aria-hidden="true"></span>
+          {{ template "curriculum-graph-anchor" . }}
           <a class="curriculum-graph__row"
              href="{{ .NavigateURL }}"
              hx-get="{{ .NavigateURL }}"
@@ -127,6 +127,37 @@
     </div>
   </div>
 </div>
+{{- end }}
+
+{{ define "curriculum-graph-anchor" -}}
+<span id="curriculum-anchor-{{ .ID }}"
+      class="curriculum-graph__anchor {{ if .HasProgress }}has-progress{{ end }} {{ if .IsCompleted }}is-completed{{ end }}"
+      data-curriculum-anchor
+      {{ if .IsOOB }}hx-swap-oob="outerHTML"{{ end }}
+      aria-hidden="true"></span>
+{{- end }}
+
+{{ define "unit-completion-form" -}}
+<form class="unit-completion"
+      id="unit-completion-{{ .UnitID }}"
+      action="/learn/units/{{ .UnitID }}/completion"
+      method="post"
+      hx-post="/learn/units/{{ .UnitID }}/completion"
+      hx-target="this"
+      hx-swap="outerHTML">
+  <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+  <input type="hidden" name="return_to" value="{{ .ReturnURL }}">
+  <input type="hidden" name="completed" value="{{ if .Completed }}false{{ else }}true{{ end }}">
+  <button type="submit" aria-pressed="{{ if .Completed }}true{{ else }}false{{ end }}">
+    <span class="unit-completion__indicator {{ if .Completed }}is-completed{{ end }}" aria-hidden="true"></span>
+    <span>{{ if .Completed }}Completed{{ else }}Mark as completed{{ end }}</span>
+  </button>
+</form>
+{{- end }}
+
+{{ define "unit-completion-update" -}}
+{{ template "unit-completion-form" .Completion }}
+{{ template "curriculum-graph-anchor" .Anchor }}
 {{- end }}
 
 {{ define "primary-navigation" -}}

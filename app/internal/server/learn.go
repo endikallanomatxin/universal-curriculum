@@ -14,22 +14,21 @@ import (
 
 type learnPageData struct {
 	userPageData
-	Graph            *models.CurriculumGraphLayout
-	GraphView        curriculumGraphView
-	GraphSearch      unitNavigationSearchView
-	FocusedUnit      *models.Unit
-	ContentUnit      *models.Unit
-	Paths            []models.LearningPath
-	SelectedPath     *models.LearningPath
-	AllUnits         []models.Unit
-	NavigableUnits   []models.Unit
-	TargetUnitIDs    map[int64]bool
-	CompletedUnitIDs map[int64]bool
-	ContentCompleted bool
-	ReturnURL        string
-	ExploreAll       bool
-	CombinePaths     bool
-	ShowGraph        bool
+	Graph             *models.CurriculumGraphLayout
+	GraphView         curriculumGraphView
+	GraphSearch       unitNavigationSearchView
+	FocusedUnit       *models.Unit
+	ContentUnit       *models.Unit
+	Paths             []models.LearningPath
+	SelectedPath      *models.LearningPath
+	AllUnits          []models.Unit
+	NavigableUnits    []models.Unit
+	TargetUnitIDs     map[int64]bool
+	CompletedUnitIDs  map[int64]bool
+	ContentCompletion *unitCompletionView
+	ExploreAll        bool
+	CombinePaths      bool
+	ShowGraph         bool
 }
 
 func (server *Server) learn(writer http.ResponseWriter, request *http.Request) {
@@ -135,8 +134,12 @@ func (server *Server) learn(writer http.ResponseWriter, request *http.Request) {
 			http.Error(writer, "Curriculum unit not found in this learning path", http.StatusNotFound)
 			return
 		}
-		data.ContentCompleted = data.CompletedUnitIDs[data.ContentUnit.ID]
-		data.ReturnURL = request.URL.RequestURI()
+		data.ContentCompletion = &unitCompletionView{
+			UnitID:    data.ContentUnit.ID,
+			CSRFToken: page.CSRFToken,
+			ReturnURL: request.URL.RequestURI(),
+			Completed: data.CompletedUnitIDs[data.ContentUnit.ID],
+		}
 	}
 	var boundaries []models.CurriculumGraphBoundary
 	if focusID != nil || data.ExploreAll {
@@ -241,7 +244,26 @@ func (server *Server) setUnitCompletion(writer http.ResponseWriter, request *htt
 		return
 	}
 	fallback := "/learn?path=all&unit=" + strconv.FormatInt(unitID, 10) + "&content=" + strconv.FormatInt(unitID, 10)
-	http.Redirect(writer, request, safeRedirectPath(request.FormValue("return_to"), fallback), http.StatusSeeOther)
+	returnURL := safeRedirectPath(request.FormValue("return_to"), fallback)
+	completed := completedValue == "true"
+	if request.Header.Get("HX-Request") == "true" {
+		server.render(writer, "unit-completion-update", unitCompletionUpdateView{
+			Completion: unitCompletionView{
+				UnitID:    unitID,
+				CSRFToken: sessionCSRFToken(request),
+				ReturnURL: returnURL,
+				Completed: completed,
+			},
+			Anchor: curriculumGraphNodeView{
+				CurriculumGraphNode: models.CurriculumGraphNode{Unit: *unit},
+				IsCompleted:         completed,
+				HasProgress:         true,
+				IsOOB:               true,
+			},
+		})
+		return
+	}
+	http.Redirect(writer, request, returnURL, http.StatusSeeOther)
 }
 
 func (server *Server) createLearningPath(writer http.ResponseWriter, request *http.Request) {

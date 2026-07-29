@@ -116,15 +116,7 @@
                 <h1 id="unit-content-title">{{ .Name }}</h1>
               </div>
               {{ if $.User }}
-                <form class="unit-completion" action="/learn/units/{{ .ID }}/completion" method="post">
-                  <input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}">
-                  <input type="hidden" name="return_to" value="{{ $.ReturnURL }}">
-                  <input type="hidden" name="completed" value="{{ if $.ContentCompleted }}false{{ else }}true{{ end }}">
-                  <button type="submit" aria-pressed="{{ if $.ContentCompleted }}true{{ else }}false{{ end }}">
-                    <span class="unit-completion__indicator {{ if $.ContentCompleted }}is-completed{{ end }}" aria-hidden="true"></span>
-                    <span>{{ if $.ContentCompleted }}Completed{{ else }}Mark as completed{{ end }}</span>
-                  </button>
-                </form>
+                {{ template "unit-completion-form" $.ContentCompletion }}
               {{ end }}
               <button class="icon-button nested-panel__close" type="button" data-close-panel aria-label="Close unit content"><span class="material-symbols-rounded" aria-hidden="true">close</span></button>
             </header>

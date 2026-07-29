@@ -439,6 +439,40 @@ func TestHTMXKeepsCalculatedPanelGeometryDuringViewTransitions(t *testing.T) {
 	}
 }
 
+func TestUnitCompletionRefreshesWorkspaceWithoutViewTransition(t *testing.T) {
+	template, err := os.ReadFile("../../web/templates/components.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(template)
+	for _, contract := range []string{
+		`{{ define "unit-completion-update" -}}`,
+		`hx-post="/learn/units/{{ .UnitID }}/completion"`,
+		`hx-target="this"`,
+		`hx-swap="outerHTML"`,
+		`hx-swap-oob="outerHTML"`,
+	} {
+		if !strings.Contains(source, contract) {
+			t.Errorf("unit completion HTMX contract is missing %q", contract)
+		}
+	}
+	completionFormStart := strings.Index(source, `{{ define "unit-completion-form" -}}`)
+	if completionFormStart < 0 {
+		t.Fatal("unit completion form not found")
+	}
+	completionFormEnd := strings.Index(source[completionFormStart:], `</form>`)
+	if completionFormEnd < 0 {
+		t.Fatal("unit completion form not found")
+	}
+	completionForm := source[completionFormStart : completionFormStart+completionFormEnd]
+	if strings.Contains(completionForm, "transition:true") {
+		t.Error("unit completion must not animate unchanged workspace geometry")
+	}
+	if strings.Contains(completionForm, `hx-target="#workspace"`) {
+		t.Error("unit completion must not replace the workspace")
+	}
+}
+
 func TestCurriculumGraphRendersSafeBundledBezierEdges(t *testing.T) {
 	controller, err := os.ReadFile("../../web/static/js/curriculum_graph.js")
 	if err != nil {

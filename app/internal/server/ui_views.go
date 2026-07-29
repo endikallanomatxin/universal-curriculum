@@ -13,10 +13,23 @@ type curriculumGraphNodeView struct {
 	ContentURL         string
 	ProposalState      string
 	IsProposedIsolated bool
+	IsOOB              bool
 	IsCurrent          bool
 	IsTarget           bool
 	IsCompleted        bool
 	HasProgress        bool
+}
+
+type unitCompletionView struct {
+	UnitID    int64
+	CSRFToken string
+	ReturnURL string
+	Completed bool
+}
+
+type unitCompletionUpdateView struct {
+	Completion unitCompletionView
+	Anchor     curriculumGraphNodeView
 }
 
 type curriculumGraphEdgeView struct {
