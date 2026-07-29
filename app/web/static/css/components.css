@@ -1,9 +1,3 @@
-.surface-card {
-  background: var(--color-surface);
-  border-radius: var(--radius-surface);
-  padding: clamp(1.5rem, 4vw, 3rem);
-}
-
 .selectable-surface {
   transition: background-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
 }
@@ -28,24 +22,22 @@
 .definition-list {
   display: grid;
   gap: var(--space-4);
-  grid-template-columns: minmax(7rem, 0.6fr) minmax(0, 1fr);
   margin: 0;
+  max-width: 34rem;
 }
 
 .definition-list__item {
-  display: contents;
+  display: grid;
+  gap: var(--space-1);
 }
 
 .definition-list dt {
   color: var(--color-muted);
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 .definition-list dd {
-  font-weight: 600;
   margin: 0;
   overflow-wrap: anywhere;
 }
@@ -469,15 +461,4 @@
 .form-error {
   color: var(--color-danger);
   margin: 0;
-}
-
-@media (max-width: 36rem) {
-  .definition-list {
-    grid-template-columns: 1fr;
-    gap: var(--space-1);
-  }
-
-  .definition-list dd:not(:last-child) {
-    margin-bottom: var(--space-3);
-  }
 }

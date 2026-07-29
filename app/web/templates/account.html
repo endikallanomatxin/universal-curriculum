@@ -9,30 +9,27 @@
       <nav class="mobile-panel-breadcrumbs" data-mobile-panel-breadcrumbs aria-label="Current location" hidden></nav>
       <section class="ui-pane" aria-labelledby="account-title" data-layout-panel data-panel-modes="collapsed:0 compact:15 standard:28" data-panel-fill data-panel-breadcrumb="Account">
         <div class="ui-pane__inner" data-pane-content-width="standard">
-          <p class="ui-pane__eyebrow">Settings</p>
           <h1 id="account-title">Account</h1>
-          <div class="surface-card">
-            <dl class="definition-list">
+          <dl class="definition-list">
+            <div class="definition-list__item">
+              <dt>Full name</dt>
+              <dd>{{ .User.FullName }}</dd>
+            </div>
+            {{ if .User.Alias }}
               <div class="definition-list__item">
-                <dt>Full name</dt>
-                <dd>{{ .User.FullName }}</dd>
+                <dt>Alias</dt>
+                <dd>{{ .User.Alias }}</dd>
               </div>
-              {{ if .User.Alias }}
-                <div class="definition-list__item">
-                  <dt>Alias</dt>
-                  <dd>{{ .User.Alias }}</dd>
-                </div>
-              {{ end }}
-              <div class="definition-list__item">
-                <dt>Email</dt>
-                <dd>{{ .User.Email }}</dd>
-              </div>
-              <div class="definition-list__item">
-                <dt>Access</dt>
-                <dd>{{ if .User.IsAdmin }}Administrator{{ else }}Member{{ end }}</dd>
-              </div>
-            </dl>
-          </div>
+            {{ end }}
+            <div class="definition-list__item">
+              <dt>Email</dt>
+              <dd>{{ .User.Email }}</dd>
+            </div>
+            <div class="definition-list__item">
+              <dt>Access</dt>
+              <dd>{{ if .User.IsAdmin }}Administrator{{ else }}Member{{ end }}</dd>
+            </div>
+          </dl>
         </div>
       </section>
     </main>

@@ -478,6 +478,41 @@ func TestCollapsedPrimaryMenuPreservesVerticalSpacing(t *testing.T) {
 	}
 }
 
+func TestAccountUsesOpenDetailsInsteadOfACard(t *testing.T) {
+	template, err := os.ReadFile("../../web/templates/account.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(template)
+	for _, contract := range []string{
+		`<h1 id="account-title">Account</h1>`,
+		`<dl class="definition-list">`,
+		`<dt>Full name</dt>`,
+		`<dt>Email</dt>`,
+		`<dt>Access</dt>`,
+	} {
+		if !strings.Contains(source, contract) {
+			t.Errorf("account details are missing %q", contract)
+		}
+	}
+	for _, obsoleteTreatment := range []string{
+		`class="surface-card"`,
+		`class="ui-pane__eyebrow">Settings</p>`,
+	} {
+		if strings.Contains(source, obsoleteTreatment) {
+			t.Errorf("account retains obsolete treatment %q", obsoleteTreatment)
+		}
+	}
+
+	stylesheet, err := os.ReadFile("../../web/static/css/components.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(stylesheet), ".surface-card {") {
+		t.Error("unused account card styling should be removed")
+	}
+}
+
 func TestPanelControllerDoesNotOwnCurriculumEditing(t *testing.T) {
 	controller, err := os.ReadFile("../../web/static/js/panels.js")
 	if err != nil {
