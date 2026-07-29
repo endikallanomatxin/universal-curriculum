@@ -325,7 +325,7 @@ func curriculumErrorResponse(err error) (string, int) {
 	case errors.Is(err, services.ErrProposalEmpty):
 		return "Add at least one proposed change before publishing.", http.StatusBadRequest
 	case errors.Is(err, services.ErrProposalOutdated):
-		return "This draft was based on an older curriculum version. Create a fresh proposal.", http.StatusConflict
+		return "The curriculum changed after this draft was created. Create a fresh proposal.", http.StatusConflict
 	default:
 		return "Unable to modify the curriculum.", http.StatusInternalServerError
 	}

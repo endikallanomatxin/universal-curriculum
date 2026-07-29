@@ -107,8 +107,8 @@ precise enough to be certified independently.
 Groups could provide context to large areas of the graph. They may contain
 units and other groups.
 
-Whether groups should be explicit, versioned entities or derived from unit
-similarity remains an open question.
+Whether groups should be explicit entities or derived from unit similarity
+remains an open question.
 
 ### 4.4 Published curriculum and history
 
@@ -116,11 +116,11 @@ Students see the latest accepted curriculum by default. Work in progress never
 silently changes the learning view.
 
 Every published change retains its proposal, authors, discussion, decision and
-previous state. Published versions remain identifiable so that learning records
-and certifications keep their original meaning.
+previous state. Accepted proposals identify historical curriculum states so
+that learning records and certifications keep their original meaning.
 
-Every published version can be exported in a documented machine-readable
-format. Authorship, contribution terms and third-party licences are preserved.
+Every historical state can be exported in a documented machine-readable format.
+Authorship, contribution terms and third-party licences are preserved.
 
 ## 5. Learning experience
 
@@ -226,8 +226,8 @@ A proposal is a coherent collection of changes. It may change:
 - exercises and reference solutions;
 - translations.
 
-A proposal contains its authors, rationale, base version and a readable diff of
-both content and graph changes.
+A proposal contains its authors, rationale, the accepted proposal on which it
+is based and a readable diff of both content and graph changes.
 
 ### 7.2 Isolated work and conflicts
 
@@ -235,8 +235,8 @@ Starting a proposal freezes its base curriculum. Its changes remain isolated
 until accepted.
 
 If the published curriculum changes meanwhile, the platform identifies
-conflicts. Authors can incorporate the current version and resolve those
-conflicts before submitting the final proposal for a decision.
+conflicts. Authors can incorporate the current accepted changes and resolve
+those conflicts before submitting the final proposal for a decision.
 
 ### 7.3 Discussion
 
@@ -318,8 +318,8 @@ Institutions can participate at several levels:
 - a university records certifications after exams, projects or other assessment;
 - a university offers certification to independent external students.
 
-A certification identifies the student, institution, units and curriculum
-version, assessment basis, issue date, validity and revocation status.
+A certification identifies the student, institution, units, accepted curriculum
+state, assessment basis, issue date, validity and revocation status.
 
 Because units are fine-grained, project-based learning can also be certified: an
 institution evaluates a project and records the units whose knowledge was

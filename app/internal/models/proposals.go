@@ -9,8 +9,7 @@ type CurriculumProposal struct {
 	Title             string
 	Rationale         string
 	Status            string
-	BaseVersion       int64
-	PublishedVersion  *int64
+	BaseProposalID    *int64
 	RevertsProposalID *int64
 	CreatedAt         time.Time
 	AcceptedAt        *time.Time

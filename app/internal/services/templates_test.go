@@ -228,7 +228,7 @@ func TestDraftProposalsAreListedOutsideProposalHistory(t *testing.T) {
 		`hx-trigger="panel-close"`,
 		`data-panel-navigation="close"`,
 		`{{ if ne .ProposalView "details" }}hidden{{ end }}`,
-		`Inspect the latest published curriculum versions.`,
+		`Inspect accepted and rejected curriculum proposals.`,
 	} {
 		if !strings.Contains(source, contract) {
 			t.Errorf("proposal navigation is missing %q", contract)

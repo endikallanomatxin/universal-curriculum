@@ -32,8 +32,6 @@ func main() {
 		err = migrations.Up(database)
 	case "status":
 		err = migrations.Status(database)
-	case "version":
-		err = migrations.Version(database)
 	default:
 		usage()
 		os.Exit(2)
@@ -44,5 +42,5 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "Usage: migrate <up|status|version>")
+	fmt.Fprintln(os.Stderr, "Usage: migrate <up|status>")
 }

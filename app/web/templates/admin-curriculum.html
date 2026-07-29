@@ -222,7 +222,6 @@
             <dl class="proposal-details">
               <div><dt>Status</dt><dd>{{ .ActiveProposal.Status }}</dd></div>
               <div><dt>Author</dt><dd>{{ .ActiveProposal.AuthorName }}</dd></div>
-              <div><dt>Base version</dt><dd>v{{ .ActiveProposal.BaseVersion }}</dd></div>
               <div><dt>Changes</dt><dd>{{ len .ActiveProposal.Changes }}</dd></div>
             </dl>
             <form class="editor-form editor-form--panel" action="/curriculum-modification/proposals/{{ .ActiveProposal.ID }}" method="post">
@@ -260,14 +259,14 @@
               <span class="material-symbols-rounded" aria-hidden="true">close</span>
             </button>
           </header>
-          <p class="nested-panel__introduction">Inspect the latest published curriculum versions.</p>
+          <p class="nested-panel__introduction">Inspect accepted and rejected curriculum proposals.</p>
           {{ if .Proposals }}
             <ol class="proposal-list proposal-list--panel">
               {{ range .Proposals }}
                 <li>
                   <div>
                     <strong>{{ .Title }}</strong>
-                    <span>{{ if .PublishedVersion }}v{{ .PublishedVersion }} · {{ end }}{{ .AuthorName }}</span>
+                    <span>{{ .AuthorName }}</span>
                   </div>
                   <div class="proposal-list__actions">
                     <span class="proposal-status">{{ .Status }}</span>

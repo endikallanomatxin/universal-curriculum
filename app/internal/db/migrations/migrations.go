@@ -24,13 +24,6 @@ func Status(database *sql.DB) error {
 	return goose.Status(database, "sql")
 }
 
-func Version(database *sql.DB) error {
-	if err := setup(); err != nil {
-		return err
-	}
-	return goose.Version(database, "sql")
-}
-
 func setup() error {
 	goose.SetBaseFS(fs)
 	return goose.SetDialect("postgres")

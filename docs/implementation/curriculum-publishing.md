@@ -1,10 +1,12 @@
-# Curriculum versioning
+# Curriculum publishing
 
 ## Source of truth
 
 Accepted curriculum proposals and their ordered changes are the source of truth
-for published curriculum state. The `units` and `unit_dependencies` tables are
-a rebuildable projection used to serve the current graph efficiently.
+for published curriculum state. Each proposal points to the accepted proposal
+on which it was based, forming the canonical publication lineage without a
+separate version number. The `units` and `unit_dependencies` tables are a
+rebuildable projection used to serve the current graph efficiently.
 
 ## Drafts and publication
 
@@ -12,9 +14,9 @@ The curriculum editor works on one explicit draft proposal at a time. Unit
 creations, renames, deletions and dependency changes accumulate in that draft
 without mutating the published projection.
 
-For the current MVP, publication accepts every change in the proposal
-atomically. The projection is rebuilt from accepted proposals in publication
-order inside the same transaction.
+Publication accepts every change in the proposal atomically. It succeeds only
+when the proposal's base is still the current accepted proposal. The projection
+is rebuilt by following that proposal lineage inside the same transaction.
 
 ## Reverting
 

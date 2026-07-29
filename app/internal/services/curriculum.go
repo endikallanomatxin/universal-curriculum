@@ -21,7 +21,7 @@ var (
 	ErrProposalTitleRequired     = errors.New("proposal title is required")
 	ErrProposalRationaleRequired = errors.New("proposal rationale is required")
 	ErrProposalEmpty             = errors.New("curriculum proposal has no changes")
-	ErrProposalOutdated          = errors.New("curriculum proposal is based on an old version")
+	ErrProposalOutdated          = errors.New("curriculum proposal is not based on the current curriculum")
 	ErrNoProposalToRevert        = errors.New("there is no curriculum proposal to revert")
 )
 
@@ -41,12 +41,12 @@ func CreateCurriculumProposal(database *sql.DB, authorID int64, title, rationale
 		return nil, err
 	}
 	defer tx.Rollback()
-	version, err := db.CurrentCurriculumVersion(tx)
+	baseProposalID, err := db.LockCurrentCurriculumProposal(tx)
 	if err != nil {
 		return nil, err
 	}
 	proposal := &models.CurriculumProposal{
-		AuthorID: &authorID, Title: title, Rationale: rationale, BaseVersion: version,
+		AuthorID: &authorID, Title: title, Rationale: rationale, BaseProposalID: baseProposalID,
 	}
 	if err := db.CreateDraftCurriculumProposal(tx, proposal); err != nil {
 		return nil, err
@@ -389,22 +389,21 @@ func PublishCurriculumProposal(database *sql.DB, authorID, proposalID int64) err
 	if len(proposal.Changes) == 0 {
 		return ErrProposalEmpty
 	}
-	version, err := db.CurrentCurriculumVersion(tx)
+	currentProposalID, err := db.LockCurrentCurriculumProposal(tx)
 	if err != nil {
 		return err
 	}
-	if proposal.BaseVersion != version {
+	if !sameOptionalID(proposal.BaseProposalID, currentProposalID) {
 		return ErrProposalOutdated
 	}
-	publishedVersion := version + 1
-	ok, err := db.AcceptDraftCurriculumProposal(tx, proposalID, authorID, publishedVersion)
+	ok, err := db.AcceptDraftCurriculumProposal(tx, proposalID, authorID)
 	if err != nil {
 		return err
 	}
 	if !ok {
 		return ErrProposalNotFound
 	}
-	if err := db.RebuildCurriculumProjection(tx, publishedVersion, proposalID); err != nil {
+	if err := db.RebuildCurriculumProjection(tx, proposalID); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
@@ -419,6 +418,10 @@ func RevertCurriculumProposal(database *sql.DB, authorID, proposalID int64) erro
 		return err
 	}
 	defer tx.Rollback()
+	currentProposalID, err := db.LockCurrentCurriculumProposal(tx)
+	if err != nil {
+		return err
+	}
 	target, err := db.GetLatestRevertibleCurriculumProposal(tx)
 	if err != nil {
 		return err
@@ -451,27 +454,29 @@ func RevertCurriculumProposal(database *sql.DB, authorID, proposalID int64) erro
 		change.ID, change.ProposalID, change.Position = 0, 0, 0
 		changes = append(changes, change)
 	}
-	version, err := db.CurrentCurriculumVersion(tx)
-	if err != nil {
-		return err
-	}
-	publishedVersion := version + 1
 	revert := &models.CurriculumProposal{
 		AuthorID: &authorID, Title: "Revert: " + target.Title,
 		Rationale: "Restore the curriculum state before the previous proposal.",
-		Status:    "accepted", BaseVersion: version, PublishedVersion: &publishedVersion,
+		Status:    "accepted", BaseProposalID: currentProposalID,
 		RevertsProposalID: &target.ID, Changes: changes,
 	}
 	if err := db.CreateAcceptedCurriculumProposal(tx, revert); err != nil {
 		return err
 	}
-	if err := db.RebuildCurriculumProjection(tx, publishedVersion, revert.ID); err != nil {
+	if err := db.RebuildCurriculumProjection(tx, revert.ID); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit curriculum proposal revert: %w", err)
 	}
 	return nil
+}
+
+func sameOptionalID(left, right *int64) bool {
+	if left == nil || right == nil {
+		return left == nil && right == nil
+	}
+	return *left == *right
 }
 
 func validateProposalMetadata(title, rationale string) (string, string, error) {

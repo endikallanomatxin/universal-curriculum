@@ -1,6 +1,7 @@
 # SQL migrations
 
-Add Goose migrations here using six-digit version prefixes, for example:
+`000001_initialize.sql` defines the complete initial production database.
 
-`000001_create_units.sql`
-
+Do not split pre-production design history into migrations. Once the first
+deployment exists, add forward-only schema changes as new Goose migrations and
+leave deployed migrations immutable.

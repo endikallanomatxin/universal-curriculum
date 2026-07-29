@@ -105,6 +105,13 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if err := db.SetUnitCompleted(database, authorID, foundations.ID, true); err != nil {
 		t.Fatal(err)
 	}
+	staleProposal, err := CreateCurriculumProposal(database, authorID, "Alternative foundations", "Exercise conflict detection.")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := UpdateCurriculumUnit(database, authorID, staleProposal.ID, foundations.ID, "Alternative foundations"); err != nil {
+		t.Fatal(err)
+	}
 	proposal, err = CreateCurriculumProposal(database, authorID, "Algebra path", "Connect and refine the new units.")
 	if err != nil {
 		t.Fatal(err)
@@ -161,6 +168,9 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	}
 	if err := PublishCurriculumProposal(database, authorID, proposal.ID); err != nil {
 		t.Fatal(err)
+	}
+	if err := PublishCurriculumProposal(database, authorID, staleProposal.ID); err != ErrProposalOutdated {
+		t.Fatalf("publish stale proposal error = %v, want %v", err, ErrProposalOutdated)
 	}
 	graph, err = db.GetCurriculumGraph(database)
 	if err != nil {

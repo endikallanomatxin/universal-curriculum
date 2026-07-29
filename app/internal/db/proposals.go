@@ -8,12 +8,20 @@ import (
 	"universal-curriculum/internal/models"
 )
 
-func CurrentCurriculumVersion(q curriculumExecutor) (int64, error) {
-	var version int64
-	if err := q.QueryRow(`SELECT version FROM curriculum_projection_state WHERE singleton = TRUE FOR UPDATE`).Scan(&version); err != nil {
-		return 0, fmt.Errorf("lock curriculum projection version: %w", err)
+func LockCurrentCurriculumProposal(q curriculumExecutor) (*int64, error) {
+	var proposalID sql.NullInt64
+	if err := q.QueryRow(`
+		SELECT proposal_id
+		FROM curriculum_projection_state
+		WHERE singleton = TRUE
+		FOR UPDATE
+	`).Scan(&proposalID); err != nil {
+		return nil, fmt.Errorf("lock curriculum projection: %w", err)
 	}
-	return version, nil
+	if !proposalID.Valid {
+		return nil, nil
+	}
+	return &proposalID.Int64, nil
 }
 
 func NextCurriculumUnitID(q curriculumExecutor) (int64, error) {
@@ -26,10 +34,10 @@ func NextCurriculumUnitID(q curriculumExecutor) (int64, error) {
 
 func CreateDraftCurriculumProposal(q curriculumExecutor, proposal *models.CurriculumProposal) error {
 	err := q.QueryRow(`
-		INSERT INTO curriculum_proposals (author_id, title, rationale, status, base_version)
+		INSERT INTO curriculum_proposals (author_id, title, rationale, status, base_proposal_id)
 		VALUES ($1, $2, $3, 'draft', $4)
 		RETURNING id, created_at
-	`, proposal.AuthorID, proposal.Title, proposal.Rationale, proposal.BaseVersion).
+	`, proposal.AuthorID, proposal.Title, proposal.Rationale, proposal.BaseProposalID).
 		Scan(&proposal.ID, &proposal.CreatedAt)
 	if err != nil {
 		return fmt.Errorf("create draft curriculum proposal: %w", err)
@@ -40,20 +48,20 @@ func CreateDraftCurriculumProposal(q curriculumExecutor, proposal *models.Curric
 
 func GetCurriculumProposal(q curriculumExecutor, proposalID int64) (*models.CurriculumProposal, error) {
 	var proposal models.CurriculumProposal
-	var authorID, version, reverts sql.NullInt64
+	var authorID, baseProposalID, reverts sql.NullInt64
 	var acceptedAt sql.NullTime
 	err := q.QueryRow(`
 		SELECT proposal.id, proposal.author_id, COALESCE(author.full_name, 'System'),
-		       proposal.title, proposal.rationale, proposal.status, proposal.base_version,
-		       proposal.published_version, proposal.reverts_proposal_id,
+		       proposal.title, proposal.rationale, proposal.status, proposal.base_proposal_id,
+		       proposal.reverts_proposal_id,
 		       proposal.created_at, proposal.accepted_at
 		FROM curriculum_proposals proposal
 		LEFT JOIN users author ON author.id = proposal.author_id
 		WHERE proposal.id = $1
 	`, proposalID).Scan(
 		&proposal.ID, &authorID, &proposal.AuthorName, &proposal.Title,
-		&proposal.Rationale, &proposal.Status, &proposal.BaseVersion, &version,
-		&reverts, &proposal.CreatedAt, &acceptedAt,
+		&proposal.Rationale, &proposal.Status, &baseProposalID, &reverts,
+		&proposal.CreatedAt, &acceptedAt,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
@@ -64,8 +72,8 @@ func GetCurriculumProposal(q curriculumExecutor, proposalID int64) (*models.Curr
 	if authorID.Valid {
 		proposal.AuthorID = &authorID.Int64
 	}
-	if version.Valid {
-		proposal.PublishedVersion = &version.Int64
+	if baseProposalID.Valid {
+		proposal.BaseProposalID = &baseProposalID.Int64
 	}
 	if reverts.Valid {
 		proposal.RevertsProposalID = &reverts.Int64
@@ -192,11 +200,11 @@ func DeleteDraftCurriculumProposalUnitChanges(q curriculumExecutor, proposalID, 
 func CreateAcceptedCurriculumProposal(q curriculumExecutor, proposal *models.CurriculumProposal) error {
 	err := q.QueryRow(`
 		INSERT INTO curriculum_proposals (
-			author_id, title, rationale, status, base_version, reverts_proposal_id
+			author_id, title, rationale, status, base_proposal_id, reverts_proposal_id
 		)
 		VALUES ($1, $2, $3, 'draft', $4, $5)
 		RETURNING id, created_at
-	`, proposal.AuthorID, proposal.Title, proposal.Rationale, proposal.BaseVersion,
+	`, proposal.AuthorID, proposal.Title, proposal.Rationale, proposal.BaseProposalID,
 		proposal.RevertsProposalID,
 	).Scan(&proposal.ID, &proposal.CreatedAt)
 	if err != nil {
@@ -224,21 +232,21 @@ func CreateAcceptedCurriculumProposal(q curriculumExecutor, proposal *models.Cur
 	}
 	if err := q.QueryRow(`
 		UPDATE curriculum_proposals
-		SET status = 'accepted', published_version = $2, accepted_at = NOW()
+		SET status = 'accepted', accepted_at = clock_timestamp()
 		WHERE id = $1
 		RETURNING accepted_at
-	`, proposal.ID, proposal.PublishedVersion).Scan(&proposal.AcceptedAt); err != nil {
+	`, proposal.ID).Scan(&proposal.AcceptedAt); err != nil {
 		return fmt.Errorf("accept curriculum proposal: %w", err)
 	}
 	return nil
 }
 
-func AcceptDraftCurriculumProposal(q curriculumExecutor, proposalID, authorID, publishedVersion int64) (bool, error) {
+func AcceptDraftCurriculumProposal(q curriculumExecutor, proposalID, authorID int64) (bool, error) {
 	result, err := q.Exec(`
 		UPDATE curriculum_proposals
-		SET status = 'accepted', published_version = $3, accepted_at = NOW()
+		SET status = 'accepted', accepted_at = clock_timestamp()
 		WHERE id = $1 AND author_id = $2 AND status = 'draft'
-	`, proposalID, authorID, publishedVersion)
+	`, proposalID, authorID)
 	if err != nil {
 		return false, fmt.Errorf("accept draft curriculum proposal: %w", err)
 	}
@@ -246,16 +254,27 @@ func AcceptDraftCurriculumProposal(q curriculumExecutor, proposalID, authorID, p
 	return count == 1, err
 }
 
-func RebuildCurriculumProjection(q curriculumExecutor, version, proposalID int64) error {
+func RebuildCurriculumProjection(q curriculumExecutor, proposalID int64) error {
 	rows, err := q.Query(`
+		WITH RECURSIVE proposal_lineage AS (
+			SELECT id, base_proposal_id, 0 AS depth
+			FROM curriculum_proposals
+			WHERE id = $1 AND status = 'accepted'
+
+			UNION ALL
+
+			SELECT proposal.id, proposal.base_proposal_id, lineage.depth + 1
+			FROM curriculum_proposals proposal
+			JOIN proposal_lineage lineage ON proposal.id = lineage.base_proposal_id
+			WHERE proposal.status = 'accepted'
+		)
 		SELECT change.kind, change.unit_id, COALESCE(change.unit_name, ''),
 		       COALESCE(change.unit_content, ''),
 		       change.prerequisite_id
-		FROM curriculum_proposals proposal
-		JOIN curriculum_proposal_changes change ON change.proposal_id = proposal.id
-		WHERE proposal.status = 'accepted'
-		ORDER BY proposal.published_version, change.position
-	`)
+		FROM proposal_lineage lineage
+		JOIN curriculum_proposal_changes change ON change.proposal_id = lineage.id
+		ORDER BY lineage.depth DESC, change.position
+	`, proposalID)
 	if err != nil {
 		return fmt.Errorf("list accepted curriculum changes: %w", err)
 	}
@@ -371,15 +390,15 @@ func RebuildCurriculumProjection(q curriculumExecutor, version, proposalID int64
 	}
 	result, err := q.Exec(`
 		UPDATE curriculum_projection_state
-		SET version = $1, proposal_id = $2
+		SET proposal_id = $1
 		WHERE singleton = TRUE
-	`, version, proposalID)
+	`, proposalID)
 	if err != nil {
-		return fmt.Errorf("update curriculum projection version: %w", err)
+		return fmt.Errorf("update curriculum projection: %w", err)
 	}
 	updated, err := result.RowsAffected()
 	if err != nil || updated != 1 {
-		return fmt.Errorf("update curriculum projection version: affected %d rows: %w", updated, err)
+		return fmt.Errorf("update curriculum projection: affected %d rows: %w", updated, err)
 	}
 	return nil
 }
@@ -388,7 +407,7 @@ func ListCurriculumProposals(database *sql.DB, limit int) ([]models.CurriculumPr
 	rows, err := database.Query(`
 		SELECT proposal.id, proposal.author_id, COALESCE(author.full_name, 'System'),
 		       proposal.title, proposal.rationale, proposal.status,
-		       proposal.base_version, proposal.published_version,
+		       proposal.base_proposal_id,
 		       proposal.reverts_proposal_id, proposal.created_at, proposal.accepted_at
 		FROM curriculum_proposals proposal
 		LEFT JOIN users author ON author.id = proposal.author_id
@@ -403,20 +422,20 @@ func ListCurriculumProposals(database *sql.DB, limit int) ([]models.CurriculumPr
 	var proposals []models.CurriculumProposal
 	for rows.Next() {
 		var proposal models.CurriculumProposal
-		var authorID, version, reverts sql.NullInt64
+		var authorID, baseProposalID, reverts sql.NullInt64
 		var acceptedAt sql.NullTime
 		if err := rows.Scan(
 			&proposal.ID, &authorID, &proposal.AuthorName, &proposal.Title,
-			&proposal.Rationale, &proposal.Status, &proposal.BaseVersion,
-			&version, &reverts, &proposal.CreatedAt, &acceptedAt,
+			&proposal.Rationale, &proposal.Status, &baseProposalID, &reverts,
+			&proposal.CreatedAt, &acceptedAt,
 		); err != nil {
 			return nil, fmt.Errorf("scan curriculum proposal: %w", err)
 		}
 		if authorID.Valid {
 			proposal.AuthorID = &authorID.Int64
 		}
-		if version.Valid {
-			proposal.PublishedVersion = &version.Int64
+		if baseProposalID.Valid {
+			proposal.BaseProposalID = &baseProposalID.Int64
 		}
 		if reverts.Valid {
 			proposal.RevertsProposalID = &reverts.Int64
@@ -436,7 +455,7 @@ func ListDraftCurriculumProposalsByAuthor(database *sql.DB, authorID int64) ([]m
 	rows, err := database.Query(`
 		SELECT proposal.id, proposal.author_id, COALESCE(author.full_name, 'System'),
 		       proposal.title, proposal.rationale, proposal.status,
-		       proposal.base_version, proposal.created_at,
+		       proposal.base_proposal_id, proposal.created_at,
 		       COUNT(change.id)
 		FROM curriculum_proposals proposal
 		LEFT JOIN users author ON author.id = proposal.author_id
@@ -452,16 +471,19 @@ func ListDraftCurriculumProposalsByAuthor(database *sql.DB, authorID int64) ([]m
 	var proposals []models.CurriculumProposal
 	for rows.Next() {
 		var proposal models.CurriculumProposal
-		var proposalAuthorID sql.NullInt64
+		var proposalAuthorID, baseProposalID sql.NullInt64
 		if err := rows.Scan(
 			&proposal.ID, &proposalAuthorID, &proposal.AuthorName, &proposal.Title,
-			&proposal.Rationale, &proposal.Status, &proposal.BaseVersion,
+			&proposal.Rationale, &proposal.Status, &baseProposalID,
 			&proposal.CreatedAt, &proposal.ChangeCount,
 		); err != nil {
 			return nil, fmt.Errorf("scan draft curriculum proposal: %w", err)
 		}
 		if proposalAuthorID.Valid {
 			proposal.AuthorID = &proposalAuthorID.Int64
+		}
+		if baseProposalID.Valid {
+			proposal.BaseProposalID = &baseProposalID.Int64
 		}
 		proposals = append(proposals, proposal)
 	}
@@ -473,22 +495,20 @@ func ListDraftCurriculumProposalsByAuthor(database *sql.DB, authorID int64) ([]m
 
 func GetLatestRevertibleCurriculumProposal(q curriculumExecutor) (*models.CurriculumProposal, error) {
 	var proposal models.CurriculumProposal
-	var version int64
 	err := q.QueryRow(`
-		SELECT id, title, published_version
+		SELECT id, title
 		FROM curriculum_proposals
 		WHERE status = 'accepted' AND author_id IS NOT NULL
-		ORDER BY published_version DESC
+		ORDER BY accepted_at DESC, id DESC
 		LIMIT 1
 		FOR UPDATE
-	`).Scan(&proposal.ID, &proposal.Title, &version)
+	`).Scan(&proposal.ID, &proposal.Title)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("get latest revertible curriculum proposal: %w", err)
 	}
-	proposal.PublishedVersion = &version
 	proposal.Changes, err = listCurriculumProposalChanges(q, proposal.ID)
 	return &proposal, err
 }
