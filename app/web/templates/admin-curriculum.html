@@ -40,9 +40,9 @@
                        hx-get="/curriculum-modification?proposal={{ .ID }}&amp;view=work"
                        hx-target="#workspace"
                        hx-select="#workspace"
-                       hx-swap="outerHTML{{ if $.ActiveProposal }} transition:true{{ end }}"
+                       hx-swap="outerHTML"
                        hx-push-url="true"
-                       {{ if $.ActiveProposal }}data-panel-continuity{{ end }}
+                       data-panel-navigation="{{ if $.ActiveProposal }}replace{{ else }}open{{ end }}"
                        aria-label="Work on {{ .Title }}">
                       <span class="material-symbols-rounded active-proposal-card__icon" aria-hidden="true">rebase_edit</span>
                       <span class="active-proposal-card__body">
@@ -57,7 +57,8 @@
                        hx-target="#workspace"
                        hx-select="#workspace"
                        hx-swap="outerHTML"
-                       hx-push-url="true">
+                       hx-push-url="true"
+                       data-panel-navigation="{{ if $.ActiveProposal }}replace{{ else }}open{{ end }}">
                       <span class="material-symbols-rounded" aria-hidden="true">description</span>
                       Details
                     </a>
@@ -72,7 +73,7 @@
       </section>
 
       {{ if and .ActiveProposal (eq .ProposalView "work") }}
-        <section class="ui-pane ui-pane--wide proposal-workspace-pane" id="proposal-workspace-panel" data-nested-panel data-panel-enter data-layout-panel data-panel-modes="collapsed:0 breadcrumb:4 mobile:20 content:34 wide:46" data-panel-required-mode="mobile" data-panel-fill data-panel-breadcrumb="Working on {{ .ActiveProposal.Title }}" aria-labelledby="proposal-workspace-title">
+        <section class="ui-pane ui-pane--wide proposal-workspace-pane" id="proposal-workspace-panel" data-nested-panel data-panel-motion="horizontal" data-layout-panel data-panel-modes="collapsed:0 breadcrumb:4 mobile:20 content:34 wide:46" data-panel-required-mode="mobile" data-panel-fill data-panel-breadcrumb="Working on {{ .ActiveProposal.Title }}" aria-labelledby="proposal-workspace-title">
           <div class="ui-pane__inner curriculum-editor" data-pane-content-width="wide">
             <header class="nested-panel__header curriculum-editor__header proposal-workspace__main-header">
               <div>
@@ -80,7 +81,7 @@
                 <h1 id="proposal-workspace-title">{{ .ActiveProposal.Title }}</h1>
                 <a class="proposal-workspace__breadcrumb-title" href="/curriculum-modification?proposal={{ .ActiveProposal.ID }}&amp;view=work" hx-get="/curriculum-modification?proposal={{ .ActiveProposal.ID }}&amp;view=work" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true">Working on {{ .ActiveProposal.Title }}</a>
               </div>
-              <a class="icon-button nested-panel__close" href="/curriculum-modification" hx-get="/curriculum-modification" hx-trigger="panel-close" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML" hx-push-url="true" data-server-panel-close aria-label="Close proposal workspace">
+              <a class="icon-button nested-panel__close" href="/curriculum-modification" hx-get="/curriculum-modification" hx-trigger="panel-close" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML" hx-push-url="true" data-panel-navigation="close" aria-label="Close proposal workspace">
                 <span class="material-symbols-rounded" aria-hidden="true">close</span>
               </a>
             </header>
@@ -208,14 +209,14 @@
       {{ end }}
 
       {{ if .ActiveProposal }}
-        <section class="ui-pane ui-pane--form" id="proposal-details-panel" data-nested-panel data-panel-enter data-layout-panel data-panel-modes="collapsed:0 compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-breadcrumb="{{ .ActiveProposal.Title }}" {{ if ne .ProposalView "details" }}hidden{{ end }} aria-labelledby="proposal-details-title">
+        <section class="ui-pane ui-pane--form" id="proposal-details-panel" data-nested-panel data-panel-motion="horizontal" data-layout-panel data-panel-modes="collapsed:0 compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-breadcrumb="{{ .ActiveProposal.Title }}" {{ if ne .ProposalView "details" }}hidden{{ end }} aria-labelledby="proposal-details-title">
           <div class="ui-pane__inner nested-panel" data-pane-content-width="narrow">
             <header class="nested-panel__header">
               <div>
                 <p class="ui-pane__eyebrow">Working proposal</p>
                 <h1 id="proposal-details-title">Proposal details</h1>
               </div>
-              <a class="icon-button nested-panel__close" href="/curriculum-modification" hx-get="/curriculum-modification" hx-trigger="panel-close" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML" hx-push-url="true" data-server-panel-close aria-label="Close proposal details">
+              <a class="icon-button nested-panel__close" href="/curriculum-modification" hx-get="/curriculum-modification" hx-trigger="panel-close" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML" hx-push-url="true" data-panel-navigation="close" aria-label="Close proposal details">
                 <span class="material-symbols-rounded" aria-hidden="true">close</span>
               </a>
             </header>

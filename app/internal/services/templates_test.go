@@ -186,17 +186,16 @@ func TestDraftProposalsAreListedOutsideProposalHistory(t *testing.T) {
 		`class="active-proposal-card`,
 		`class="active-proposal-card__identity active-proposal-card__work"`,
 		`aria-label="Work on {{ .Title }}"`,
-		`hx-swap="outerHTML{{ if $.ActiveProposal }} transition:true{{ end }}"`,
-		`{{ if $.ActiveProposal }}data-panel-continuity{{ end }}`,
+		`data-panel-navigation="{{ if $.ActiveProposal }}replace{{ else }}open{{ end }}"`,
 		`href="/curriculum-modification?proposal={{ .ID }}&amp;view=details"`,
 		`class="secondary-button active-proposal-card__details`,
 		`{{ if and .ActiveProposal (eq .ProposalView "work") }}`,
-		`id="proposal-workspace-panel" data-nested-panel data-panel-enter`,
+		`id="proposal-workspace-panel" data-nested-panel data-panel-motion="horizontal"`,
 		`data-panel-breadcrumb="Working on {{ .ActiveProposal.Title }}"`,
 		`class="proposal-workspace__breadcrumb-title"`,
 		`Working on {{ .ActiveProposal.Title }}</a>`,
 		`hx-trigger="panel-close"`,
-		`data-server-panel-close`,
+		`data-panel-navigation="close"`,
 		`{{ if ne .ProposalView "details" }}hidden{{ end }}`,
 		`Inspect the latest published curriculum versions.`,
 	} {
@@ -234,20 +233,20 @@ func TestDraftProposalsAreListedOutsideProposalHistory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	serverPanelAnimationStart := strings.Index(string(components), "@keyframes server-panel-enter")
-	if serverPanelAnimationStart < 0 {
-		t.Fatal("server-rendered panel animation is missing")
+	horizontalPanelAnimationStart := strings.Index(string(components), "@keyframes horizontal-panel-enter")
+	if horizontalPanelAnimationStart < 0 {
+		t.Fatal("horizontal panel animation is missing")
 	}
-	serverPanelAnimationEnd := strings.Index(string(components)[serverPanelAnimationStart:], "\n}")
-	if serverPanelAnimationEnd < 0 {
-		t.Fatal("server-rendered panel animation is incomplete")
+	horizontalPanelAnimationEnd := strings.Index(string(components)[horizontalPanelAnimationStart:], "\n}")
+	if horizontalPanelAnimationEnd < 0 {
+		t.Fatal("horizontal panel animation is incomplete")
 	}
-	serverPanelAnimation := string(components)[serverPanelAnimationStart : serverPanelAnimationStart+serverPanelAnimationEnd]
-	if !strings.Contains(serverPanelAnimation, "transform: translateX(100%);") {
-		t.Error("server-rendered panels do not enter from beyond the right edge")
+	horizontalPanelAnimation := string(components)[horizontalPanelAnimationStart : horizontalPanelAnimationStart+horizontalPanelAnimationEnd]
+	if !strings.Contains(horizontalPanelAnimation, "transform: translateX(100%);") {
+		t.Error("horizontal panels do not enter from beyond the right edge")
 	}
-	if strings.Contains(serverPanelAnimation, "opacity") || strings.Contains(serverPanelAnimation, "clip-path") {
-		t.Error("server-rendered panel entry should not fade or reveal disconnected states")
+	if strings.Contains(horizontalPanelAnimation, "opacity") || strings.Contains(horizontalPanelAnimation, "clip-path") {
+		t.Error("horizontal panel entry should not fade or reveal disconnected states")
 	}
 
 	panels, err := os.ReadFile("../../web/static/js/panels.js")
@@ -255,16 +254,27 @@ func TestDraftProposalsAreListedOutsideProposalHistory(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, contract := range []string{
-		`function animateServerPanels(root)`,
-		`function initializeServerPanelClose(root)`,
-		`[data-panel-enter]:not([hidden])`,
-		`document.serverPanelContinuity`,
-		`trigger.matches("[data-panel-continuity]")`,
+		`const navigationByRequest = new WeakMap()`,
+		`function animateNavigatedPanels(root, mode)`,
+		`function initializePanelNavigation(root)`,
+		`[data-panel-motion="horizontal"]:not([hidden])`,
+		`trigger.dataset.panelNavigation`,
+		`trigger.setAttribute("hx-swap", "outerHTML transition:true")`,
 		`htmx.trigger(trigger, "panel-close")`,
 		`event.target.id === "workspace"`,
 	} {
 		if !strings.Contains(string(panels), contract) {
-			t.Errorf("server-rendered panel entry is missing %q", contract)
+			t.Errorf("declarative panel navigation is missing %q", contract)
+		}
+	}
+	for _, legacyDetail := range []string{
+		"serverPanel",
+		"data-panel-enter",
+		"data-server-panel-close",
+		"data-panel-continuity",
+	} {
+		if strings.Contains(source, legacyDetail) || strings.Contains(string(panels), legacyDetail) {
+			t.Errorf("proposal navigation retains legacy detail %q", legacyDetail)
 		}
 	}
 }

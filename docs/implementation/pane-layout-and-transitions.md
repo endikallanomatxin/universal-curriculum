@@ -90,6 +90,23 @@ a panel; domain controllers populate their editor through that event. The
 shared controller must not contain proposal, curriculum or learning-path
 configuration.
 
+Server-rendered pane navigation uses the same controller through two
+declarations:
+
+- the destination pane declares its visual motion with
+  `data-panel-motion="horizontal"`;
+- the navigation trigger declares `data-panel-navigation="open"`, `"replace"`
+  or `"close"`.
+
+`open` swaps without a document View Transition and moves the new pane in from
+the right. `replace` preserves the pane boundary and enables a View Transition
+for continuity between its old and new content. `close` moves the pane out to
+the right before triggering its HTMX request. The controller associates the
+operation with the individual request rather than storing navigation state on
+`document`, so overlapping or unrelated requests cannot consume each other's
+motion intent. Links retain normal `href` navigation as their non-JavaScript
+fallback.
+
 ## Motion and continuity
 
 Width and position changes are expressed through shared CSS transitions. Keep

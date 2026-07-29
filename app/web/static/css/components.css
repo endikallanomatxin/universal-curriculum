@@ -331,27 +331,27 @@
   pointer-events: none;
 }
 
-@keyframes server-panel-enter {
+@keyframes horizontal-panel-enter {
   from {
     transform: translateX(100%);
   }
 }
 
-@keyframes server-panel-exit {
+@keyframes horizontal-panel-exit {
   to {
     transform: translateX(100%);
   }
 }
 
-.ui-pane[data-panel-enter].is-opening {
-  animation: server-panel-enter var(--panel-motion-duration) var(--panel-motion-easing);
+.ui-pane[data-panel-motion="horizontal"].is-opening {
+  animation: horizontal-panel-enter var(--panel-motion-duration) var(--panel-motion-easing);
   overflow: hidden;
   pointer-events: none;
   will-change: transform;
 }
 
-.ui-pane[data-panel-enter].is-closing {
-  animation: server-panel-exit var(--panel-motion-duration) var(--panel-motion-easing) forwards;
+.ui-pane[data-panel-motion="horizontal"].is-closing {
+  animation: horizontal-panel-exit var(--panel-motion-duration) var(--panel-motion-easing) forwards;
   clip-path: none;
   opacity: 1;
   overflow: hidden;

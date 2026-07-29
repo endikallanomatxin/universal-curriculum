@@ -2,6 +2,7 @@
   "use strict";
 
   const closeDuration = 280;
+  const navigationByRequest = new WeakMap();
 
   function directChildContaining(group, element) {
     let current = element;
@@ -99,14 +100,16 @@
     });
   }
 
-  function animateServerPanels(root) {
-    if (document.serverPanelContinuity) {
-      document.serverPanelContinuity = false;
-      return;
-    }
-    root.querySelectorAll("[data-panel-enter]:not([hidden])").forEach(function (panel) {
-      if (panel.serverPanelEntered) return;
-      panel.serverPanelEntered = true;
+  function navigationMode(event) {
+    const request = event.detail && event.detail.xhr;
+    return request && navigationByRequest.get(request);
+  }
+
+  function animateNavigatedPanels(root, mode) {
+    if (mode !== "open") return;
+    root.querySelectorAll('[data-panel-motion="horizontal"]:not([hidden])').forEach(function (panel) {
+      if (panel.panelMotionEntered) return;
+      panel.panelMotionEntered = true;
       panel.classList.add("is-opening");
       panel.addEventListener("animationend", function () {
         panel.classList.remove("is-opening");
@@ -114,13 +117,13 @@
     });
   }
 
-  function initializeServerPanelClose(root) {
-    root.querySelectorAll("[data-server-panel-close]").forEach(function (trigger) {
-      if (trigger.serverPanelCloseInitialized) return;
-      trigger.serverPanelCloseInitialized = true;
+  function initializePanelNavigation(root) {
+    root.querySelectorAll('[data-panel-navigation="close"]').forEach(function (trigger) {
+      if (trigger.panelNavigationInitialized) return;
+      trigger.panelNavigationInitialized = true;
       trigger.addEventListener("click", function (event) {
         event.preventDefault();
-        const panel = trigger.closest("[data-panel-enter]");
+        const panel = trigger.closest("[data-panel-motion]");
         if (!panel || panel.classList.contains("is-closing")) return;
 
         panel.classList.remove("is-opening");
@@ -129,30 +132,37 @@
         const navigate = function () {
           if (navigated) return;
           navigated = true;
-          window.clearTimeout(panel.serverPanelCloseTimer);
+          window.clearTimeout(panel.panelNavigationTimer);
           htmx.trigger(trigger, "panel-close");
         };
         panel.addEventListener("animationend", navigate, { once: true });
-        panel.serverPanelCloseTimer = window.setTimeout(navigate, closeDuration + 50);
+        panel.panelNavigationTimer = window.setTimeout(navigate, closeDuration + 50);
       });
     });
   }
 
   document.addEventListener("DOMContentLoaded", function () {
     initializePanels(document);
-    initializeServerPanelClose(document);
+    initializePanelNavigation(document);
   });
   document.addEventListener("htmx:load", function (event) {
     const root = event.detail.elt || document;
     initializePanels(root);
-    initializeServerPanelClose(root);
+    initializePanelNavigation(root);
   });
   document.addEventListener("htmx:beforeRequest", function (event) {
     const trigger = event.detail && event.detail.elt;
-    document.serverPanelContinuity = !!(trigger && trigger.matches("[data-panel-continuity]"));
+    const request = event.detail && event.detail.xhr;
+    const mode = trigger && trigger.dataset.panelNavigation;
+    if (request && mode) {
+      navigationByRequest.set(request, mode);
+      if (mode === "replace") trigger.setAttribute("hx-swap", "outerHTML transition:true");
+    }
   });
   document.addEventListener("htmx:afterSwap", function (event) {
-    if (event.target && event.target.id === "workspace") animateServerPanels(event.target);
+    if (event.target && event.target.id === "workspace") {
+      animateNavigatedPanels(event.target, navigationMode(event));
+    }
   });
   document.addEventListener("panel:navigate", function (event) {
     closePanelsAfter(event.detail && event.detail.panel);
