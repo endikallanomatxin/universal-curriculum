@@ -22,6 +22,7 @@ type Server struct {
 	Database    *sql.DB
 	Templates   *template.Template
 	ObjectStore services.ObjectStore
+	EmailSender services.EmailSender
 	Handler     http.Handler
 }
 
@@ -45,6 +46,7 @@ func Setup() (*Server, error) {
 		Database:    database,
 		Templates:   templates,
 		ObjectStore: services.NewLocalObjectStore(config.UploadsFolder),
+		EmailSender: services.NewResendEmailSender(config.ResendAPIKey, config.EmailFrom),
 	}
 	if err := services.EnsureBootstrapAdmin(
 		database,
@@ -73,6 +75,11 @@ func (server *Server) routes() http.Handler {
 	mux.HandleFunc("POST /auth/login", server.login)
 	mux.HandleFunc("GET /auth/register", server.register)
 	mux.HandleFunc("POST /auth/register", server.register)
+	mux.HandleFunc("GET /auth/forgot-password", server.forgotPassword)
+	mux.HandleFunc("POST /auth/forgot-password", server.forgotPassword)
+	resetPasswordHandler := sensitiveAuthResponse(http.HandlerFunc(server.resetPassword))
+	mux.Handle("GET /auth/reset-password", resetPasswordHandler)
+	mux.Handle("POST /auth/reset-password", resetPasswordHandler)
 	mux.HandleFunc("POST /auth/logout", server.logout)
 	mux.Handle("GET /account", requireUser(http.HandlerFunc(server.account)))
 	mux.Handle("GET /curriculum-modification", server.requireAdmin(http.HandlerFunc(server.adminCurriculum)))
@@ -89,7 +96,7 @@ func (server *Server) routes() http.Handler {
 	mux.Handle("POST /curriculum-modification/dependencies/delete", server.requireAdmin(http.HandlerFunc(server.deleteUnitDependency)))
 	mux.Handle("POST /curriculum-modification/proposals/{id}/revert", server.requireAdmin(http.HandlerFunc(server.revertCurriculumProposal)))
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
-	return server.maintainSession(mux)
+	return configureClientIP(server, server.maintainSession(mux))
 }
 
 func (server *Server) health(writer http.ResponseWriter, request *http.Request) {

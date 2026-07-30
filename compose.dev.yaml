@@ -3,6 +3,8 @@ services:
     build:
       context: ./app/
       dockerfile: Dockerfile.dev
+    env_file:
+      - .env
     ports:
       - "8080:8080"
     depends_on:
@@ -23,6 +25,8 @@ services:
       BOOTSTRAP_ADMIN_FULL_NAME: Administrator
       BOOTSTRAP_ADMIN_ALIAS: admin
       ENV: dev
+      APP_BASE_URL: http://localhost:8080
+      EMAIL_FROM: Universal Curriculum <no-reply@auth.universalcurriculum.org>
     volumes:
       - ./app:/app
       - uploads:/app/uploads

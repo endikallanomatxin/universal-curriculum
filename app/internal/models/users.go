@@ -32,6 +32,14 @@ type User struct {
 	UpdatedAt time.Time
 }
 
+type PasswordResetToken struct {
+	// Token is the raw one-time secret returned only when it is created.
+	// Persistence stores its hash, never this value.
+	Token     string
+	UserID    int64
+	ExpiresAt time.Time
+}
+
 func (user User) DisplayName() string {
 	if user.Alias != nil {
 		return *user.Alias

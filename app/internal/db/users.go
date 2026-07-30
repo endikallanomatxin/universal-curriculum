@@ -179,3 +179,19 @@ func GetLocalPasswordHash(database *sql.DB, email string) (int64, []byte, error)
 	}
 	return userID, passwordHash, nil
 }
+
+func GetLocalUserIDByEmail(database *sql.DB, email string) (int64, bool, error) {
+	var userID int64
+	err := database.QueryRow(`
+		SELECT user_id
+		FROM local_authentications
+		WHERE email = $1
+	`, models.NormalizeEmail(email)).Scan(&userID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, false, nil
+	}
+	if err != nil {
+		return 0, false, fmt.Errorf("get local user by email: %w", err)
+	}
+	return userID, true, nil
+}

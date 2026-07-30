@@ -54,7 +54,18 @@ func TestLoadConfigReportsMissingDatabaseSettings(t *testing.T) {
 	}
 
 	_, err := LoadConfig()
-	if err == nil || !strings.Contains(err.Error(), "missing database configuration") {
+	if err == nil || !strings.Contains(err.Error(), "missing configuration") {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+}
+
+func TestLoadConfigRejectsInsecureProductionEmailLinks(t *testing.T) {
+	setDatabaseEnvironment(t)
+	t.Setenv("ENV", "prod")
+	t.Setenv("APP_BASE_URL", "http://curriculum.example")
+
+	_, err := LoadConfig()
+	if err == nil || !strings.Contains(err.Error(), "production requires HTTPS") {
 		t.Fatalf("LoadConfig() error = %v", err)
 	}
 }
@@ -70,6 +81,10 @@ func setDatabaseEnvironment(t *testing.T) {
 	t.Setenv("BOOTSTRAP_ADMIN_PASSWORD", "")
 	t.Setenv("BOOTSTRAP_ADMIN_FULL_NAME", "")
 	t.Setenv("BOOTSTRAP_ADMIN_ALIAS", "")
+	t.Setenv("APP_BASE_URL", "https://curriculum.example")
+	t.Setenv("EMAIL_FROM", "Universal Curriculum <no-reply@curriculum.example>")
+	t.Setenv("RESEND_API_KEY", "test-resend-key")
+	t.Setenv("TRUST_RENDER_PROXY_HEADERS", "")
 	t.Setenv("DB_HOST", "localhost")
 	t.Setenv("DB_PORT", "5432")
 	t.Setenv("DB_USER", "universal_curriculum")

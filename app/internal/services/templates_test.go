@@ -139,6 +139,9 @@ func TestEmailRegistrationIsAvailableFromLogin(t *testing.T) {
 	if !strings.Contains(string(login), `href="/auth/register?next={{ .Next }}"`) {
 		t.Error("login does not offer account creation while preserving the destination")
 	}
+	if !strings.Contains(string(login), `href="/auth/forgot-password"`) {
+		t.Error("login does not offer password recovery")
+	}
 
 	registration, err := os.ReadFile("../../web/templates/auth/register.html")
 	if err != nil {
@@ -154,6 +157,31 @@ func TestEmailRegistrationIsAvailableFromLogin(t *testing.T) {
 	} {
 		if !strings.Contains(string(registration), contract) {
 			t.Errorf("registration template is missing %q", contract)
+		}
+	}
+
+	for path, contracts := range map[string][]string{
+		"../../web/templates/auth/forgot-password.html": {
+			`define "forgot-password.html"`,
+			`action="/auth/forgot-password"`,
+			`name="email" type="email"`,
+			`If an account exists`,
+		},
+		"../../web/templates/auth/reset-password.html": {
+			`define "reset-password.html"`,
+			`action="/auth/reset-password"`,
+			`name="token"`,
+			`name="password_confirmation"`,
+		},
+	} {
+		template, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, contract := range contracts {
+			if !strings.Contains(string(template), contract) {
+				t.Errorf("%s is missing %q", path, contract)
+			}
 		}
 	}
 }

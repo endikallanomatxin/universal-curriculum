@@ -23,6 +23,10 @@ and currently persisted on a mounted volume.
 
 ## Local development
 
+Copy `.env.example` to `.env` and add a Resend API key. The ignored `.env`
+file contains secrets; non-secret local email settings are defined in
+`compose.dev.yaml`.
+
 From the repository root:
 
 ```bash
@@ -36,6 +40,10 @@ The development administrator is `admin@example.com` with password
 `administrator`. Production credentials are configured as secret values in
 Render and only create the first administrator; subsequent starts do not reset
 the password.
+
+Email is sent from `no-reply@auth.universalcurriculum.org` with the display name
+“Universal Curriculum”. The `auth.universalcurriculum.org` subdomain must remain
+verified in Resend.
 
 Apply migrations manually with:
 
