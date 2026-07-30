@@ -31,8 +31,10 @@ func CompletedUnitIDs(q curriculumExecutor, userID int64) (map[int64]bool, error
 func SetUnitCompleted(q curriculumExecutor, userID, unitID int64, completed bool) error {
 	if completed {
 		if _, err := q.Exec(`
-			INSERT INTO completed_units (user_id, unit_id)
-			VALUES ($1, $2)
+			INSERT INTO completed_units (user_id, unit_id, curriculum_proposal_id)
+			SELECT $1, $2, proposal_id
+			FROM curriculum_projection_state
+			WHERE singleton = TRUE AND proposal_id IS NOT NULL
 			ON CONFLICT (user_id, unit_id) DO NOTHING
 		`, userID, unitID); err != nil {
 			return fmt.Errorf("complete unit: %w", err)

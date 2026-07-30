@@ -268,8 +268,7 @@ func (server *Server) revertCurriculumProposal(writer http.ResponseWriter, reque
 		http.Error(writer, "Invalid proposal ID", http.StatusBadRequest)
 		return
 	}
-	authorID, _ := services.SessionUserID(request)
-	if err := services.RevertCurriculumProposal(server.Database, authorID, proposalID); err != nil {
+	if err := services.RevertCurriculumProposal(server.Database, proposalID); err != nil {
 		server.renderCurriculumMutationError(writer, request, err)
 		return
 	}
@@ -418,12 +417,6 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 		log.Printf("load draft curriculum proposals: %v", err)
 		http.Error(writer, "Unable to load draft curriculum proposals", http.StatusInternalServerError)
 		return
-	}
-	for index := range proposals {
-		if proposals[index].Status == "accepted" && proposals[index].AuthorID != nil {
-			proposals[index].CanRevert = true
-			break
-		}
 	}
 	data := adminCurriculumPageData{
 		userPageData: userPageData{
@@ -618,7 +611,7 @@ func applyProposalGraphStates(view *curriculumGraphView, proposal *models.Curric
 			state = "created"
 		case "delete_unit":
 			state = "deleted"
-		case "update_unit":
+		case "rename_unit":
 			state = "rename"
 		case "update_content":
 			state = "content"

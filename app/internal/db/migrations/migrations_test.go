@@ -24,7 +24,10 @@ func TestInitialSchemaIsCanonical(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, obsolete := range []string{"base_version", "published_version", " version BIGINT"} {
+	for _, obsolete := range []string{
+		"base_version", "published_version", " version BIGINT", "curriculum_unit_ids",
+		"restore_unit", "curriculum_unit_restorations", "reverts_proposal_id",
+	} {
 		if strings.Contains(string(schema), obsolete) {
 			t.Errorf("initial schema retains obsolete version field %q", obsolete)
 		}

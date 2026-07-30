@@ -65,17 +65,28 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(draftCreation.Changes) != 2 ||
+	if len(draftCreation.Changes) != 4 ||
 		draftCreation.Changes[0].Kind != "create_unit" ||
-		draftCreation.Changes[0].UnitName != "Core foundations" ||
-		draftCreation.Changes[0].UnitContent != "Revised foundations." {
-		t.Fatalf("proposed creation was not updated in place: %#v", draftCreation.Changes)
+		draftCreation.Changes[0].ID != foundations.ID ||
+		draftCreation.Changes[0].UnitID != foundations.ID ||
+		draftCreation.Changes[2].Kind != "rename_unit" ||
+		draftCreation.Changes[2].UnitID != foundations.ID ||
+		draftCreation.Changes[3].Kind != "update_content" ||
+		draftCreation.Changes[3].UnitID != foundations.ID {
+		t.Fatalf("hypothetical unit changes do not reference their creation: %#v", draftCreation.Changes)
 	}
 	if err := UpdateCurriculumUnit(database, authorID, proposal.ID, foundations.ID, "Foundations"); err != nil {
 		t.Fatal(err)
 	}
 	if err := UpdateCurriculumUnitContent(database, authorID, proposal.ID, foundations.ID, "Learn the core foundations."); err != nil {
 		t.Fatal(err)
+	}
+	draftCreation, err = db.GetCurriculumProposal(database, proposal.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(draftCreation.Changes) != 2 {
+		t.Fatalf("changes that restore creation values were not removed: %#v", draftCreation.Changes)
 	}
 	if err := AddUnitDependency(database, authorID, proposal.ID, algebra.ID, foundations.ID); err != nil {
 		t.Fatalf("connect units created by the same proposal: %v", err)
@@ -139,7 +150,7 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, change := range draft.Changes {
-		if change.Kind == "update_unit" || change.Kind == "update_content" {
+		if change.Kind == "rename_unit" || change.Kind == "update_content" {
 			t.Fatalf("unchanged unit value left a proposal change behind: %#v", change)
 		}
 	}
@@ -163,7 +174,7 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	for _, change := range draft.Changes {
 		changeCounts[change.Kind]++
 	}
-	if changeCounts["update_unit"] != 1 || changeCounts["update_content"] != 1 {
+	if changeCounts["rename_unit"] != 1 || changeCounts["update_content"] != 1 {
 		t.Fatalf("unit edits accumulated duplicate proposal changes: %#v", draft.Changes)
 	}
 	if err := PublishCurriculumProposal(database, authorID, proposal.ID); err != nil {
@@ -191,8 +202,15 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 		graph.Units[1].ID == algebra.ID && graph.Units[1].Content != "Work through variables, expressions, and equations." {
 		t.Fatalf("content change was not published: %#v", graph.Units)
 	}
-	if err := RevertCurriculumProposal(database, authorID, proposal.ID); err != nil {
+	if err := RevertCurriculumProposal(database, proposal.ID); err != nil {
 		t.Fatal(err)
+	}
+	rolledBack, err := db.GetCurriculumProposal(database, proposal.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rolledBack != nil {
+		t.Fatalf("rolled-back proposal still exists: %#v", rolledBack)
 	}
 	graph, err = db.GetCurriculumGraph(database)
 	if err != nil {
@@ -212,5 +230,66 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	completedUnitIDs, err = db.CompletedUnitIDs(database, authorID)
 	if err != nil || completedUnitIDs[foundations.ID] {
 		t.Fatalf("unit remained completed after returning it to pending: ids=%v err=%v", completedUnitIDs, err)
+	}
+
+	if err := db.SetUnitCompleted(database, authorID, algebra.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	var creationChangeID, completionProposalID int64
+	if err := database.QueryRow(`
+		SELECT creation.change_id, completion.curriculum_proposal_id
+		FROM curriculum_unit_creations creation
+		JOIN completed_units completion ON completion.unit_id = creation.change_id
+		WHERE creation.change_id = $1 AND completion.user_id = $2
+	`, algebra.ID, authorID).Scan(&creationChangeID, &completionProposalID); err != nil {
+		t.Fatal(err)
+	}
+	if creationChangeID != algebra.ID || completionProposalID == 0 {
+		t.Fatalf("durable unit identity or completion state missing: creation=%d completion proposal=%d", creationChangeID, completionProposalID)
+	}
+	retirement, err := CreateCurriculumProposal(database, authorID, "Retire algebra", "Exercise durable unit references.")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := DeleteCurriculumUnit(database, authorID, retirement.ID, algebra.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := PublishCurriculumProposal(database, authorID, retirement.ID); err != nil {
+		t.Fatal(err)
+	}
+	persistedPath, err = db.GetLearningPath(database, authorID, learningPath.ID)
+	if err != nil || persistedPath == nil || len(persistedPath.Units) != 1 ||
+		persistedPath.Units[0].ID != algebra.ID || !persistedPath.Units[0].Retired {
+		t.Fatalf("retired path target did not retain its identity: path=%#v err=%v", persistedPath, err)
+	}
+	completedUnitIDs, err = db.CompletedUnitIDs(database, authorID)
+	if err != nil || !completedUnitIDs[algebra.ID] {
+		t.Fatalf("retiring a unit erased progress: ids=%v err=%v", completedUnitIDs, err)
+	}
+	if err := RevertCurriculumProposal(database, retirement.ID); err != nil {
+		t.Fatal(err)
+	}
+	restoredPath, err := db.GetLearningPath(database, authorID, learningPath.ID)
+	if err != nil || restoredPath == nil || len(restoredPath.Units) != 1 || restoredPath.Units[0].Retired {
+		t.Fatalf("restored unit did not reactivate its durable path target: path=%#v err=%v", restoredPath, err)
+	}
+	restoredGraph, err := db.GetCurriculumGraph(database)
+	if err != nil || len(restoredGraph.Units) != 2 || len(restoredGraph.Dependencies) != 1 {
+		t.Fatalf("restoring a unit did not restore its graph state: graph=%#v err=%v", restoredGraph, err)
+	}
+
+	discarded, err := CreateCurriculumProposal(database, authorID, "Discarded draft", "Exercise hypothetical identity cleanup.")
+	if err != nil {
+		t.Fatal(err)
+	}
+	hypothetical, err := CreateCurriculumUnit(database, authorID, discarded.ID, "Hypothetical", "Never published.")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := UpdateCurriculumUnit(database, authorID, discarded.ID, hypothetical.ID, "Edited hypothetical"); err != nil {
+		t.Fatal(err)
+	}
+	if err := DeleteCurriculumProposal(database, authorID, discarded.ID); err != nil {
+		t.Fatalf("delete draft with internally referenced hypothetical unit: %v", err)
 	}
 }

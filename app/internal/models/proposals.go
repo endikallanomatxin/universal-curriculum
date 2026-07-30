@@ -3,19 +3,18 @@ package models
 import "time"
 
 type CurriculumProposal struct {
-	ID                int64
-	AuthorID          *int64
-	AuthorName        string
-	Title             string
-	Rationale         string
-	Status            string
-	BaseProposalID    *int64
-	RevertsProposalID *int64
-	CreatedAt         time.Time
-	AcceptedAt        *time.Time
-	Changes           []CurriculumProposalChange
-	ChangeCount       int
-	CanRevert         bool
+	ID             int64
+	AuthorID       *int64
+	AuthorName     string
+	Title          string
+	Rationale      string
+	Status         string
+	BaseProposalID *int64
+	CreatedAt      time.Time
+	AcceptedAt     *time.Time
+	Changes        []CurriculumProposalChange
+	ChangeCount    int
+	CanRevert      bool
 }
 
 type CurriculumProposalChange struct {

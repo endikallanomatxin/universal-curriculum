@@ -27,7 +27,8 @@
       const query = normalized(input.value.trim());
       let matches = 0;
       options.forEach(function (option) {
-        const unavailable = selectedIDs.has(option.dataset.unitId) ||
+        const unavailable = option.dataset.unitRetired === "true" ||
+          selectedIDs.has(option.dataset.unitId) ||
           excludedIDs.has(option.dataset.unitId);
         const matchesQuery = normalized(option.dataset.unitName).includes(query);
         option.classList.toggle("is-filtered", unavailable || !matchesQuery);

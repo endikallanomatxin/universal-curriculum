@@ -186,6 +186,9 @@
                     <span class="material-symbols-rounded unit-search__icon" aria-hidden="true">search</span>
                     <input id="learning-path-unit-search" type="search" placeholder="Search units" autocomplete="off" data-unit-picker-input aria-controls="learning-path-unit-results" aria-expanded="false">
                     <div class="unit-search__results" id="learning-path-unit-results" data-unit-picker-results hidden>
+                      {{ with .EditingPath }}{{ range .Units }}{{ if .Retired }}
+                        <button type="button" data-unit-picker-option data-unit-retired="true" data-unit-id="{{ .ID }}" data-unit-name="{{ .Name }} (retired)">{{ .Name }} (retired)</button>
+                      {{ end }}{{ end }}{{ end }}
                       {{ range .AllUnits }}
                         <button type="button" data-unit-picker-option data-unit-id="{{ .ID }}" data-unit-name="{{ .Name }}">
                           <strong>{{ .Name }}</strong>

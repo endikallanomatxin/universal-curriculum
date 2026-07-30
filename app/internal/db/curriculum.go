@@ -13,7 +13,7 @@ type curriculumExecutor interface {
 	QueryRow(query string, args ...any) *sql.Row
 }
 
-func GetCurriculumGraph(database *sql.DB) (*models.CurriculumGraph, error) {
+func GetCurriculumGraph(database curriculumExecutor) (*models.CurriculumGraph, error) {
 	graph := &models.CurriculumGraph{}
 	rows, err := database.Query(`
 		SELECT id, name, content, created_at, updated_at

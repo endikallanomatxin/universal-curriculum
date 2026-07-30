@@ -6,6 +6,7 @@ type Unit struct {
 	ID        int64
 	Name      string
 	Content   string
+	Retired   bool
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

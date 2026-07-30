@@ -8,6 +8,11 @@ every published prerequisite that can lead to them. Focusing a unit applies the
 same local-neighbourhood navigation used by the full curriculum, but never
 escapes the path subgraph.
 
-Learning paths reference stable projected unit IDs. Rebuilding the current
-curriculum projection reconciles unit rows instead of deleting and recreating
-them, so surviving path references remain valid across publications.
+Learning paths reference the stable ID of each unit's creation change rather
+than the current `units` projection. Retiring a unit therefore preserves it as a
+path target and marks it unavailable. A later creation receives a distinct
+identity rather than silently inheriting the retired target.
+
+Progress uses the same durable unit identity and also records the accepted
+proposal that was current when the completion was marked. Rebuilding or retiring
+the current projection does not erase that record.

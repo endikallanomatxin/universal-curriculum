@@ -61,7 +61,7 @@ func TestCurriculumGraphWithProposalIncludesAndPreviewsChangedUnits(t *testing.T
 	}
 	proposal := &models.CurriculumProposal{Changes: []models.CurriculumProposalChange{
 		{Kind: "create_unit", UnitID: 3, UnitName: "Geometry", UnitContent: "New"},
-		{Kind: "update_unit", UnitID: 1, UnitName: "Mathematical foundations"},
+		{Kind: "rename_unit", UnitID: 1, UnitName: "Mathematical foundations"},
 		{Kind: "update_content", UnitID: 2, UnitContent: "Revised"},
 		{Kind: "add_dependency", UnitID: 3, PrerequisiteID: pointerToInt64(1)},
 	}}
@@ -192,7 +192,7 @@ func TestProposalGraphStatesUseStructuralChangePrecedence(t *testing.T) {
 	prerequisiteID := int64(1)
 	proposal := &models.CurriculumProposal{Changes: []models.CurriculumProposalChange{
 		{Kind: "update_content", UnitID: 1},
-		{Kind: "update_unit", UnitID: 1},
+		{Kind: "rename_unit", UnitID: 1},
 		{Kind: "update_content", UnitID: 2},
 		{Kind: "delete_unit", UnitID: 2},
 		{Kind: "add_dependency", UnitID: 2, PrerequisiteID: &prerequisiteID},
