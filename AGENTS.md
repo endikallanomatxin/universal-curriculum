@@ -39,6 +39,22 @@ The Go module lives in `app`. The usual dependency flow is:
   in the same change; keep one-off preferences and visual tuning in code and
   tests.
 
+## Tests
+
+- Prefer tests that protect relevant behaviour, business rules, regressions,
+  data integrity, permissions, transactions or important external contracts.
+- Assert observable outcomes at the most useful level. Avoid tests whose main
+  effect is to freeze private call sequences, exact SQL text, template
+  composition, CSS classes or purely visual layout.
+- Before adding a test, check nearby coverage and extend the closest meaningful
+  case when possible. A new test should fail for a plausible regression, not
+  merely because an equivalent implementation was rearranged.
+- Small helpers and simple persistence operations do not need isolated tests by
+  default. Test them when they contain a boundary condition, mapping, error case
+  or other behaviour with enough risk to justify maintenance.
+- Do not optimize for test count. When simplifying tests, preserve coverage of
+  the domain risks and contracts that matter.
+
 ## Validation
 
 Run from `app`:

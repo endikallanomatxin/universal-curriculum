@@ -44,3 +44,12 @@
 - Preserve relevant focus, scroll, selection and editor state across swaps.
 - Verify loading, empty, validation and error states, keyboard operation, and
   narrow-container behavior for changed interactions.
+
+## Tests
+
+- Template tests should favor compilation, representative critical renders,
+  permissions and read-only states, and important URLs or HTMX parameters.
+- Do not lock presentation to exact class names, DOM ordering, partial
+  composition, CSS values, spacing or breakpoints. Cover a visual detail only
+  when it carries an accessibility or interaction contract that is not tested
+  more directly elsewhere.

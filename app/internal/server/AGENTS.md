@@ -9,3 +9,6 @@
 - Return explicit HTTP errors without terminating the server.
 - Authenticate through the session middleware and require CSRF tokens for
   state-changing requests made by authenticated users.
+- Handler tests should emphasize authorization, parsing and validation, status
+  and feedback, and important HTTP or HTMX response contracts. Avoid tests that
+  only prove a handler forwards values to an already-covered dependency.
