@@ -102,9 +102,9 @@
                       </div>
                       <form action="/curriculum-modification/proposals/{{ $.ActiveProposal.ID }}/changes/{{ .ID }}/delete" method="post">
                         <input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}">
-                        <button class="proposal-change__revert" type="submit" aria-label="Revert proposed change">
-                          <span class="material-symbols-rounded" aria-hidden="true">undo</span>
-                          <span>Revert</span>
+                        <button class="proposal-change__remove" type="submit" aria-label="Remove proposed change">
+                          <span class="material-symbols-rounded" aria-hidden="true">close</span>
+                          <span>Remove</span>
                         </button>
                       </form>
                     </li>
@@ -270,12 +270,6 @@
                   </div>
                   <div class="proposal-list__actions">
                     <span class="proposal-status">{{ .Status }}</span>
-                    {{ if .CanRevert }}
-                      <form action="/curriculum-modification/proposals/{{ .ID }}/revert" method="post">
-                        <input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}">
-                        <button class="secondary-button" type="submit"><span class="material-symbols-rounded" aria-hidden="true">undo</span>Revert</button>
-                      </form>
-                    {{ end }}
                   </div>
                 </li>
               {{ end }}

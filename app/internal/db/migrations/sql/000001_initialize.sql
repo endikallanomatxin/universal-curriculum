@@ -232,14 +232,8 @@ VALUES (TRUE, NULL);
 -- +goose StatementBegin
 CREATE FUNCTION protect_accepted_curriculum_proposal() RETURNS TRIGGER
 LANGUAGE plpgsql AS $$
-DECLARE
-    rollback_allowed BOOLEAN := COALESCE(
-        current_setting('universal_curriculum.allow_proposal_rollback', TRUE) = 'on',
-        FALSE
-    );
 BEGIN
-    IF OLD.status = 'accepted'
-       AND NOT (TG_OP = 'DELETE' AND rollback_allowed) THEN
+    IF OLD.status = 'accepted' THEN
         RAISE EXCEPTION 'accepted curriculum proposals are immutable';
     END IF;
     IF TG_OP = 'DELETE' THEN
@@ -260,10 +254,6 @@ LANGUAGE plpgsql AS $$
 DECLARE
     old_parent_status TEXT;
     new_parent_status TEXT;
-    rollback_allowed BOOLEAN := COALESCE(
-        current_setting('universal_curriculum.allow_proposal_rollback', TRUE) = 'on',
-        FALSE
-    );
 BEGIN
     IF TG_OP <> 'INSERT' THEN
         SELECT status INTO old_parent_status FROM curriculum_proposals WHERE id = OLD.proposal_id;
@@ -271,8 +261,7 @@ BEGIN
     IF TG_OP <> 'DELETE' THEN
         SELECT status INTO new_parent_status FROM curriculum_proposals WHERE id = NEW.proposal_id;
     END IF;
-    IF (old_parent_status = 'accepted' OR new_parent_status = 'accepted')
-       AND NOT (TG_OP = 'DELETE' AND rollback_allowed) THEN
+    IF old_parent_status = 'accepted' OR new_parent_status = 'accepted' THEN
         RAISE EXCEPTION 'changes of accepted curriculum proposals are immutable';
     END IF;
     IF TG_OP = 'DELETE' THEN
@@ -293,10 +282,6 @@ LANGUAGE plpgsql AS $$
 DECLARE
     old_parent_status TEXT;
     new_parent_status TEXT;
-    rollback_allowed BOOLEAN := COALESCE(
-        current_setting('universal_curriculum.allow_proposal_rollback', TRUE) = 'on',
-        FALSE
-    );
 BEGIN
     IF TG_OP = 'UPDATE' AND OLD.change_id <> NEW.change_id THEN
         RAISE EXCEPTION 'curriculum proposal change details cannot move between changes';
@@ -313,8 +298,7 @@ BEGIN
         JOIN curriculum_proposals proposal ON proposal.id = change.proposal_id
         WHERE change.id = NEW.change_id;
     END IF;
-    IF (old_parent_status = 'accepted' OR new_parent_status = 'accepted')
-       AND NOT (TG_OP = 'DELETE' AND rollback_allowed) THEN
+    IF old_parent_status = 'accepted' OR new_parent_status = 'accepted' THEN
         RAISE EXCEPTION 'details of accepted curriculum proposals are immutable';
     END IF;
     IF TG_OP = 'DELETE' THEN

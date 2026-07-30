@@ -94,7 +94,6 @@ func (server *Server) routes() http.Handler {
 	mux.Handle("POST /curriculum-modification/units/{id}/delete", server.requireAdmin(http.HandlerFunc(server.deleteCurriculumUnit)))
 	mux.Handle("POST /curriculum-modification/dependencies", server.requireAdmin(http.HandlerFunc(server.createUnitDependency)))
 	mux.Handle("POST /curriculum-modification/dependencies/delete", server.requireAdmin(http.HandlerFunc(server.deleteUnitDependency)))
-	mux.Handle("POST /curriculum-modification/proposals/{id}/revert", server.requireAdmin(http.HandlerFunc(server.revertCurriculumProposal)))
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
 	return configureClientIP(server, server.maintainSession(mux))
 }

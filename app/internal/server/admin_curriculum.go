@@ -259,22 +259,6 @@ func (server *Server) deleteCurriculumProposalChange(writer http.ResponseWriter,
 	redirectToProposal(writer, request, proposalID)
 }
 
-func (server *Server) revertCurriculumProposal(writer http.ResponseWriter, request *http.Request) {
-	if !server.parseAdminMutation(writer, request) {
-		return
-	}
-	proposalID, err := parsePositiveID(request.PathValue("id"))
-	if err != nil {
-		http.Error(writer, "Invalid proposal ID", http.StatusBadRequest)
-		return
-	}
-	if err := services.RevertCurriculumProposal(server.Database, proposalID); err != nil {
-		server.renderCurriculumMutationError(writer, request, err)
-		return
-	}
-	http.Redirect(writer, request, "/curriculum-modification", http.StatusSeeOther)
-}
-
 func (server *Server) parseAdminMutation(writer http.ResponseWriter, request *http.Request) bool {
 	request.Body = http.MaxBytesReader(writer, request.Body, 1<<20)
 	if err := request.ParseForm(); err != nil {
@@ -313,8 +297,6 @@ func curriculumErrorResponse(err error) (string, int) {
 		return "That dependency no longer exists.", http.StatusNotFound
 	case errors.Is(err, services.ErrDependencyCycle):
 		return "That dependency would create a cycle.", http.StatusConflict
-	case errors.Is(err, services.ErrNoProposalToRevert):
-		return "There is no published proposal to revert.", http.StatusConflict
 	case errors.Is(err, services.ErrProposalNotFound):
 		return "Select an editable draft proposal first.", http.StatusNotFound
 	case errors.Is(err, services.ErrProposalTitleRequired):

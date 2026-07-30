@@ -32,12 +32,11 @@ Publication accepts every change in the proposal atomically. It succeeds only
 when the proposal's base is still the current accepted proposal. The projection
 is rebuilt by following that proposal lineage inside the same transaction.
 
-## Reverting
+## Accepted history
 
-The current reverse action is a pre-release rollback tool, not part of the
-long-term proposal model. It can only remove the current accepted proposal and
-then rebuilds the projection from that proposal's base. The database keeps
-accepted proposals immutable outside this explicit transactional operation.
+Accepted proposals and their changes are permanently immutable. Mistakes in the
+published curriculum are corrected through a subsequent proposal based on the
+current accepted state, preserving the complete publication history.
 
 A deleted unit is not restored by a new change type. Creating similar curriculum
 later creates a new unit identity; replacement and equivalence relationships

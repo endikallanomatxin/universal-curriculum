@@ -590,7 +590,7 @@
   opacity: 1;
 }
 
-.proposal-change__revert {
+.proposal-change__remove {
   align-items: center;
   background: transparent;
   border: 0;
@@ -604,12 +604,12 @@
   padding: 0;
 }
 
-.proposal-change__revert:hover,
-.proposal-change__revert:focus-visible {
+.proposal-change__remove:hover,
+.proposal-change__remove:focus-visible {
   color: var(--color-ink-strong);
 }
 
-.proposal-change__revert .material-symbols-rounded {
+.proposal-change__remove .material-symbols-rounded {
   display: block;
   font-size: 0.9rem;
   line-height: 1;

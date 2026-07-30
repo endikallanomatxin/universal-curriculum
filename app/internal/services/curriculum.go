@@ -22,7 +22,6 @@ var (
 	ErrProposalRationaleRequired = errors.New("proposal rationale is required")
 	ErrProposalEmpty             = errors.New("curriculum proposal has no changes")
 	ErrProposalOutdated          = errors.New("curriculum proposal is not based on the current curriculum")
-	ErrNoProposalToRevert        = errors.New("there is no curriculum proposal to revert")
 )
 
 type UnitIsPrerequisiteError struct{ DependentNames []string }
@@ -504,46 +503,6 @@ func PublishCurriculumProposal(database *sql.DB, authorID, proposalID int64) err
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit curriculum proposal publication: %w", err)
-	}
-	return nil
-}
-
-func RevertCurriculumProposal(database *sql.DB, proposalID int64) error {
-	tx, err := beginCurriculumProposal(database)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-	currentProposalID, err := db.LockCurrentCurriculumProposal(tx)
-	if err != nil {
-		return err
-	}
-	if currentProposalID == nil || *currentProposalID != proposalID {
-		return ErrNoProposalToRevert
-	}
-	target, err := db.GetCurriculumProposal(tx, proposalID)
-	if err != nil {
-		return err
-	}
-	if target == nil || target.Status != "accepted" || target.AuthorID == nil {
-		return ErrNoProposalToRevert
-	}
-	if target.BaseProposalID == nil {
-		if err := db.ClearCurriculumProjection(tx); err != nil {
-			return err
-		}
-	} else if err := db.RebuildCurriculumProjection(tx, *target.BaseProposalID); err != nil {
-		return err
-	}
-	deleted, err := db.DeleteCurrentAcceptedCurriculumProposal(tx, proposalID)
-	if err != nil {
-		return err
-	}
-	if !deleted {
-		return ErrNoProposalToRevert
-	}
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit curriculum proposal rollback: %w", err)
 	}
 	return nil
 }

@@ -329,62 +329,14 @@ func RebuildCurriculumProjection(q curriculumExecutor, proposalID int64) error {
 	return nil
 }
 
-func ClearCurriculumProjection(q curriculumExecutor) error {
-	if _, err := q.Exec(`DELETE FROM unit_dependencies`); err != nil {
-		return fmt.Errorf("clear projected curriculum dependencies: %w", err)
-	}
-	if _, err := q.Exec(`DELETE FROM units`); err != nil {
-		return fmt.Errorf("clear projected curriculum units: %w", err)
-	}
-	result, err := q.Exec(`
-		UPDATE curriculum_projection_state
-		SET proposal_id = NULL
-		WHERE singleton = TRUE
-	`)
-	if err != nil {
-		return fmt.Errorf("clear curriculum projection state: %w", err)
-	}
-	updated, err := result.RowsAffected()
-	if err != nil || updated != 1 {
-		return fmt.Errorf("clear curriculum projection state: affected %d rows: %w", updated, err)
-	}
-	return nil
-}
-
-func DeleteCurrentAcceptedCurriculumProposal(q curriculumExecutor, proposalID int64) (bool, error) {
-	if _, err := q.Exec(`
-		SELECT set_config(
-			'universal_curriculum.allow_proposal_rollback',
-			'on',
-			TRUE
-		)
-	`); err != nil {
-		return false, fmt.Errorf("authorize curriculum proposal rollback: %w", err)
-	}
-	result, err := q.Exec(`
-		DELETE FROM curriculum_proposals
-		WHERE id = $1 AND status = 'accepted'
-	`, proposalID)
-	if err != nil {
-		return false, fmt.Errorf("delete current accepted curriculum proposal: %w", err)
-	}
-	count, err := result.RowsAffected()
-	return count == 1, err
-}
-
 func ListCurriculumProposals(database *sql.DB, limit int) ([]models.CurriculumProposal, error) {
 	rows, err := database.Query(`
 		SELECT proposal.id, proposal.author_id, COALESCE(author.full_name, 'System'),
 		       proposal.title, proposal.rationale, proposal.status,
 		       proposal.base_proposal_id,
-		       proposal.created_at, proposal.accepted_at,
-		       COALESCE(
-		           proposal.id = projection.proposal_id AND proposal.author_id IS NOT NULL,
-		           FALSE
-		       )
+		       proposal.created_at, proposal.accepted_at
 		FROM curriculum_proposals proposal
 		LEFT JOIN users author ON author.id = proposal.author_id
-		CROSS JOIN curriculum_projection_state projection
 		WHERE proposal.status <> 'draft'
 		ORDER BY proposal.created_at DESC
 		LIMIT $1
@@ -401,7 +353,7 @@ func ListCurriculumProposals(database *sql.DB, limit int) ([]models.CurriculumPr
 		if err := rows.Scan(
 			&proposal.ID, &authorID, &proposal.AuthorName, &proposal.Title,
 			&proposal.Rationale, &proposal.Status, &baseProposalID,
-			&proposal.CreatedAt, &acceptedAt, &proposal.CanRevert,
+			&proposal.CreatedAt, &acceptedAt,
 		); err != nil {
 			return nil, fmt.Errorf("scan curriculum proposal: %w", err)
 		}

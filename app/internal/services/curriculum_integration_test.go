@@ -202,27 +202,8 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 		graph.Units[1].ID == algebra.ID && graph.Units[1].Content != "Work through variables, expressions, and equations." {
 		t.Fatalf("content change was not published: %#v", graph.Units)
 	}
-	if err := RevertCurriculumProposal(database, proposal.ID); err != nil {
-		t.Fatal(err)
-	}
-	rolledBack, err := db.GetCurriculumProposal(database, proposal.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if rolledBack != nil {
-		t.Fatalf("rolled-back proposal still exists: %#v", rolledBack)
-	}
-	graph, err = db.GetCurriculumGraph(database)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(graph.Dependencies) != 1 {
-		t.Fatalf("revert did not restore the prior dependency: %#v", graph)
-	}
-	for _, unit := range graph.Units {
-		if unit.ID == algebra.ID && unit.Content != "Learn variables and equations." {
-			t.Fatalf("revert did not restore unit content: %#v", unit)
-		}
+	if _, err := database.Exec(`DELETE FROM curriculum_proposals WHERE id = $1`, proposal.ID); err == nil {
+		t.Fatal("accepted proposal was deleted")
 	}
 	if err := db.SetUnitCompleted(database, authorID, foundations.ID, false); err != nil {
 		t.Fatal(err)
@@ -265,17 +246,6 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	completedUnitIDs, err = db.CompletedUnitIDs(database, authorID)
 	if err != nil || !completedUnitIDs[algebra.ID] {
 		t.Fatalf("retiring a unit erased progress: ids=%v err=%v", completedUnitIDs, err)
-	}
-	if err := RevertCurriculumProposal(database, retirement.ID); err != nil {
-		t.Fatal(err)
-	}
-	restoredPath, err := db.GetLearningPath(database, authorID, learningPath.ID)
-	if err != nil || restoredPath == nil || len(restoredPath.Units) != 1 || restoredPath.Units[0].Retired {
-		t.Fatalf("restored unit did not reactivate its durable path target: path=%#v err=%v", restoredPath, err)
-	}
-	restoredGraph, err := db.GetCurriculumGraph(database)
-	if err != nil || len(restoredGraph.Units) != 2 || len(restoredGraph.Dependencies) != 1 {
-		t.Fatalf("restoring a unit did not restore its graph state: graph=%#v err=%v", restoredGraph, err)
 	}
 
 	discarded, err := CreateCurriculumProposal(database, authorID, "Discarded draft", "Exercise hypothetical identity cleanup.")
