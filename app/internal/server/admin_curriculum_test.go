@@ -87,6 +87,32 @@ func TestCurriculumGraphWithProposalIncludesAndPreviewsChangedUnits(t *testing.T
 	}
 }
 
+func TestCurriculumGraphWithProposalRemovesDeletedUnitsAndDependencies(t *testing.T) {
+	graph := &models.CurriculumGraph{
+		Units: []models.Unit{
+			{ID: 1, Name: "Foundations"},
+			{ID: 2, Name: "Algebra"},
+			{ID: 3, Name: "Geometry"},
+		},
+		Dependencies: []models.UnitDependency{
+			{UnitID: 2, PrerequisiteID: 1},
+			{UnitID: 3, PrerequisiteID: 2},
+		},
+	}
+	proposal := &models.CurriculumProposal{Changes: []models.CurriculumProposalChange{{
+		Kind: "delete_unit", UnitID: 2,
+	}}}
+
+	preview := curriculumGraphWithProposal(graph, proposal)
+
+	if len(preview.Units) != 2 || preview.Units[0].ID != 1 || preview.Units[1].ID != 3 {
+		t.Fatalf("preview units = %#v", preview.Units)
+	}
+	if len(preview.Dependencies) != 0 {
+		t.Fatalf("preview retained deleted unit dependencies: %#v", preview.Dependencies)
+	}
+}
+
 func pointerToInt64(value int64) *int64 {
 	return &value
 }
@@ -212,6 +238,10 @@ func TestCurriculumErrorResponse(t *testing.T) {
 	message, status := curriculumErrorResponse(&services.UnitIsPrerequisiteError{DependentNames: []string{"Algebra", "Calculus"}})
 	if status != http.StatusConflict || message != "Remove the dependencies from Algebra and Calculus before deleting this unit." {
 		t.Fatalf("curriculumErrorResponse() = %q, %d", message, status)
+	}
+	validationError := &services.ProposalValidationError{ChangeID: 12, Reason: "the dependency creates a cycle"}
+	if message, status = curriculumErrorResponse(validationError); status != http.StatusConflict || message != validationError.Error() {
+		t.Fatalf("proposal validation response = %q, %d", message, status)
 	}
 	if message, status = curriculumErrorResponse(errors.New("database unavailable")); status != http.StatusInternalServerError || message == "" {
 		t.Fatalf("unexpected internal error response: %q, %d", message, status)

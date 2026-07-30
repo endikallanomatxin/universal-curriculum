@@ -2,6 +2,7 @@ package services
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -10,6 +11,7 @@ import (
 	_ "github.com/lib/pq"
 	"universal-curriculum/internal/db"
 	"universal-curriculum/internal/db/migrations"
+	"universal-curriculum/internal/models"
 )
 
 func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
@@ -116,6 +118,33 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if err := db.SetUnitCompleted(database, authorID, foundations.ID, true); err != nil {
 		t.Fatal(err)
 	}
+	invalidProposal, err := CreateCurriculumProposal(
+		database, authorID, "Cyclic foundations", "Exercise authoritative proposal validation.",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	algebraID := algebra.ID
+	invalidChangeTx, err := database.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AddDraftCurriculumProposalChange(invalidChangeTx, invalidProposal.ID, authorID, &models.CurriculumProposalChange{
+		Kind: "add_dependency", UnitID: foundations.ID, PrerequisiteID: &algebraID,
+	}); err != nil {
+		_ = invalidChangeTx.Rollback()
+		t.Fatal(err)
+	}
+	if err := invalidChangeTx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+	if err := PublishCurriculumProposal(database, authorID, invalidProposal.ID); !errors.Is(err, ErrProposalInvalid) {
+		t.Fatalf("publish invalid proposal error = %v, want %v", err, ErrProposalInvalid)
+	}
+	invalidProposal, err = db.GetCurriculumProposal(database, invalidProposal.ID)
+	if err != nil || invalidProposal == nil || invalidProposal.Status != "draft" {
+		t.Fatalf("invalid proposal was not preserved as a draft: proposal=%#v err=%v", invalidProposal, err)
+	}
 	staleProposal, err := CreateCurriculumProposal(database, authorID, "Alternative foundations", "Exercise conflict detection.")
 	if err != nil {
 		t.Fatal(err)
@@ -132,6 +161,15 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	}
 	if err := AddUnitDependency(database, authorID, proposal.ID, algebra.ID, foundations.ID); err != nil {
 		t.Fatalf("restore dependency in the same proposal: %v", err)
+	}
+	normalizedDependencies, err := db.GetCurriculumProposal(database, proposal.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, change := range normalizedDependencies.Changes {
+		if change.Kind == "add_dependency" || change.Kind == "remove_dependency" {
+			t.Fatalf("dependency restored to its base state left changes behind: %#v", normalizedDependencies.Changes)
+		}
 	}
 	if err := UpdateCurriculumUnit(database, authorID, proposal.ID, algebra.ID, "Introductory algebra"); err != nil {
 		t.Fatal(err)
@@ -232,8 +270,25 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err := UpdateCurriculumUnit(database, authorID, retirement.ID, algebra.ID, "Temporary algebra name"); err != nil {
+		t.Fatal(err)
+	}
+	if err := UpdateCurriculumUnitContent(database, authorID, retirement.ID, algebra.ID, "Temporary algebra content."); err != nil {
+		t.Fatal(err)
+	}
 	if err := DeleteCurriculumUnit(database, authorID, retirement.ID, algebra.ID); err != nil {
 		t.Fatal(err)
+	}
+	normalizedRetirement, err := db.GetCurriculumProposal(database, retirement.ID)
+	if err != nil || normalizedRetirement == nil ||
+		len(normalizedRetirement.Changes) != 1 ||
+		normalizedRetirement.Changes[0].Kind != "delete_unit" ||
+		normalizedRetirement.Changes[0].UnitName != "Introductory algebra" ||
+		normalizedRetirement.Changes[0].UnitContent != "Work through variables, expressions, and equations." {
+		t.Fatalf("unit deletion did not remove superseded changes: proposal=%#v err=%v", normalizedRetirement, err)
+	}
+	if err := UpdateCurriculumUnit(database, authorID, retirement.ID, algebra.ID, "Renamed after deletion"); err != ErrUnitNotFound {
+		t.Fatalf("rename deleted unit error = %v, want %v", err, ErrUnitNotFound)
 	}
 	if err := PublishCurriculumProposal(database, authorID, retirement.ID); err != nil {
 		t.Fatal(err)
@@ -258,6 +313,25 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	}
 	if err := UpdateCurriculumUnit(database, authorID, discarded.ID, hypothetical.ID, "Edited hypothetical"); err != nil {
 		t.Fatal(err)
+	}
+	if err := AddUnitDependency(database, authorID, discarded.ID, hypothetical.ID, foundations.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := DeleteCurriculumUnit(database, authorID, discarded.ID, hypothetical.ID); err != nil {
+		t.Fatalf("discard hypothetical unit: %v", err)
+	}
+	discarded, err = db.GetCurriculumProposal(database, discarded.ID)
+	if err != nil || discarded == nil || len(discarded.Changes) != 0 {
+		t.Fatalf("discarded hypothetical unit left proposal changes: proposal=%#v err=%v", discarded, err)
+	}
+	var hypotheticalCreations int
+	if err := database.QueryRow(`
+		SELECT count(*) FROM curriculum_unit_creations WHERE change_id = $1
+	`, hypothetical.ID).Scan(&hypotheticalCreations); err != nil {
+		t.Fatal(err)
+	}
+	if hypotheticalCreations != 0 {
+		t.Fatalf("discarded hypothetical unit creation still exists: %d", hypotheticalCreations)
 	}
 	if err := DeleteCurriculumProposal(database, authorID, discarded.ID); err != nil {
 		t.Fatalf("delete draft with internally referenced hypothetical unit: %v", err)

@@ -31,6 +31,16 @@ draft can refer to it normally.
 Publication accepts every change in the proposal atomically. It succeeds only
 when the proposal's base is still the current accepted proposal. The projection
 is rebuilt by following that proposal lineage inside the same transaction.
+Before acceptance, the ordered changes are strictly replayed over that base.
+Every operation must affect the state it declares, its previous values must
+match, all referenced units must be active at that point, and the resulting
+graph must satisfy the product invariants.
+
+Draft editing keeps the proposal as a normalized diff from its base. Reversing a
+dependency change removes that change instead of recording the opposite change.
+Discarding a unit created by the draft removes its creation and every change in
+that draft which references it. Deleting a published unit similarly drops draft
+name, content and outgoing-dependency changes that the deletion supersedes.
 
 ## Accepted history
 

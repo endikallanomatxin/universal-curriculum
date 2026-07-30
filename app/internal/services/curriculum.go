@@ -193,6 +193,9 @@ func draftCreatedCurriculumUnit(database *sql.DB, authorID, proposalID, unitID i
 	}
 	for index := range proposal.Changes {
 		change := &proposal.Changes[index]
+		if change.Kind == "delete_unit" && change.UnitID == unitID {
+			return nil, ErrUnitNotFound
+		}
 		if change.Kind == "create_unit" && change.UnitID == unitID {
 			return change, nil
 		}
@@ -212,6 +215,17 @@ func DeleteCurriculumUnit(database *sql.DB, authorID, proposalID, unitID int64) 
 	}
 	if proposal == nil || proposal.Status != "draft" || proposal.AuthorID == nil || *proposal.AuthorID != authorID {
 		return ErrProposalNotFound
+	}
+	for _, change := range proposal.Changes {
+		if change.Kind == "create_unit" && change.UnitID == unitID {
+			if err := deleteDraftCreatedUnit(tx, proposal, authorID, change); err != nil {
+				return err
+			}
+			if err := tx.Commit(); err != nil {
+				return fmt.Errorf("commit proposed curriculum unit discard: %w", err)
+			}
+			return nil
+		}
 	}
 	for _, change := range proposal.Changes {
 		if change.Kind == "delete_unit" && change.UnitID == unitID {
@@ -242,20 +256,24 @@ func DeleteCurriculumUnit(database *sql.DB, authorID, proposalID, unitID int64) 
 	if len(dependentNames) > 0 {
 		return &UnitIsPrerequisiteError{DependentNames: dependentNames}
 	}
-	for _, dependency := range workingGraph.Dependencies {
-		if dependency.UnitID != unitID {
-			continue
-		}
-		prerequisiteID := dependency.PrerequisiteID
-		if err := db.AddDraftCurriculumProposalChange(tx, proposalID, authorID, &models.CurriculumProposalChange{
-			Kind: "remove_dependency", UnitID: unitID, PrerequisiteID: &prerequisiteID,
-		}); err != nil {
-			return err
+	baseUnit := curriculumUnitByID(graph, unitID)
+	if baseUnit == nil {
+		return ErrUnitNotFound
+	}
+	for _, change := range proposal.Changes {
+		supersededUnitChange := change.UnitID == unitID &&
+			(change.Kind == "rename_unit" || change.Kind == "update_content")
+		supersededOutgoingDependency := change.UnitID == unitID &&
+			(change.Kind == "add_dependency" || change.Kind == "remove_dependency")
+		if supersededUnitChange || supersededOutgoingDependency {
+			if _, err := db.DeleteDraftCurriculumProposalChange(tx, proposalID, change.ID, authorID); err != nil {
+				return err
+			}
 		}
 	}
 	if err := db.AddDraftCurriculumProposalChange(tx, proposalID, authorID, &models.CurriculumProposalChange{
-		Kind: "delete_unit", UnitID: unitID, UnitName: unit.Name,
-		UnitContent: unit.Content,
+		Kind: "delete_unit", UnitID: unitID, UnitName: baseUnit.Name,
+		UnitContent: baseUnit.Content,
 	}); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrProposalNotFound
@@ -268,6 +286,27 @@ func DeleteCurriculumUnit(database *sql.DB, authorID, proposalID, unitID int64) 
 	return nil
 }
 
+func deleteDraftCreatedUnit(tx *sql.Tx, proposal *models.CurriculumProposal, authorID int64, creation models.CurriculumProposalChange) error {
+	for _, change := range proposal.Changes {
+		referencesUnit := change.UnitID == creation.UnitID ||
+			change.PrerequisiteID != nil && *change.PrerequisiteID == creation.UnitID
+		if change.ID == creation.ID || !referencesUnit {
+			continue
+		}
+		if _, err := db.DeleteDraftCurriculumProposalChange(tx, proposal.ID, change.ID, authorID); err != nil {
+			return err
+		}
+	}
+	deleted, err := db.DeleteDraftCurriculumProposalChange(tx, proposal.ID, creation.ID, authorID)
+	if err != nil {
+		return err
+	}
+	if !deleted {
+		return ErrProposalNotFound
+	}
+	return nil
+}
+
 func AddUnitDependency(database *sql.DB, authorID, proposalID, unitID, prerequisiteID int64) error {
 	if unitID <= 0 || prerequisiteID <= 0 {
 		return ErrUnitNotFound
@@ -275,43 +314,78 @@ func AddUnitDependency(database *sql.DB, authorID, proposalID, unitID, prerequis
 	if unitID == prerequisiteID {
 		return ErrDependencyCycle
 	}
-	proposal, err := db.GetCurriculumProposal(database, proposalID)
+	return setUnitDependency(database, authorID, proposalID, unitID, prerequisiteID, true)
+}
+
+func RemoveUnitDependency(database *sql.DB, authorID, proposalID, unitID, prerequisiteID int64) error {
+	if unitID <= 0 || prerequisiteID <= 0 {
+		return ErrUnitNotFound
+	}
+	return setUnitDependency(database, authorID, proposalID, unitID, prerequisiteID, false)
+}
+
+func setUnitDependency(database *sql.DB, authorID, proposalID, unitID, prerequisiteID int64, desired bool) error {
+	tx, err := beginCurriculumProposal(database)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	proposal, err := db.GetCurriculumProposal(tx, proposalID)
 	if err != nil {
 		return err
 	}
 	if proposal == nil || proposal.Status != "draft" || proposal.AuthorID == nil || *proposal.AuthorID != authorID {
 		return ErrProposalNotFound
 	}
-	graph, err := db.GetCurriculumGraph(database)
+	graph, err := db.GetCurriculumGraph(tx)
 	if err != nil {
 		return err
 	}
 	workingGraph := CurriculumGraphWithProposal(graph, proposal)
-	units := make(map[int64]bool, len(workingGraph.Units))
-	deleted := make(map[int64]bool)
-	for _, unit := range workingGraph.Units {
-		units[unit.ID] = true
-	}
-	for _, change := range proposal.Changes {
-		if change.Kind == "delete_unit" {
-			deleted[change.UnitID] = true
-		}
-	}
-	if !units[unitID] || !units[prerequisiteID] || deleted[unitID] || deleted[prerequisiteID] {
+	if curriculumUnitByID(workingGraph, unitID) == nil || curriculumUnitByID(workingGraph, prerequisiteID) == nil {
 		return ErrUnitNotFound
 	}
-	for _, dependency := range workingGraph.Dependencies {
-		if dependency.UnitID == unitID && dependency.PrerequisiteID == prerequisiteID {
+	exists := curriculumDependencyExists(workingGraph, unitID, prerequisiteID)
+	if desired {
+		if exists {
 			return ErrDependencyExists
 		}
+		if curriculumDependencyCreatesCycle(workingGraph, unitID, prerequisiteID) {
+			return ErrDependencyCycle
+		}
+	} else if !exists {
+		return ErrDependencyNotFound
 	}
-	if curriculumDependencyCreatesCycle(workingGraph, unitID, prerequisiteID) {
-		return ErrDependencyCycle
+	for _, change := range proposal.Changes {
+		if change.PrerequisiteID == nil ||
+			change.UnitID != unitID ||
+			*change.PrerequisiteID != prerequisiteID ||
+			(change.Kind != "add_dependency" && change.Kind != "remove_dependency") {
+			continue
+		}
+		if _, err := db.DeleteDraftCurriculumProposalChange(tx, proposalID, change.ID, authorID); err != nil {
+			return err
+		}
 	}
-	id := prerequisiteID
-	return addProposalChange(database, authorID, proposalID, &models.CurriculumProposalChange{
-		Kind: "add_dependency", UnitID: unitID, PrerequisiteID: &id,
-	})
+	if desired != curriculumDependencyExists(graph, unitID, prerequisiteID) {
+		kind := "remove_dependency"
+		if desired {
+			kind = "add_dependency"
+		}
+		id := prerequisiteID
+		if err := db.AddDraftCurriculumProposalChange(tx, proposalID, authorID, &models.CurriculumProposalChange{
+			Kind: kind, UnitID: unitID, PrerequisiteID: &id,
+		}); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return ErrProposalNotFound
+			}
+			return err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit curriculum dependency change: %w", err)
+	}
+	return nil
 }
 
 func CurriculumGraphWithProposal(graph *models.CurriculumGraph, proposal *models.CurriculumProposal) *models.CurriculumGraph {
@@ -343,6 +417,21 @@ func CurriculumGraphWithProposal(graph *models.CurriculumGraph, proposal *models
 			if index, exists := unitIndexes[change.UnitID]; exists {
 				preview.Units[index].Content = change.UnitContent
 			}
+		case "delete_unit":
+			if index, exists := unitIndexes[change.UnitID]; exists {
+				preview.Units = append(preview.Units[:index], preview.Units[index+1:]...)
+				delete(unitIndexes, change.UnitID)
+				for following := index; following < len(preview.Units); following++ {
+					unitIndexes[preview.Units[following].ID] = following
+				}
+			}
+			filtered := preview.Dependencies[:0]
+			for _, dependency := range preview.Dependencies {
+				if dependency.UnitID != change.UnitID && dependency.PrerequisiteID != change.UnitID {
+					filtered = append(filtered, dependency)
+				}
+			}
+			preview.Dependencies = filtered
 		case "add_dependency":
 			if change.PrerequisiteID != nil && !curriculumDependencyExists(preview, change.UnitID, *change.PrerequisiteID) {
 				dependency := models.UnitDependency{
@@ -380,6 +469,15 @@ func curriculumDependencyExists(graph *models.CurriculumGraph, unitID, prerequis
 	return false
 }
 
+func curriculumUnitByID(graph *models.CurriculumGraph, unitID int64) *models.Unit {
+	for index := range graph.Units {
+		if graph.Units[index].ID == unitID {
+			return &graph.Units[index]
+		}
+	}
+	return nil
+}
+
 func curriculumDependencyCreatesCycle(graph *models.CurriculumGraph, unitID, prerequisiteID int64) bool {
 	dependents := make(map[int64][]int64, len(graph.Dependencies))
 	for _, dependency := range graph.Dependencies {
@@ -400,24 +498,6 @@ func curriculumDependencyCreatesCycle(graph *models.CurriculumGraph, unitID, pre
 		pending = append(pending, dependents[current]...)
 	}
 	return false
-}
-
-func RemoveUnitDependency(database *sql.DB, authorID, proposalID, unitID, prerequisiteID int64) error {
-	exists, err := db.DependencyExists(database, unitID, prerequisiteID)
-	if err != nil {
-		return err
-	}
-	exists, err = proposedDependencyExists(database, authorID, proposalID, unitID, prerequisiteID, exists)
-	if err != nil {
-		return err
-	}
-	if !exists {
-		return ErrDependencyNotFound
-	}
-	id := prerequisiteID
-	return addProposalChange(database, authorID, proposalID, &models.CurriculumProposalChange{
-		Kind: "remove_dependency", UnitID: unitID, PrerequisiteID: &id,
-	})
 }
 
 func DeleteCurriculumProposalChange(database *sql.DB, authorID, proposalID, changeID int64) error {
@@ -444,16 +524,13 @@ func DeleteCurriculumProposalChange(database *sql.DB, authorID, proposalID, chan
 		return ErrProposalNotFound
 	}
 	if target.Kind == "create_unit" {
-		for _, change := range proposal.Changes {
-			referencesUnit := change.UnitID == target.UnitID ||
-				change.PrerequisiteID != nil && *change.PrerequisiteID == target.UnitID
-			if change.ID == target.ID || !referencesUnit {
-				continue
-			}
-			if _, err := db.DeleteDraftCurriculumProposalChange(tx, proposalID, change.ID, authorID); err != nil {
-				return err
-			}
+		if err := deleteDraftCreatedUnit(tx, proposal, authorID, *target); err != nil {
+			return err
 		}
+		if err := tx.Commit(); err != nil {
+			return fmt.Errorf("commit curriculum proposal change deletion: %w", err)
+		}
+		return nil
 	}
 	ok, err := db.DeleteDraftCurriculumProposalChange(tx, proposalID, changeID, authorID)
 	if err != nil {
@@ -491,6 +568,13 @@ func PublishCurriculumProposal(database *sql.DB, authorID, proposalID int64) err
 	if !sameOptionalID(proposal.BaseProposalID, currentProposalID) {
 		return ErrProposalOutdated
 	}
+	graph, err := db.GetCurriculumGraph(tx)
+	if err != nil {
+		return err
+	}
+	if err := validateCurriculumProposal(graph, proposal); err != nil {
+		return err
+	}
 	ok, err := db.AcceptDraftCurriculumProposal(tx, proposalID, authorID)
 	if err != nil {
 		return err
@@ -525,24 +609,6 @@ func validateProposalMetadata(title, rationale string) (string, string, error) {
 	return title, rationale, nil
 }
 
-func addProposalChange(database *sql.DB, authorID, proposalID int64, change *models.CurriculumProposalChange) error {
-	tx, err := beginCurriculumProposal(database)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-	if err := db.AddDraftCurriculumProposalChange(tx, proposalID, authorID, change); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return ErrProposalNotFound
-		}
-		return err
-	}
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit curriculum proposal change: %w", err)
-	}
-	return nil
-}
-
 func replaceUnitProposalChange(database *sql.DB, authorID, proposalID, unitID int64, kind string, change *models.CurriculumProposalChange) error {
 	tx, err := beginCurriculumProposal(database)
 	if err != nil {
@@ -568,29 +634,6 @@ func replaceUnitProposalChange(database *sql.DB, authorID, proposalID, unitID in
 		return fmt.Errorf("commit curriculum unit proposal change: %w", err)
 	}
 	return nil
-}
-
-func proposedDependencyExists(database *sql.DB, authorID, proposalID, unitID, prerequisiteID int64, published bool) (bool, error) {
-	proposal, err := db.GetCurriculumProposal(database, proposalID)
-	if err != nil {
-		return false, err
-	}
-	if proposal == nil || proposal.Status != "draft" || proposal.AuthorID == nil || *proposal.AuthorID != authorID {
-		return false, ErrProposalNotFound
-	}
-	exists := published
-	for _, change := range proposal.Changes {
-		if change.UnitID != unitID || change.PrerequisiteID == nil || *change.PrerequisiteID != prerequisiteID {
-			continue
-		}
-		switch change.Kind {
-		case "add_dependency":
-			exists = true
-		case "remove_dependency":
-			exists = false
-		}
-	}
-	return exists, nil
 }
 
 func beginCurriculumProposal(database *sql.DB) (*sql.Tx, error) {

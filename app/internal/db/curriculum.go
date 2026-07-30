@@ -78,93 +78,9 @@ func GetUnit(q curriculumExecutor, unitID int64) (*models.Unit, error) {
 	return &unit, nil
 }
 
-func UnitPrerequisiteIDs(q curriculumExecutor, unitID int64) ([]int64, error) {
-	rows, err := q.Query(`
-		SELECT prerequisite_id
-		FROM unit_dependencies
-		WHERE unit_id = $1
-		ORDER BY prerequisite_id
-	`, unitID)
-	if err != nil {
-		return nil, fmt.Errorf("list unit prerequisite ids: %w", err)
-	}
-	defer rows.Close()
-	var ids []int64
-	for rows.Next() {
-		var id int64
-		if err := rows.Scan(&id); err != nil {
-			return nil, fmt.Errorf("scan unit prerequisite id: %w", err)
-		}
-		ids = append(ids, id)
-	}
-	return ids, rows.Err()
-}
-
 func LockCurriculumGraph(tx *sql.Tx) error {
 	if _, err := tx.Exec(`SELECT pg_advisory_xact_lock(781924613)`); err != nil {
 		return fmt.Errorf("lock curriculum graph: %w", err)
 	}
 	return nil
-}
-
-func UnitDependentNames(q curriculumExecutor, prerequisiteID int64) ([]string, error) {
-	rows, err := q.Query(`
-		SELECT unit.name
-		FROM unit_dependencies dependency
-		JOIN units unit ON unit.id = dependency.unit_id
-		WHERE dependency.prerequisite_id = $1
-		ORDER BY lower(unit.name), unit.id
-	`, prerequisiteID)
-	if err != nil {
-		return nil, fmt.Errorf("list units requiring prerequisite: %w", err)
-	}
-	defer rows.Close()
-	var names []string
-	for rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err != nil {
-			return nil, fmt.Errorf("scan unit requiring prerequisite: %w", err)
-		}
-		names = append(names, name)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate units requiring prerequisite: %w", err)
-	}
-	return names, nil
-}
-
-func DependencyCreatesCycle(q curriculumExecutor, unitID, prerequisiteID int64) (bool, error) {
-	if unitID == prerequisiteID {
-		return true, nil
-	}
-	var createsCycle bool
-	err := q.QueryRow(`
-		WITH RECURSIVE prerequisites(id) AS (
-			SELECT prerequisite_id
-			FROM unit_dependencies
-			WHERE unit_id = $1
-			UNION
-			SELECT dependency.prerequisite_id
-			FROM unit_dependencies dependency
-			JOIN prerequisites ON dependency.unit_id = prerequisites.id
-		)
-		SELECT EXISTS (SELECT 1 FROM prerequisites WHERE id = $2)
-	`, prerequisiteID, unitID).Scan(&createsCycle)
-	if err != nil {
-		return false, fmt.Errorf("check unit dependency cycle: %w", err)
-	}
-	return createsCycle, nil
-}
-
-func DependencyExists(q curriculumExecutor, unitID, prerequisiteID int64) (bool, error) {
-	var exists bool
-	if err := q.QueryRow(`
-		SELECT EXISTS (
-			SELECT 1 FROM unit_dependencies
-			WHERE unit_id = $1 AND prerequisite_id = $2
-		)
-	`, unitID, prerequisiteID).Scan(&exists); err != nil {
-		return false, fmt.Errorf("check curriculum dependency: %w", err)
-	}
-	return exists, nil
 }
