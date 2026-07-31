@@ -42,6 +42,21 @@
     highlightCode(root);
   }
 
+  document.addEventListener("click", function (event) {
+    const trigger = event.target.closest("[data-content-view-trigger]");
+    if (!trigger) return;
+    const container = trigger.closest("[data-inline-editor-display]");
+    if (!container) return;
+    const view = trigger.dataset.contentViewTrigger;
+    container.querySelectorAll("[data-content-view-trigger]").forEach(function (button) {
+      button.setAttribute("aria-selected", String(button === trigger));
+    });
+    container.querySelectorAll("[data-content-view-panel]").forEach(function (panel) {
+      panel.hidden = panel.dataset.contentViewPanel !== view;
+    });
+    enhanceContent(container);
+  });
+
   window.addEventListener("message", function (event) {
     if (!event.data || event.data.type !== "unit-visualization-height") return;
     document.querySelectorAll(".unit-visualization").forEach(function (frame) {

@@ -43,6 +43,9 @@ submitting another value replaces the existing change of the same kind.
 
 Opening a unit with a pending `update_content` change renders its content panel
 directly as a server-rendered word-and-punctuation diff between the stored
-previous and resulting Markdown. The comparison falls back to whole-document
-replacement for unusually large inputs. Units without a pending content change
-continue to render their Markdown normally.
+previous and resulting Markdown. This source diff is the initial view and can
+be switched locally to a rendered diff. Unchanged Markdown blocks appear once;
+changed regions render their previous and proposed versions independently so
+structured content such as formulas and code remains valid in both. The source
+comparison falls back to whole-document replacement for unusually large inputs.
+Units without a pending content change continue to render their Markdown normally.

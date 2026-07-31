@@ -282,8 +282,13 @@ func TestCurriculumProposalContentPanelRendersUnitContentDiff(t *testing.T) {
 
 	for _, fragment := range []string{
 		"Proposed content changes",
+		`data-content-view-trigger="source"`,
+		`data-content-view-trigger="rendered"`,
+		`data-content-view-panel="rendered" hidden`,
 		"<del>is</del>",
 		"<ins>can be</ins>",
+		"Before",
+		"After",
 	} {
 		if !strings.Contains(output, fragment) {
 			t.Errorf("rendered content change does not contain %q", fragment)

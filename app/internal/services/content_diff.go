@@ -36,6 +36,78 @@ func RenderContentDiff(previous, current string) template.HTML {
 	return template.HTML(output.String())
 }
 
+func RenderRenderedContentDiff(previous, current string) template.HTML {
+	parts := contentDiffParts(markdownContentBlocks(previous), markdownContentBlocks(current))
+	var output strings.Builder
+	output.WriteString(`<div class="rendered-content-diff" aria-label="Rendered content changes">`)
+	for index := 0; index < len(parts); {
+		if parts[index].kind == "same" {
+			output.WriteString(`<div class="rendered-content-diff__unchanged">`)
+			output.WriteString(string(RenderUnitContent(parts[index].text)))
+			output.WriteString(`</div>`)
+			index++
+			continue
+		}
+
+		var previousBlocks, currentBlocks strings.Builder
+		for index < len(parts) && parts[index].kind != "same" {
+			if parts[index].kind == "deleted" {
+				previousBlocks.WriteString(parts[index].text)
+			} else {
+				currentBlocks.WriteString(parts[index].text)
+			}
+			index++
+		}
+		output.WriteString(`<div class="rendered-content-diff__change">`)
+		if previousBlocks.Len() > 0 {
+			output.WriteString(`<section class="rendered-content-diff__version rendered-content-diff__version--before"><p class="rendered-content-diff__label">Before</p>`)
+			output.WriteString(string(RenderUnitContent(previousBlocks.String())))
+			output.WriteString(`</section>`)
+		}
+		if currentBlocks.Len() > 0 {
+			output.WriteString(`<section class="rendered-content-diff__version rendered-content-diff__version--after"><p class="rendered-content-diff__label">After</p>`)
+			output.WriteString(string(RenderUnitContent(currentBlocks.String())))
+			output.WriteString(`</section>`)
+		}
+		output.WriteString(`</div>`)
+	}
+	output.WriteString(`</div>`)
+	return template.HTML(output.String())
+}
+
+func markdownContentBlocks(source string) []string {
+	source = strings.ReplaceAll(source, "\r\n", "\n")
+	lines := strings.SplitAfter(source, "\n")
+	blocks := make([]string, 0)
+	var block strings.Builder
+	insideFence := false
+	fenceMarker := ""
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if !insideFence && block.Len() > 0 && trimmed == "" {
+			block.WriteString(line)
+			blocks = append(blocks, block.String())
+			block.Reset()
+			continue
+		}
+		block.WriteString(line)
+		if strings.HasPrefix(trimmed, "```") || strings.HasPrefix(trimmed, "~~~") {
+			marker := trimmed[:3]
+			if !insideFence {
+				insideFence = true
+				fenceMarker = marker
+			} else if marker == fenceMarker {
+				insideFence = false
+				fenceMarker = ""
+			}
+		}
+	}
+	if block.Len() > 0 {
+		blocks = append(blocks, block.String())
+	}
+	return blocks
+}
+
 func contentDiffParts(previous, current []string) []contentDiffPart {
 	prefix := 0
 	for prefix < len(previous) && prefix < len(current) && previous[prefix] == current[prefix] {

@@ -216,12 +216,23 @@
                 <textarea id="inline-unit-content" name="content" required rows="1" spellcheck="true" data-autoresize data-autoresize-unbounded>{{ .Content }}</textarea>
               </form>
             {{ end }}
-            <div class="unit-content__body{{ if .HasContentDiff }} unit-content__body--diff{{ end }}" data-inline-editor-display="inline-edit-unit-content">
+            <div data-inline-editor-display="inline-edit-unit-content">
               {{ if .HasContentDiff }}
-                <p class="unit-content__diff-label">Proposed content changes</p>
-                {{ renderContentDiff .PreviousContent .Content }}
+                <div class="unit-content__view-header">
+                  <p>Proposed content changes</p>
+                  <div class="unit-content__view-switcher" role="tablist" aria-label="Content view">
+                    <button type="button" role="tab" aria-selected="true" data-content-view-trigger="source">Source</button>
+                    <button type="button" role="tab" aria-selected="false" data-content-view-trigger="rendered">Rendered</button>
+                  </div>
+                </div>
+                <div class="unit-content__body unit-content__body--diff" role="tabpanel" data-content-view-panel="source">
+                  {{ renderContentDiff .PreviousContent .Content }}
+                </div>
+                <div class="unit-content__body" role="tabpanel" data-content-view-panel="rendered" hidden>
+                  {{ renderRenderedContentDiff .PreviousContent .Content }}
+                </div>
               {{ else }}
-                {{ renderUnitContent .Content }}
+                <div class="unit-content__body">{{ renderUnitContent .Content }}</div>
               {{ end }}
             </div>
           </article>

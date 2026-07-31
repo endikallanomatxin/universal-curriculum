@@ -571,22 +571,102 @@
   color: var(--color-ink-strong);
 }
 
-.content-diff {
-  background: color-mix(in srgb, var(--color-ink) 3%, var(--color-surface));
-  border: 1px solid color-mix(in srgb, var(--color-ink) 9%, transparent);
-  border-radius: calc(var(--radius-surface) / 2);
+.unit-content__body pre.content-diff {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
   color: var(--color-ink);
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 0.82rem;
   line-height: 1.55;
   margin: 0;
-  padding: var(--space-2);
+  overflow: visible;
+  padding: 0;
+  position: static;
   white-space: pre-wrap;
 }
 
-.unit-content__diff-label {
+.unit-content__view-header {
+  align-items: center;
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+}
+
+.unit-content__view-header > p {
   color: var(--color-ink-muted);
   font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.unit-content__view-switcher {
+  align-items: center;
+  background: color-mix(in srgb, var(--color-ink) 5%, transparent);
+  border-radius: 999px;
+  display: inline-flex;
+  padding: 0.18rem;
+}
+
+.unit-content__view-switcher button {
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.35rem 0.65rem;
+}
+
+.unit-content__view-switcher button[aria-selected="true"] {
+  background: var(--color-surface);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--color-ink) 14%, transparent);
+  color: var(--color-ink-strong);
+}
+
+[data-content-view-panel][hidden] {
+  display: none;
+}
+
+.unit-content__body[data-content-view-panel] {
+  border-top: 0;
+  margin-top: 0;
+  padding-top: 0;
+}
+
+.rendered-content-diff {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.rendered-content-diff__change {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));
+}
+
+.rendered-content-diff__version {
+  border-left: 3px solid;
+  min-width: 0;
+  padding-left: var(--space-3);
+}
+
+.rendered-content-diff__version--before {
+  border-color: var(--color-proposal-deleted);
+}
+
+.rendered-content-diff__version--after {
+  border-color: var(--color-proposal-created);
+}
+
+.rendered-content-diff__label {
+  color: var(--color-ink-muted);
+  font-size: 0.7rem;
   font-weight: 750;
   letter-spacing: 0.04em;
   margin: 0 0 var(--space-2);
