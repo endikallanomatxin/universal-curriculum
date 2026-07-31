@@ -233,6 +233,10 @@ a.learning-path-card {
   margin: 0;
 }
 
+.learn-heading > .nested-panel__close {
+  align-self: start;
+}
+
 .curriculum-explorer {
   margin-top: clamp(2.5rem, 7vh, 5rem);
 }
@@ -911,6 +915,10 @@ a.learning-path-card {
     align-items: start;
     flex-direction: column;
     gap: var(--space-2);
+  }
+
+  .learn-heading--closable {
+    flex-direction: row;
   }
 
   .learn-navigation {

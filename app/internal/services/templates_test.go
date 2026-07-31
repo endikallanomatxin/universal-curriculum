@@ -82,6 +82,25 @@ func TestApplicationNavigationRespectsAdminPermission(t *testing.T) {
 	}
 }
 
+func TestLearningPathPanelHasCloseNavigation(t *testing.T) {
+	templates := loadTestTemplates(t)
+	output := renderTemplate(t, templates, "learn.html", map[string]any{
+		"ShowGraph": true,
+		"Graph":     &models.CurriculumGraphLayout{},
+	})
+
+	for _, fragment := range []string{
+		`aria-label="Close learning path"`,
+		`href="/learn"`,
+		`hx-trigger="panel-close"`,
+		`data-panel-navigation="close"`,
+	} {
+		if !strings.Contains(output, fragment) {
+			t.Errorf("learning path close control does not contain %q", fragment)
+		}
+	}
+}
+
 func TestAuthenticationTemplatesRenderCriticalFlows(t *testing.T) {
 	templates := loadTestTemplates(t)
 
