@@ -15,9 +15,11 @@ import (
 
 type curriculumUnitView struct {
 	models.Unit
-	Prerequisites []models.Unit
-	Dependents    []models.Unit
-	Lane          float64
+	Prerequisites   []models.Unit
+	Dependents      []models.Unit
+	Lane            float64
+	HasContentDiff  bool
+	PreviousContent string
 }
 
 type adminCurriculumPageData struct {
@@ -471,6 +473,7 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 			http.Error(writer, "Curriculum unit not found", http.StatusNotFound)
 			return
 		}
+		applyUnitContentDiff(data.ContentUnit, activeProposal)
 	}
 	unitURL := func(unitID int64) string {
 		target := "/curriculum-modification?"
@@ -499,6 +502,19 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 		navigateURL,
 	)
 	server.renderStatus(writer, status, "admin-curriculum.html", data)
+}
+
+func applyUnitContentDiff(unit *curriculumUnitView, proposal *models.CurriculumProposal) {
+	if unit == nil || proposal == nil {
+		return
+	}
+	for _, change := range proposal.Changes {
+		if change.Kind == "update_content" && change.UnitID == unit.ID {
+			unit.HasContentDiff = true
+			unit.PreviousContent = change.PreviousUnitContent
+			return
+		}
+	}
 }
 
 func curriculumGraphWithProposal(graph *models.CurriculumGraph, proposal *models.CurriculumProposal) *models.CurriculumGraph {

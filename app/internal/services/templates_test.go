@@ -267,6 +267,33 @@ func TestCurriculumProposalRendersRecognitionWorkflowAndPublishWarning(t *testin
 	}
 }
 
+func TestCurriculumProposalContentPanelRendersUnitContentDiff(t *testing.T) {
+	templates := loadTestTemplates(t)
+	output := renderTemplate(t, templates, "admin-curriculum.html", map[string]any{
+		"ActiveProposal": &models.CurriculumProposal{
+			ID: 12, Title: "Improve explanations", Status: "draft",
+		},
+		"ProposalView": "work",
+		"ContentUnit": map[string]any{
+			"ID": 7, "Name": "Energy", "Content": "Energy can be stored.",
+			"HasContentDiff": true, "PreviousContent": "Energy is stored.",
+		},
+	})
+
+	for _, fragment := range []string{
+		"Proposed content changes",
+		"<del>is</del>",
+		"<ins>can be</ins>",
+	} {
+		if !strings.Contains(output, fragment) {
+			t.Errorf("rendered content change does not contain %q", fragment)
+		}
+	}
+	if strings.Contains(output, "View content changes") || strings.Contains(output, "<details") {
+		t.Error("content diff should be shown directly in the unit panel")
+	}
+}
+
 func TestStaticAssetVersionChangesWithContents(t *testing.T) {
 	root := t.TempDir()
 	if err := os.Mkdir(filepath.Join(root, "css"), 0o755); err != nil {

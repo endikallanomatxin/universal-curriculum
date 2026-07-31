@@ -216,7 +216,14 @@
                 <textarea id="inline-unit-content" name="content" required rows="1" spellcheck="true" data-autoresize data-autoresize-unbounded>{{ .Content }}</textarea>
               </form>
             {{ end }}
-            <div class="unit-content__body" data-inline-editor-display="inline-edit-unit-content">{{ renderUnitContent .Content }}</div>
+            <div class="unit-content__body{{ if .HasContentDiff }} unit-content__body--diff{{ end }}" data-inline-editor-display="inline-edit-unit-content">
+              {{ if .HasContentDiff }}
+                <p class="unit-content__diff-label">Proposed content changes</p>
+                {{ renderContentDiff .PreviousContent .Content }}
+              {{ else }}
+                {{ renderUnitContent .Content }}
+              {{ end }}
+            </div>
           </article>
         </section>
       {{ end }}

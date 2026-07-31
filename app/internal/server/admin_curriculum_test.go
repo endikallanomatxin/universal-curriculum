@@ -266,6 +266,20 @@ func TestProposalGraphStatesUseStructuralChangePrecedence(t *testing.T) {
 	}
 }
 
+func TestApplyUnitContentDiffUsesMatchingProposalChange(t *testing.T) {
+	unit := &curriculumUnitView{Unit: models.Unit{ID: 2, Content: "Proposed explanation"}}
+	proposal := &models.CurriculumProposal{Changes: []models.CurriculumProposalChange{
+		{Kind: "update_content", UnitID: 1, PreviousUnitContent: "Another unit"},
+		{Kind: "update_content", UnitID: 2, PreviousUnitContent: "Published explanation"},
+	}}
+
+	applyUnitContentDiff(unit, proposal)
+
+	if !unit.HasContentDiff || unit.PreviousContent != "Published explanation" {
+		t.Fatalf("content diff state = %#v", unit)
+	}
+}
+
 func TestCurriculumErrorResponse(t *testing.T) {
 	message, status := curriculumErrorResponse(&services.UnitIsPrerequisiteError{DependentNames: []string{"Algebra", "Calculus"}})
 	if status != http.StatusConflict || message != "Remove the dependencies from Algebra and Calculus before deleting this unit." {

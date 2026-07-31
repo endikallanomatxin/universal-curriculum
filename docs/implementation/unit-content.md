@@ -40,3 +40,9 @@ Curriculum Modification shows the published rendered document and can replace
 it in place with a source editor. Renames and content edits are idempotent
 within a draft: submitting the published value removes the pending change, and
 submitting another value replaces the existing change of the same kind.
+
+Opening a unit with a pending `update_content` change renders its content panel
+directly as a server-rendered word-and-punctuation diff between the stored
+previous and resulting Markdown. The comparison falls back to whole-document
+replacement for unusually large inputs. Units without a pending content change
+continue to render their Markdown normally.
