@@ -83,6 +83,12 @@ Opening an editor or detail from a pane normally replaces the visible panes to
 the right of the pane containing the trigger. It does not accumulate unrelated
 editors. Closing a right-hand pane restores the space to the remaining panes.
 
+Normal shell navigation replaces `#workspace`, preserving the shared primary
+navigation. Returning to the home composition is the exception: its brand link
+replaces `#app-shell` because the home response also owns personalized welcome
+and recommendation content inside the primary navigation. Restricting that swap
+to the workspace would retain stale non-home navigation markup after a reload.
+
 An editor or detail that users can reasonably expect to survive a reload must
 encode its identity in the URL and be rendered open by the server. Use
 client-only `data-open-panel` state only for short-lived auxiliary panels whose

@@ -72,6 +72,9 @@ func TestApplicationNavigationRespectsAdminPermission(t *testing.T) {
 		!strings.Contains(memberOutput, `name="csrf_token" value="csrf-token"`) {
 		t.Fatal("authenticated navigation is missing a required destination or logout protection")
 	}
+	if !strings.Contains(memberOutput, `href="/" hx-get="/" hx-target="#app-shell" hx-select="#app-shell"`) {
+		t.Fatal("home navigation does not replace the shell that owns personalized recommendations")
+	}
 
 	adminOutput := render(&models.User{FullName: "Admin", Email: "admin@example.com", IsAdmin: true})
 	if !strings.Contains(adminOutput, `href="/curriculum-modification"`) {

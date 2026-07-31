@@ -35,6 +35,7 @@
 
 {{ define "shell-link-attributes" }}hx-get="{{ . }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true"{{ end }}
 {{ define "shell-link-attributes-without-view-transition" }}hx-get="{{ . }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML" hx-push-url="true"{{ end }}
+{{ define "home-link-attributes" }}hx-get="/" hx-target="#app-shell" hx-select="#app-shell" hx-swap="outerHTML transition:true" hx-push-url="true"{{ end }}
 
 {{ define "unit-navigation-search" -}}
 <div class="graph-search" data-graph-search>
@@ -192,7 +193,7 @@
     <span class="mobile-menu-toggle__line" aria-hidden="true"></span>
   </button>
   <div class="primary-navigation__inner">
-    <a class="brand" href="/" {{ template "shell-link-attributes" "/" }}>
+    <a class="brand" href="/" {{ template "home-link-attributes" }}>
       <img class="brand__mark" src="/static/images/universal-curriculum-logo.svg?v={{ assetVersion }}" alt="" aria-hidden="true">
       <span>universal<br>curriculum</span>
     </a>
