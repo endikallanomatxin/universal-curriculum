@@ -535,6 +535,7 @@ button.primary-menu__link {
   white-space: nowrap;
   width: 2rem;
   word-wrap: normal;
+  view-transition-class: persistent-shell-icon;
   -webkit-font-feature-settings: "liga";
   -webkit-font-smoothing: antialiased;
   font-feature-settings: "liga";
@@ -807,12 +808,13 @@ button.primary-menu__link {
 ::view-transition-group(learning-paths-pane),
 ::view-transition-group(curriculum-map-pane),
 ::view-transition-group(unit-content-pane),
-::view-transition-group(account-navigation),
-::view-transition-group(curriculum-navigation),
-::view-transition-group(learn-navigation),
-::view-transition-group(logout-action) {
+::view-transition-group(*.persistent-shell-icon) {
   animation-duration: var(--motion-duration);
   animation-timing-function: var(--motion-easing);
+}
+
+::view-transition-group(*.persistent-shell-icon) {
+  z-index: 1;
 }
 
 ::view-transition-new(workspace-pane):only-child,
@@ -824,6 +826,17 @@ button.primary-menu__link {
 
 ::view-transition-old(unit-content-pane):only-child {
   animation: horizontal-panel-exit var(--panel-motion-duration) var(--panel-motion-easing) forwards;
+}
+
+::view-transition-old(*.persistent-shell-icon) {
+  animation: none;
+  opacity: 0;
+}
+
+::view-transition-new(*.persistent-shell-icon) {
+  animation: none;
+  mix-blend-mode: normal;
+  opacity: 1;
 }
 
 ::view-transition-old(*.matched-panel-content) {

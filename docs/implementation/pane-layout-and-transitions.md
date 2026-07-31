@@ -174,6 +174,10 @@ HTMX workspace navigation uses `transition:true`. Stable concepts receive
 stable `view-transition-name` values so the browser can interpolate them
 between old and new documents. Names must be unique in each rendered state.
 Graph units use their persistent unit IDs; shell navigation uses fixed names.
+Persistent shell icons suppress the browser's default snapshot crossfade so
+they remain opaque while their shared transition group interpolates position.
+That shared class also keeps them above the separate home and detail content
+snapshots, whose crossfade must not temporarily cover persistent controls.
 
 When adding or removing a pane, preserve its resolved width during the
 entering or closing phase. Let the remaining panes renegotiate around that
