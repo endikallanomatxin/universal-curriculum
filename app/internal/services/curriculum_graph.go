@@ -85,22 +85,42 @@ func CurriculumNeighborhood(graph *models.CurriculumGraph, focusID *int64) (*mod
 			neighborhood.Dependencies = append(neighborhood.Dependencies, dependency)
 		}
 	}
+	return neighborhood, focus, CurriculumGraphBoundaries(graph, neighborhood), nil
+}
+
+func CurriculumGraphBoundaries(
+	graph *models.CurriculumGraph,
+	visible *models.CurriculumGraph,
+) []models.CurriculumGraphBoundary {
+	if graph == nil || visible == nil {
+		return nil
+	}
+	visibleIDs := make(map[int64]bool, len(visible.Units))
+	for _, unit := range visible.Units {
+		visibleIDs[unit.ID] = true
+	}
+	prerequisites := make(map[int64][]int64)
+	dependents := make(map[int64][]int64)
+	for _, dependency := range graph.Dependencies {
+		prerequisites[dependency.UnitID] = append(prerequisites[dependency.UnitID], dependency.PrerequisiteID)
+		dependents[dependency.PrerequisiteID] = append(dependents[dependency.PrerequisiteID], dependency.UnitID)
+	}
 	var boundaries []models.CurriculumGraphBoundary
-	for _, unit := range neighborhood.Units {
-		hiddenPrerequisites := countHiddenCurriculumNeighbors(prerequisites[unit.ID], included)
+	for _, unit := range visible.Units {
+		hiddenPrerequisites := countHiddenCurriculumNeighbors(prerequisites[unit.ID], visibleIDs)
 		if hiddenPrerequisites > 0 {
 			boundaries = append(boundaries, models.CurriculumGraphBoundary{
 				UnitID: unit.ID, Direction: "prerequisites", Count: hiddenPrerequisites,
 			})
 		}
-		hiddenDependents := countHiddenCurriculumNeighbors(dependents[unit.ID], included)
+		hiddenDependents := countHiddenCurriculumNeighbors(dependents[unit.ID], visibleIDs)
 		if hiddenDependents > 0 {
 			boundaries = append(boundaries, models.CurriculumGraphBoundary{
 				UnitID: unit.ID, Direction: "dependents", Count: hiddenDependents,
 			})
 		}
 	}
-	return neighborhood, focus, boundaries, nil
+	return boundaries
 }
 
 func includeCurriculumNeighbors(included map[int64]bool, candidates []int64, limit int) []int64 {

@@ -406,7 +406,7 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 		}
 		focusID = &unitID
 	}
-	visibleGraph, focusedUnit, boundaries, err := services.CurriculumNeighborhood(visualGraph, focusID)
+	visibleGraph, focusedUnit, _, err := services.CurriculumNeighborhood(visualGraph, focusID)
 	if errors.Is(err, services.ErrCurriculumUnitNotFound) {
 		http.Error(writer, "Curriculum unit not found", http.StatusNotFound)
 		return
@@ -417,6 +417,7 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 		return
 	}
 	includeCreatedProposalUnits(visibleGraph, visualGraph, activeProposal)
+	boundaries := services.CurriculumGraphBoundaries(visualGraph, visibleGraph)
 	layout, err := services.BuildCurriculumGraphLayoutWithHints(visibleGraph, curriculumLayoutHints(request))
 	if err != nil {
 		log.Printf("layout curriculum graph: %v", err)

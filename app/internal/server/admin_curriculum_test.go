@@ -159,6 +159,38 @@ func TestCreatedProposalUnitsBringTheirDependenciesIntoView(t *testing.T) {
 	}
 }
 
+func TestProposedUnitsDoNotLeaveBoundariesAfterTheyBecomeVisible(t *testing.T) {
+	visual := &models.CurriculumGraph{
+		Units: []models.Unit{
+			{ID: 3, Name: "Proposed prerequisite"},
+			{ID: 4, Name: "Proposed dependent"},
+		},
+		Dependencies: []models.UnitDependency{{UnitID: 4, PrerequisiteID: 3}},
+	}
+	proposal := &models.CurriculumProposal{Changes: []models.CurriculumProposalChange{
+		{Kind: "create_unit", UnitID: 3},
+		{Kind: "create_unit", UnitID: 4},
+	}}
+
+	visible, _, initialBoundaries, err := services.CurriculumNeighborhood(visual, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(initialBoundaries) != 1 {
+		t.Fatalf("initial boundaries = %#v, want the hidden proposed dependent", initialBoundaries)
+	}
+
+	includeCreatedProposalUnits(visible, visual, proposal)
+	boundaries := services.CurriculumGraphBoundaries(visual, visible)
+
+	if len(visible.Units) != 2 || len(visible.Dependencies) != 1 {
+		t.Fatalf("proposed units were not made visible: %#v", visible)
+	}
+	if len(boundaries) != 0 {
+		t.Fatalf("visible proposed dependency left a boundary: %#v", boundaries)
+	}
+}
+
 func TestIsolatedCreatedUnitsArePositionedBeforeConnectedGraph(t *testing.T) {
 	layout := &models.CurriculumGraphLayout{
 		Nodes: []models.CurriculumGraphNode{
