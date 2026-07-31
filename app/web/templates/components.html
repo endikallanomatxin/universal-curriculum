@@ -138,21 +138,30 @@
 {{- end }}
 
 {{ define "unit-completion-form" -}}
-<form class="unit-completion"
-      id="unit-completion-{{ .UnitID }}"
-      action="/learn/units/{{ .UnitID }}/completion"
-      method="post"
-      hx-post="/learn/units/{{ .UnitID }}/completion"
-      hx-target="this"
-      hx-swap="outerHTML">
-  <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
-  <input type="hidden" name="return_to" value="{{ .ReturnURL }}">
-  <input type="hidden" name="completed" value="{{ if .Completed }}false{{ else }}true{{ end }}">
-  <button type="submit" aria-pressed="{{ if .Completed }}true{{ else }}false{{ end }}">
+{{ if .Transferred }}
+<div class="unit-completion" id="unit-completion-{{ .UnitID }}">
+  <span class="unit-completion__transferred">
     <span class="unit-completion__indicator {{ if .Completed }}is-completed{{ end }}" aria-hidden="true"></span>
-    <span>{{ if .Completed }}Completed{{ else }}Mark as completed{{ end }}</span>
-  </button>
-</form>
+    <span>Recognized through knowledge transfer</span>
+  </span>
+</div>
+{{ else }}
+  <form class="unit-completion"
+        id="unit-completion-{{ .UnitID }}"
+        action="/learn/units/{{ .UnitID }}/completion"
+        method="post"
+        hx-post="/learn/units/{{ .UnitID }}/completion"
+        hx-target="this"
+        hx-swap="outerHTML">
+    <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+    <input type="hidden" name="return_to" value="{{ .ReturnURL }}">
+    <input type="hidden" name="completed" value="{{ if .Completed }}false{{ else }}true{{ end }}">
+    <button type="submit" aria-pressed="{{ if .Completed }}true{{ else }}false{{ end }}">
+      <span class="unit-completion__indicator {{ if .Completed }}is-completed{{ end }}" aria-hidden="true"></span>
+      <span>{{ if .Completed }}Completed{{ else }}Mark as completed{{ end }}</span>
+    </button>
+  </form>
+{{ end }}
 {{- end }}
 
 {{ define "unit-completion-update" -}}

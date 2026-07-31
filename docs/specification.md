@@ -91,8 +91,7 @@ The published graph must satisfy these rules:
 A unit is the smallest independently learnable part of the curriculum. It has:
 
 - a stable identity;
-- a name and short description;
-- explicit learning outcomes;
+- a name;
 - dependencies;
 - written notes;
 - an explanatory video or equivalent guided explanation;
@@ -118,6 +117,12 @@ silently changes the learning view.
 Every published change retains its proposal, authors, discussion, decision and
 previous state. Accepted proposals identify historical curriculum states so
 that learning records and certifications keep their original meaning.
+
+Accepted proposals may define knowledge transfers between the curriculum state
+on which they are based and the state they produce. A transfer may require
+several source units and may recognize several target units, allowing
+replacements, splits and merges to preserve the value of prior learning without
+rewriting its historical record.
 
 Every historical state can be exported in a documented machine-readable format.
 Authorship, contribution terms and third-party licences are preserved.
@@ -158,8 +163,11 @@ private by default and remains distinct from certification.
 Sharing progress or exercise submissions with a teacher or institution requires
 explicit consent.
 
-Curriculum changes must not erase historical progress. When units are replaced,
-split or merged, the platform shows how previous learning maps to the new graph.
+Curriculum changes must not erase or reinterpret historical progress. A
+completion records the unit and accepted curriculum state in which it occurred.
+The platform applies the knowledge transfers in accepted proposals to show which
+units in the current graph are also recognized. The original completion remains
+distinct from recognition obtained through a transfer.
 
 ### 5.4 Employment-informed guidance
 
@@ -222,12 +230,21 @@ A proposal is a coherent collection of changes. It may change:
 
 - units;
 - graph dependencies;
+- how knowledge from earlier units is recognized in the resulting curriculum;
 - notes, videos and other resources;
 - exercises and reference solutions;
 - translations.
 
 A proposal contains its authors, rationale, the accepted proposal on which it
 is based and a readable diff of both content and graph changes.
+
+A knowledge transfer recognizes every target when all of its sources have been
+completed. Transfers are explicit proposal changes and may be proposed even
+when no unit is created or removed. Creating a unit without an incoming transfer
+means that it represents knowledge not previously covered. Removing a unit
+without an outgoing transfer means that it has no recognized successor. These
+choices are valid, but the publishing interface warns the author before
+continuing so they are not made accidentally.
 
 ### 7.2 Isolated work and conflicts
 
@@ -289,8 +306,9 @@ decisions, but it must remain proportionate and protect participants' privacy.
 ### 7.7 Acceptance
 
 An accepted proposal is validated against the current graph and applied
-atomically. Its units, dependencies, resources, translations and decision record
-are either published together or not published at all.
+atomically. Its units, dependencies, knowledge transfers, resources,
+translations and decision record are either published together or not published
+at all.
 
 ## 8. Languages
 
@@ -320,6 +338,11 @@ Institutions can participate at several levels:
 
 A certification identifies the student, institution, units, accepted curriculum
 state, assessment basis, issue date, validity and revocation status.
+
+Knowledge transfers may show that an older certification covers units in the
+current curriculum, but they never alter or replace the certification that was
+issued. Issuing a new certification or a formal convalidation remains an
+explicit decision of an authorized institution.
 
 Because units are fine-grained, project-based learning can also be certified: an
 institution evaluates a project and records the units whose knowledge was

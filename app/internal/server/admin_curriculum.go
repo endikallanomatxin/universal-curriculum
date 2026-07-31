@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"universal-curriculum/internal/db"
 	"universal-curriculum/internal/models"
@@ -21,18 +22,21 @@ type curriculumUnitView struct {
 
 type adminCurriculumPageData struct {
 	userPageData
-	Units          []curriculumUnitView
-	Dependencies   []models.UnitDependency
-	Graph          *models.CurriculumGraphLayout
-	GraphView      curriculumGraphView
-	GraphSearch    unitNavigationSearchView
-	FocusedUnit    *models.Unit
-	ContentUnit    *curriculumUnitView
-	DraftProposals []models.CurriculumProposal
-	Proposals      []models.CurriculumProposal
-	ActiveProposal *models.CurriculumProposal
-	ProposalView   string
-	Error          string
+	Units           []curriculumUnitView
+	Dependencies    []models.UnitDependency
+	Graph           *models.CurriculumGraphLayout
+	GraphView       curriculumGraphView
+	GraphSearch     unitNavigationSearchView
+	FocusedUnit     *models.Unit
+	ContentUnit     *curriculumUnitView
+	DraftProposals  []models.CurriculumProposal
+	Proposals       []models.CurriculumProposal
+	ActiveProposal  *models.CurriculumProposal
+	TransferSources []models.Unit
+	TransferTargets []models.Unit
+	PublishWarning  string
+	ProposalView    string
+	Error           string
 }
 
 func (server *Server) adminCurriculum(writer http.ResponseWriter, request *http.Request) {
@@ -177,6 +181,31 @@ func (server *Server) deleteUnitDependency(writer http.ResponseWriter, request *
 	redirectToProposalPanel(writer, request, proposalID, "edit_dependencies", unitID)
 }
 
+func (server *Server) createCurriculumKnowledgeTransfer(writer http.ResponseWriter, request *http.Request) {
+	if !server.parseAdminMutation(writer, request) {
+		return
+	}
+	proposalID, err := parsePositiveID(request.FormValue("proposal_id"))
+	if err != nil {
+		server.renderCurriculumMutationError(writer, request, services.ErrProposalNotFound)
+		return
+	}
+	authorID, _ := services.SessionUserID(request)
+	err = services.AddCurriculumKnowledgeTransfer(
+		server.Database,
+		authorID,
+		proposalID,
+		parseLearningPathUnitIDs(request.Form["source_unit_ids"]),
+		parseLearningPathUnitIDs(request.Form["target_unit_ids"]),
+		request.FormValue("rationale"),
+	)
+	if err != nil {
+		server.renderCurriculumMutationError(writer, request, err)
+		return
+	}
+	redirectToProposal(writer, request, proposalID)
+}
+
 func (server *Server) createCurriculumProposal(writer http.ResponseWriter, request *http.Request) {
 	if !server.parseAdminMutation(writer, request) {
 		return
@@ -307,6 +336,12 @@ func curriculumErrorResponse(err error) (string, int) {
 		return "Add at least one proposed change before publishing.", http.StatusBadRequest
 	case errors.Is(err, services.ErrProposalOutdated):
 		return "The curriculum changed after this draft was created. Create a fresh proposal.", http.StatusConflict
+	case errors.Is(err, services.ErrKnowledgeTransferRationaleRequired):
+		return "Explain why this knowledge can be transferred.", http.StatusBadRequest
+	case errors.Is(err, services.ErrKnowledgeTransferSourcesRequired):
+		return "Select at least one source unit.", http.StatusBadRequest
+	case errors.Is(err, services.ErrKnowledgeTransferTargetsRequired):
+		return "Select at least one target unit.", http.StatusBadRequest
 	case errors.Is(err, services.ErrProposalInvalid):
 		return err.Error(), http.StatusConflict
 	default:
@@ -406,15 +441,18 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 		userPageData: userPageData{
 			User: user, CSRFToken: sessionCSRFToken(request), CurrentSection: "curriculum",
 		},
-		Dependencies:   graph.Dependencies,
-		Graph:          layout,
-		FocusedUnit:    focusedUnit,
-		Proposals:      proposals,
-		DraftProposals: draftProposals,
-		ActiveProposal: activeProposal,
-		ProposalView:   proposalView,
-		Error:          message,
+		Dependencies:    graph.Dependencies,
+		Graph:           layout,
+		FocusedUnit:     focusedUnit,
+		Proposals:       proposals,
+		DraftProposals:  draftProposals,
+		ActiveProposal:  activeProposal,
+		TransferSources: graph.Units,
+		TransferTargets: workingGraph.Units,
+		ProposalView:    proposalView,
+		Error:           message,
 	}
+	data.PublishWarning = curriculumKnowledgeTransferPublishWarning(activeProposal)
 	data.Units = curriculumUnitViews(workingGraph, layout)
 	if contentValue := request.URL.Query().Get("content"); proposalView == "work" && contentValue != "" {
 		contentID, parseErr := parsePositiveID(contentValue)
@@ -647,7 +685,54 @@ func applyCurriculumChangeLabels(proposal *models.CurriculumProposal, graph *mod
 		if proposal.Changes[index].UnitName == "" {
 			proposal.Changes[index].UnitName = names[proposal.Changes[index].UnitID]
 		}
+		if proposal.Changes[index].KnowledgeTransfer == nil {
+			continue
+		}
+		for sourceIndex := range proposal.Changes[index].KnowledgeTransfer.Sources {
+			source := &proposal.Changes[index].KnowledgeTransfer.Sources[sourceIndex]
+			if name := names[source.ID]; name != "" {
+				source.Name = name
+			}
+		}
+		for targetIndex := range proposal.Changes[index].KnowledgeTransfer.Targets {
+			target := &proposal.Changes[index].KnowledgeTransfer.Targets[targetIndex]
+			if name := names[target.ID]; name != "" {
+				target.Name = name
+			}
+		}
 	}
+}
+
+func curriculumKnowledgeTransferPublishWarning(proposal *models.CurriculumProposal) string {
+	coverage := services.CurriculumKnowledgeTransferCoverage(proposal)
+	createdCount := len(coverage.CreatedWithoutSource)
+	deletedCount := len(coverage.DeletedWithoutTarget)
+	if createdCount == 0 && deletedCount == 0 {
+		return ""
+	}
+	parts := make([]string, 0, 2)
+	if deletedCount > 0 {
+		label := "units"
+		if deletedCount == 1 {
+			label = "unit"
+		}
+		parts = append(parts, fmt.Sprintf("%d retired %s without a knowledge transfer", deletedCount, label))
+	}
+	if createdCount > 0 {
+		label := "units"
+		if createdCount == 1 {
+			label = "unit"
+		}
+		parts = append(parts, fmt.Sprintf("%d new %s without prior equivalence", createdCount, label))
+	}
+	message := "This proposal contains " + strings.Join(parts, " and ") + "."
+	if deletedCount > 0 {
+		message += " Historical progress and certifications will remain recorded, but they will not be recognized in another unit."
+	}
+	if createdCount > 0 {
+		message += " No prior progress will be recognized in the new units."
+	}
+	return message + " Continue only if the new knowledge or lack of a successor is intentional. Publish anyway?"
 }
 
 func redirectToProposal(writer http.ResponseWriter, request *http.Request, proposalID int64) {

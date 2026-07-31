@@ -15,24 +15,25 @@ import (
 
 type learnPageData struct {
 	userPageData
-	Graph             *models.CurriculumGraphLayout
-	GraphView         curriculumGraphView
-	GraphSearch       unitNavigationSearchView
-	FocusedUnit       *models.Unit
-	ContentUnit       *models.Unit
-	Paths             []models.LearningPath
-	SelectedPath      *models.LearningPath
-	EditingPath       *models.LearningPath
-	AllUnits          []models.Unit
-	NavigableUnits    []models.Unit
-	TargetUnitIDs     map[int64]bool
-	CompletedUnitIDs  map[int64]bool
-	ContentCompletion *unitCompletionView
-	PathSaveStatus    learningPathSaveStatusView
-	ExploreAll        bool
-	CombinePaths      bool
-	ShowGraph         bool
-	ShowPathEditor    bool
+	Graph              *models.CurriculumGraphLayout
+	GraphView          curriculumGraphView
+	GraphSearch        unitNavigationSearchView
+	FocusedUnit        *models.Unit
+	ContentUnit        *models.Unit
+	Paths              []models.LearningPath
+	SelectedPath       *models.LearningPath
+	EditingPath        *models.LearningPath
+	AllUnits           []models.Unit
+	NavigableUnits     []models.Unit
+	TargetUnitIDs      map[int64]bool
+	CompletedUnitIDs   map[int64]bool
+	CompletionStatuses map[int64]models.UnitCompletionStatus
+	ContentCompletion  *unitCompletionView
+	PathSaveStatus     learningPathSaveStatusView
+	ExploreAll         bool
+	CombinePaths       bool
+	ShowGraph          bool
+	ShowPathEditor     bool
 }
 
 type learningPathSaveStatusView struct {
@@ -64,12 +65,13 @@ func (server *Server) learn(writer http.ResponseWriter, request *http.Request) {
 			http.Error(writer, "Unable to load learning paths", http.StatusInternalServerError)
 			return
 		}
-		data.CompletedUnitIDs, err = db.CompletedUnitIDs(server.Database, userID)
+		data.CompletionStatuses, err = db.UnitCompletionStatuses(server.Database, userID)
 		if err != nil {
 			log.Printf("list completed units: %v", err)
 			http.Error(writer, "Unable to load progress", http.StatusInternalServerError)
 			return
 		}
+		data.CompletedUnitIDs = completedUnitIDsFromStatuses(data.CompletionStatuses)
 	}
 
 	if editValue := request.URL.Query().Get("edit"); editValue != "" {
@@ -174,6 +176,8 @@ func (server *Server) learn(writer http.ResponseWriter, request *http.Request) {
 			CSRFToken: page.CSRFToken,
 			ReturnURL: request.URL.RequestURI(),
 			Completed: data.CompletedUnitIDs[data.ContentUnit.ID],
+			Transferred: data.CompletionStatuses[data.ContentUnit.ID].Transferred &&
+				!data.CompletionStatuses[data.ContentUnit.ID].Direct,
 		}
 	}
 	var boundaries []models.CurriculumGraphBoundary
@@ -278,16 +282,24 @@ func (server *Server) setUnitCompletion(writer http.ResponseWriter, request *htt
 		http.Error(writer, "Unable to update progress", http.StatusInternalServerError)
 		return
 	}
+	statuses, err := db.UnitCompletionStatuses(server.Database, userID)
+	if err != nil {
+		log.Printf("reload unit completion: %v", err)
+		http.Error(writer, "Unable to update progress", http.StatusInternalServerError)
+		return
+	}
+	completionStatus := statuses[unitID]
 	fallback := "/learn?path=all&unit=" + strconv.FormatInt(unitID, 10) + "&content=" + strconv.FormatInt(unitID, 10)
 	returnURL := safeRedirectPath(request.FormValue("return_to"), fallback)
-	completed := completedValue == "true"
+	completed := completionStatus.Completed()
 	if request.Header.Get("HX-Request") == "true" {
 		server.render(writer, "unit-completion-update", unitCompletionUpdateView{
 			Completion: unitCompletionView{
-				UnitID:    unitID,
-				CSRFToken: sessionCSRFToken(request),
-				ReturnURL: returnURL,
-				Completed: completed,
+				UnitID:      unitID,
+				CSRFToken:   sessionCSRFToken(request),
+				ReturnURL:   returnURL,
+				Completed:   completed,
+				Transferred: completionStatus.Transferred && !completionStatus.Direct,
 			},
 			Anchor: curriculumGraphNodeView{
 				CurriculumGraphNode: models.CurriculumGraphNode{Unit: *unit},
@@ -299,6 +311,18 @@ func (server *Server) setUnitCompletion(writer http.ResponseWriter, request *htt
 		return
 	}
 	http.Redirect(writer, request, returnURL, http.StatusSeeOther)
+}
+
+func completedUnitIDsFromStatuses(
+	statuses map[int64]models.UnitCompletionStatus,
+) map[int64]bool {
+	ids := make(map[int64]bool, len(statuses))
+	for unitID, status := range statuses {
+		if status.Completed() {
+			ids[unitID] = true
+		}
+	}
+	return ids
 }
 
 func (server *Server) createLearningPath(writer http.ResponseWriter, request *http.Request) {

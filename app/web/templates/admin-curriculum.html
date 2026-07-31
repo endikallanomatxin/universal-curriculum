@@ -91,14 +91,23 @@
               {{ if .ActiveProposal.Changes }}
                 <ol class="proposal-list proposal-change-list">
                   {{ range .ActiveProposal.Changes }}
-                    <li class="proposal-change {{ if eq .Kind "create_unit" }}proposal-change--addition{{ else if eq .Kind "delete_unit" }}proposal-change--removal{{ else if eq .Kind "rename_unit" }}proposal-change--rename{{ else if eq .Kind "update_content" }}proposal-change--content{{ else }}proposal-change--dependency{{ end }}">
+                    <li class="proposal-change {{ if eq .Kind "create_unit" }}proposal-change--addition{{ else if eq .Kind "delete_unit" }}proposal-change--removal{{ else if eq .Kind "rename_unit" }}proposal-change--rename{{ else if eq .Kind "update_content" }}proposal-change--content{{ else if eq .Kind "transfer_knowledge" }}proposal-change--transfer{{ else }}proposal-change--dependency{{ end }}">
                       <span class="proposal-change__badge">
-                        <span class="material-symbols-rounded" aria-hidden="true">{{ if eq .Kind "create_unit" }}add{{ else if eq .Kind "rename_unit" }}edit{{ else if eq .Kind "update_content" }}description{{ else if eq .Kind "delete_unit" }}delete{{ else if eq .Kind "add_dependency" }}arrow_downward{{ else }}link_off{{ end }}</span>
-                        <span>{{ if eq .Kind "create_unit" }}Create unit{{ else if eq .Kind "rename_unit" }}Rename{{ else if eq .Kind "update_content" }}Edit content{{ else if eq .Kind "delete_unit" }}Delete unit{{ else if eq .Kind "add_dependency" }}Add dependency{{ else }}Remove dependency{{ end }}</span>
+                        <span class="material-symbols-rounded" aria-hidden="true">{{ if eq .Kind "create_unit" }}add{{ else if eq .Kind "rename_unit" }}edit{{ else if eq .Kind "update_content" }}description{{ else if eq .Kind "delete_unit" }}delete{{ else if eq .Kind "add_dependency" }}arrow_downward{{ else if eq .Kind "remove_dependency" }}link_off{{ else }}move_up{{ end }}</span>
+                        <span>{{ if eq .Kind "create_unit" }}Create unit{{ else if eq .Kind "rename_unit" }}Rename{{ else if eq .Kind "update_content" }}Edit content{{ else if eq .Kind "delete_unit" }}Delete unit{{ else if eq .Kind "add_dependency" }}Add dependency{{ else if eq .Kind "remove_dependency" }}Remove dependency{{ else }}Transfer knowledge{{ end }}</span>
                       </span>
                       <div class="proposal-change__description">
-                        <strong class="proposal-change__subject">{{ if .UnitName }}{{ .UnitName }}{{ else }}Unit #{{ .UnitID }}{{ end }}</strong>
-                        {{ if and (eq .Kind "rename_unit") .PreviousUnitName }}<span class="proposal-change__previous">Previously {{ .PreviousUnitName }}</span>{{ end }}
+                        {{ if .KnowledgeTransfer }}
+                          <strong class="proposal-change__subject">
+                            {{ range $index, $unit := .KnowledgeTransfer.Sources }}{{ if $index }}, {{ end }}{{ $unit.Name }}{{ end }}
+                            →
+                            {{ range $index, $unit := .KnowledgeTransfer.Targets }}{{ if $index }}, {{ end }}{{ $unit.Name }}{{ end }}
+                          </strong>
+                          <span class="proposal-change__previous">{{ .KnowledgeTransfer.Rationale }}</span>
+                        {{ else }}
+                          <strong class="proposal-change__subject">{{ if .UnitName }}{{ .UnitName }}{{ else }}Unit #{{ .UnitID }}{{ end }}</strong>
+                          {{ if and (eq .Kind "rename_unit") .PreviousUnitName }}<span class="proposal-change__previous">Previously {{ .PreviousUnitName }}</span>{{ end }}
+                        {{ end }}
                       </div>
                       <form action="/curriculum-modification/proposals/{{ $.ActiveProposal.ID }}/changes/{{ .ID }}/delete" method="post">
                         <input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}">
@@ -121,6 +130,10 @@
                 <button class="secondary-button" type="button" data-open-panel="new-unit-panel" aria-controls="new-unit-panel" aria-expanded="false">
                   <span class="material-symbols-rounded" aria-hidden="true">add</span>
                   Add unit creation
+                </button>
+                <button class="secondary-button" type="button" data-open-panel="new-knowledge-transfer-panel" aria-controls="new-knowledge-transfer-panel" aria-expanded="false">
+                  <span class="material-symbols-rounded" aria-hidden="true">move_up</span>
+                  Add knowledge transfer
                 </button>
               </div>
 
@@ -233,7 +246,7 @@
               <button class="primary-button" type="submit">Save proposal</button>
             </form>
             <div class="proposal-details__actions">
-              <form action="/curriculum-modification/proposals/{{ .ActiveProposal.ID }}/publish" method="post">
+              <form action="/curriculum-modification/proposals/{{ .ActiveProposal.ID }}/publish" method="post" {{ with .PublishWarning }}onsubmit="return confirm('{{ . }}')"{{ end }}>
                 <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
                 <button class="primary-button" type="submit">Publish {{ len .ActiveProposal.Changes }} changes</button>
               </form>
@@ -375,6 +388,76 @@
             {{ if .ActiveProposal }}<input type="hidden" name="proposal_id" value="{{ .ActiveProposal.ID }}">{{ end }}
             <input type="hidden" name="unit_id" value="" data-remove-dependent-input>
             <input type="hidden" name="prerequisite_id" value="" data-remove-prerequisite-input>
+          </form>
+        </div>
+      </section>
+
+      <section class="ui-pane ui-pane--form" id="new-knowledge-transfer-panel" data-nested-panel data-layout-panel data-panel-modes="collapsed:0 compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-breadcrumb="Knowledge transfer" hidden aria-labelledby="create-knowledge-transfer-title">
+        <div class="ui-pane__inner nested-panel" data-pane-content-width="narrow">
+          <header class="nested-panel__header">
+            <div>
+              <h1 id="create-knowledge-transfer-title">Knowledge transfer</h1>
+            </div>
+            <button class="icon-button nested-panel__close" type="button" data-close-panel aria-label="Close knowledge transfer panel">
+              <span class="material-symbols-rounded" aria-hidden="true">close</span>
+            </button>
+          </header>
+          <p class="nested-panel__introduction">Completing every source will recognize every target. Direct progress remains attached to the curriculum state in which it was recorded.</p>
+          <form class="editor-form editor-form--panel" action="/curriculum-modification/knowledge-transfers" method="post">
+            <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+            {{ if .ActiveProposal }}<input type="hidden" name="proposal_id" value="{{ .ActiveProposal.ID }}">{{ end }}
+
+            <div data-unit-picker
+                 data-unit-picker-input-name="source_unit_ids"
+                 data-unit-picker-required-message="Select at least one source unit."
+                 data-unit-picker-empty-selection="No source units selected.">
+              <section class="selection-editor" aria-labelledby="knowledge-transfer-sources-title">
+                <div class="section-heading">
+                  <div><h2 id="knowledge-transfer-sources-title">Source knowledge</h2></div>
+                  <span data-unit-picker-count>0 selected</span>
+                </div>
+                <div class="selection-list" data-unit-picker-current></div>
+              </section>
+              <label for="knowledge-transfer-source-search">Add source unit</label>
+              <div class="unit-search">
+                <span class="material-symbols-rounded unit-search__icon" aria-hidden="true">search</span>
+                <input id="knowledge-transfer-source-search" type="search" autocomplete="off" placeholder="Search published units" data-unit-picker-input aria-controls="knowledge-transfer-source-results" aria-expanded="false">
+                <div class="unit-search__results" id="knowledge-transfer-source-results" data-unit-picker-results hidden>
+                  {{ range .TransferSources }}
+                    <button type="button" data-unit-picker-option data-unit-id="{{ .ID }}" data-unit-name="{{ .Name }}"><strong>{{ .Name }}</strong></button>
+                  {{ end }}
+                  <p class="unit-search__empty" data-unit-picker-empty hidden>No matching units.</p>
+                </div>
+              </div>
+            </div>
+
+            <div data-unit-picker
+                 data-unit-picker-input-name="target_unit_ids"
+                 data-unit-picker-required-message="Select at least one target unit."
+                 data-unit-picker-empty-selection="No target units selected.">
+              <section class="selection-editor" aria-labelledby="knowledge-transfer-targets-title">
+                <div class="section-heading">
+                  <div><h2 id="knowledge-transfer-targets-title">Recognized as</h2></div>
+                  <span data-unit-picker-count>0 selected</span>
+                </div>
+                <div class="selection-list" data-unit-picker-current></div>
+              </section>
+              <label for="knowledge-transfer-target-search">Add target unit</label>
+              <div class="unit-search">
+                <span class="material-symbols-rounded unit-search__icon" aria-hidden="true">search</span>
+                <input id="knowledge-transfer-target-search" type="search" autocomplete="off" placeholder="Search resulting units" data-unit-picker-input aria-controls="knowledge-transfer-target-results" aria-expanded="false">
+                <div class="unit-search__results" id="knowledge-transfer-target-results" data-unit-picker-results hidden>
+                  {{ range .TransferTargets }}
+                    <button type="button" data-unit-picker-option data-unit-id="{{ .ID }}" data-unit-name="{{ .Name }}"><strong>{{ .Name }}</strong></button>
+                  {{ end }}
+                  <p class="unit-search__empty" data-unit-picker-empty hidden>No matching units.</p>
+                </div>
+              </div>
+            </div>
+
+            <label for="knowledge-transfer-rationale">Reason</label>
+            <textarea id="knowledge-transfer-rationale" name="rationale" required rows="4" maxlength="1000" data-autoresize placeholder="Explain why mastering all sources covers every target."></textarea>
+            <button class="primary-button" type="submit" {{ if not .ActiveProposal }}disabled{{ end }}>Add knowledge transfer</button>
           </form>
         </div>
       </section>

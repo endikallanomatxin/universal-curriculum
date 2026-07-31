@@ -21,10 +21,11 @@ type curriculumGraphNodeView struct {
 }
 
 type unitCompletionView struct {
-	UnitID    int64
-	CSRFToken string
-	ReturnURL string
-	Completed bool
+	UnitID      int64
+	CSRFToken   string
+	ReturnURL   string
+	Completed   bool
+	Transferred bool
 }
 
 type unitCompletionUpdateView struct {

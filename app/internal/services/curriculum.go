@@ -11,23 +11,70 @@ import (
 )
 
 var (
-	ErrUnitNotFound              = errors.New("curriculum unit not found")
-	ErrUnitNameRequired          = errors.New("unit name is required")
-	ErrUnitContentRequired       = errors.New("unit content is required")
-	ErrDependencyExists          = errors.New("unit dependency already exists")
-	ErrDependencyNotFound        = errors.New("unit dependency not found")
-	ErrDependencyCycle           = errors.New("unit dependency creates a cycle")
-	ErrProposalNotFound          = errors.New("draft curriculum proposal not found")
-	ErrProposalTitleRequired     = errors.New("proposal title is required")
-	ErrProposalRationaleRequired = errors.New("proposal rationale is required")
-	ErrProposalEmpty             = errors.New("curriculum proposal has no changes")
-	ErrProposalOutdated          = errors.New("curriculum proposal is not based on the current curriculum")
+	ErrUnitNotFound                       = errors.New("curriculum unit not found")
+	ErrUnitNameRequired                   = errors.New("unit name is required")
+	ErrUnitContentRequired                = errors.New("unit content is required")
+	ErrDependencyExists                   = errors.New("unit dependency already exists")
+	ErrDependencyNotFound                 = errors.New("unit dependency not found")
+	ErrDependencyCycle                    = errors.New("unit dependency creates a cycle")
+	ErrProposalNotFound                   = errors.New("draft curriculum proposal not found")
+	ErrProposalTitleRequired              = errors.New("proposal title is required")
+	ErrProposalRationaleRequired          = errors.New("proposal rationale is required")
+	ErrProposalEmpty                      = errors.New("curriculum proposal has no changes")
+	ErrProposalOutdated                   = errors.New("curriculum proposal is not based on the current curriculum")
+	ErrKnowledgeTransferRationaleRequired = errors.New("knowledge transfer rationale is required")
+	ErrKnowledgeTransferSourcesRequired   = errors.New("knowledge transfer requires at least one source")
+	ErrKnowledgeTransferTargetsRequired   = errors.New("knowledge transfer requires at least one target")
 )
 
 type UnitIsPrerequisiteError struct{ DependentNames []string }
 
 func (err *UnitIsPrerequisiteError) Error() string {
 	return "unit is required by: " + strings.Join(err.DependentNames, ", ")
+}
+
+type KnowledgeTransferCoverageWarning struct {
+	CreatedWithoutSource []models.Unit
+	DeletedWithoutTarget []models.Unit
+}
+
+func CurriculumKnowledgeTransferCoverage(
+	proposal *models.CurriculumProposal,
+) KnowledgeTransferCoverageWarning {
+	var warning KnowledgeTransferCoverageWarning
+	if proposal == nil {
+		return warning
+	}
+	incoming := make(map[int64]bool)
+	outgoing := make(map[int64]bool)
+	for _, change := range proposal.Changes {
+		if change.KnowledgeTransfer == nil {
+			continue
+		}
+		for _, source := range change.KnowledgeTransfer.Sources {
+			outgoing[source.ID] = true
+		}
+		for _, target := range change.KnowledgeTransfer.Targets {
+			incoming[target.ID] = true
+		}
+	}
+	for _, change := range proposal.Changes {
+		switch change.Kind {
+		case "create_unit":
+			if !incoming[change.UnitID] {
+				warning.CreatedWithoutSource = append(warning.CreatedWithoutSource, models.Unit{
+					ID: change.UnitID, Name: change.UnitName,
+				})
+			}
+		case "delete_unit":
+			if !outgoing[change.UnitID] {
+				warning.DeletedWithoutTarget = append(warning.DeletedWithoutTarget, models.Unit{
+					ID: change.UnitID, Name: change.UnitName,
+				})
+			}
+		}
+	}
+	return warning
 }
 
 func CreateCurriculumProposal(database *sql.DB, authorID int64, title, rationale string) (*models.CurriculumProposal, error) {
@@ -265,7 +312,10 @@ func DeleteCurriculumUnit(database *sql.DB, authorID, proposalID, unitID int64) 
 			(change.Kind == "rename_unit" || change.Kind == "update_content")
 		supersededOutgoingDependency := change.UnitID == unitID &&
 			(change.Kind == "add_dependency" || change.Kind == "remove_dependency")
-		if supersededUnitChange || supersededOutgoingDependency {
+		supersededKnowledgeTransfer := knowledgeTransferContainsUnit(
+			change.KnowledgeTransfer, unitID, false, true,
+		)
+		if supersededUnitChange || supersededOutgoingDependency || supersededKnowledgeTransfer {
 			if _, err := db.DeleteDraftCurriculumProposalChange(tx, proposalID, change.ID, authorID); err != nil {
 				return err
 			}
@@ -289,7 +339,8 @@ func DeleteCurriculumUnit(database *sql.DB, authorID, proposalID, unitID int64) 
 func deleteDraftCreatedUnit(tx *sql.Tx, proposal *models.CurriculumProposal, authorID int64, creation models.CurriculumProposalChange) error {
 	for _, change := range proposal.Changes {
 		referencesUnit := change.UnitID == creation.UnitID ||
-			change.PrerequisiteID != nil && *change.PrerequisiteID == creation.UnitID
+			change.PrerequisiteID != nil && *change.PrerequisiteID == creation.UnitID ||
+			knowledgeTransferContainsUnit(change.KnowledgeTransfer, creation.UnitID, true, true)
 		if change.ID == creation.ID || !referencesUnit {
 			continue
 		}
@@ -305,6 +356,108 @@ func deleteDraftCreatedUnit(tx *sql.Tx, proposal *models.CurriculumProposal, aut
 		return ErrProposalNotFound
 	}
 	return nil
+}
+
+func AddCurriculumKnowledgeTransfer(
+	database *sql.DB,
+	authorID, proposalID int64,
+	sourceUnitIDs, targetUnitIDs []int64,
+	rationale string,
+) error {
+	rationale = strings.TrimSpace(rationale)
+	if rationale == "" {
+		return ErrKnowledgeTransferRationaleRequired
+	}
+	sourceUnitIDs = uniquePositiveIDs(sourceUnitIDs)
+	targetUnitIDs = uniquePositiveIDs(targetUnitIDs)
+	if len(sourceUnitIDs) == 0 {
+		return ErrKnowledgeTransferSourcesRequired
+	}
+	if len(targetUnitIDs) == 0 {
+		return ErrKnowledgeTransferTargetsRequired
+	}
+	tx, err := beginCurriculumProposal(database)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	proposal, err := db.GetCurriculumProposal(tx, proposalID)
+	if err != nil {
+		return err
+	}
+	if proposal == nil || proposal.Status != "draft" || proposal.AuthorID == nil || *proposal.AuthorID != authorID {
+		return ErrProposalNotFound
+	}
+	base, err := db.GetCurriculumGraph(tx)
+	if err != nil {
+		return err
+	}
+	result := CurriculumGraphWithProposal(base, proposal)
+	transfer := &models.KnowledgeTransfer{Rationale: rationale}
+	for _, unitID := range sourceUnitIDs {
+		unit := curriculumUnitByID(base, unitID)
+		if unit == nil {
+			return ErrUnitNotFound
+		}
+		transfer.Sources = append(transfer.Sources, *unit)
+	}
+	for _, unitID := range targetUnitIDs {
+		unit := curriculumUnitByID(result, unitID)
+		if unit == nil {
+			return ErrUnitNotFound
+		}
+		transfer.Targets = append(transfer.Targets, *unit)
+	}
+	if err := db.AddDraftCurriculumProposalChange(tx, proposalID, authorID, &models.CurriculumProposalChange{
+		Kind: "transfer_knowledge", KnowledgeTransfer: transfer,
+	}); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrProposalNotFound
+		}
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit curriculum knowledge transfer: %w", err)
+	}
+	return nil
+}
+
+func uniquePositiveIDs(ids []int64) []int64 {
+	unique := make([]int64, 0, len(ids))
+	seen := make(map[int64]bool, len(ids))
+	for _, id := range ids {
+		if id <= 0 || seen[id] {
+			continue
+		}
+		seen[id] = true
+		unique = append(unique, id)
+	}
+	return unique
+}
+
+func knowledgeTransferContainsUnit(
+	transfer *models.KnowledgeTransfer,
+	unitID int64,
+	includeSources, includeTargets bool,
+) bool {
+	if transfer == nil {
+		return false
+	}
+	if includeSources {
+		for _, source := range transfer.Sources {
+			if source.ID == unitID {
+				return true
+			}
+		}
+	}
+	if includeTargets {
+		for _, target := range transfer.Targets {
+			if target.ID == unitID {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func AddUnitDependency(database *sql.DB, authorID, proposalID, unitID, prerequisiteID int64) error {

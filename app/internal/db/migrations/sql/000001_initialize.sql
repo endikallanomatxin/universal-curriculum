@@ -97,7 +97,8 @@ CREATE TABLE curriculum_proposal_changes (
             'update_content',
             'delete_unit',
             'add_dependency',
-            'remove_dependency'
+            'remove_dependency',
+            'transfer_knowledge'
         )
     ),
     UNIQUE (proposal_id, position),
@@ -164,43 +165,77 @@ CREATE TABLE curriculum_dependency_removals (
         REFERENCES curriculum_proposal_changes(id, kind) ON DELETE CASCADE
 );
 
+CREATE TABLE curriculum_knowledge_transfers (
+    change_id BIGINT PRIMARY KEY,
+    change_kind TEXT NOT NULL DEFAULT 'transfer_knowledge' CHECK (change_kind = 'transfer_knowledge'),
+    rationale TEXT NOT NULL CHECK (rationale <> '' AND rationale = btrim(rationale)),
+    FOREIGN KEY (change_id, change_kind)
+        REFERENCES curriculum_proposal_changes(id, kind) ON DELETE CASCADE
+);
+
+CREATE TABLE curriculum_knowledge_transfer_sources (
+    transfer_change_id BIGINT NOT NULL
+        REFERENCES curriculum_knowledge_transfers(change_id) ON DELETE CASCADE,
+    unit_id BIGINT NOT NULL REFERENCES curriculum_unit_creations(change_id) ON DELETE RESTRICT,
+    PRIMARY KEY (transfer_change_id, unit_id)
+);
+
+CREATE INDEX curriculum_knowledge_transfer_sources_unit_id_idx
+    ON curriculum_knowledge_transfer_sources (unit_id);
+
+CREATE TABLE curriculum_knowledge_transfer_targets (
+    transfer_change_id BIGINT NOT NULL
+        REFERENCES curriculum_knowledge_transfers(change_id) ON DELETE CASCADE,
+    unit_id BIGINT NOT NULL REFERENCES curriculum_unit_creations(change_id) ON DELETE RESTRICT,
+    PRIMARY KEY (transfer_change_id, unit_id)
+);
+
+CREATE INDEX curriculum_knowledge_transfer_targets_unit_id_idx
+    ON curriculum_knowledge_transfer_targets (unit_id);
+
 CREATE VIEW curriculum_proposal_change_details AS
 SELECT change.id, change.proposal_id, change.position, change.kind,
        creation.change_id AS unit_id, creation.name AS unit_name, NULL::TEXT AS previous_unit_name,
        creation.content AS unit_content, NULL::TEXT AS previous_unit_content,
-       NULL::BIGINT AS prerequisite_id
+       NULL::BIGINT AS prerequisite_id, NULL::TEXT AS transfer_rationale
 FROM curriculum_proposal_changes change
 JOIN curriculum_unit_creations creation ON creation.change_id = change.id
 UNION ALL
 SELECT change.id, change.proposal_id, change.position, change.kind,
        rename.unit_id, rename.name, rename.previous_name,
-       NULL::TEXT, NULL::TEXT, NULL::BIGINT
+       NULL::TEXT, NULL::TEXT, NULL::BIGINT, NULL::TEXT
 FROM curriculum_proposal_changes change
 JOIN curriculum_unit_renames rename ON rename.change_id = change.id
 UNION ALL
 SELECT change.id, change.proposal_id, change.position, change.kind,
        content_update.unit_id, NULL::TEXT, NULL::TEXT,
-       content_update.content, content_update.previous_content, NULL::BIGINT
+       content_update.content, content_update.previous_content, NULL::BIGINT, NULL::TEXT
 FROM curriculum_proposal_changes change
 JOIN curriculum_unit_content_updates content_update ON content_update.change_id = change.id
 UNION ALL
 SELECT change.id, change.proposal_id, change.position, change.kind,
        deletion.unit_id, deletion.name, NULL::TEXT,
-       deletion.content, NULL::TEXT, NULL::BIGINT
+       deletion.content, NULL::TEXT, NULL::BIGINT, NULL::TEXT
 FROM curriculum_proposal_changes change
 JOIN curriculum_unit_deletions deletion ON deletion.change_id = change.id
 UNION ALL
 SELECT change.id, change.proposal_id, change.position, change.kind,
        addition.unit_id, NULL::TEXT, NULL::TEXT,
-       NULL::TEXT, NULL::TEXT, addition.prerequisite_id
+       NULL::TEXT, NULL::TEXT, addition.prerequisite_id, NULL::TEXT
 FROM curriculum_proposal_changes change
 JOIN curriculum_dependency_additions addition ON addition.change_id = change.id
 UNION ALL
 SELECT change.id, change.proposal_id, change.position, change.kind,
        removal.unit_id, NULL::TEXT, NULL::TEXT,
-       NULL::TEXT, NULL::TEXT, removal.prerequisite_id
+       NULL::TEXT, NULL::TEXT, removal.prerequisite_id, NULL::TEXT
 FROM curriculum_proposal_changes change
-JOIN curriculum_dependency_removals removal ON removal.change_id = change.id;
+JOIN curriculum_dependency_removals removal ON removal.change_id = change.id
+UNION ALL
+SELECT change.id, change.proposal_id, change.position, change.kind,
+       0::BIGINT, NULL::TEXT, NULL::TEXT,
+       NULL::TEXT, NULL::TEXT, NULL::BIGINT, transfer.rationale
+FROM curriculum_proposal_changes change
+JOIN curriculum_knowledge_transfers transfer ON transfer.change_id = change.id;
 
 CREATE TABLE units (
     id BIGINT PRIMARY KEY REFERENCES curriculum_unit_creations(change_id) ON DELETE RESTRICT,
@@ -327,6 +362,48 @@ FOR EACH ROW EXECUTE FUNCTION protect_accepted_curriculum_proposal_change_detail
 CREATE TRIGGER curriculum_dependency_removals_accepted_immutable
 BEFORE INSERT OR UPDATE OR DELETE ON curriculum_dependency_removals
 FOR EACH ROW EXECUTE FUNCTION protect_accepted_curriculum_proposal_change_detail();
+CREATE TRIGGER curriculum_knowledge_transfers_accepted_immutable
+BEFORE INSERT OR UPDATE OR DELETE ON curriculum_knowledge_transfers
+FOR EACH ROW EXECUTE FUNCTION protect_accepted_curriculum_proposal_change_detail();
+
+-- +goose StatementBegin
+CREATE FUNCTION protect_accepted_curriculum_knowledge_transfer_member() RETURNS TRIGGER
+LANGUAGE plpgsql AS $$
+DECLARE
+    old_parent_status TEXT;
+    new_parent_status TEXT;
+BEGIN
+    IF TG_OP <> 'INSERT' THEN
+        SELECT proposal.status INTO old_parent_status
+        FROM curriculum_knowledge_transfers transfer
+        JOIN curriculum_proposal_changes change ON change.id = transfer.change_id
+        JOIN curriculum_proposals proposal ON proposal.id = change.proposal_id
+        WHERE transfer.change_id = OLD.transfer_change_id;
+    END IF;
+    IF TG_OP <> 'DELETE' THEN
+        SELECT proposal.status INTO new_parent_status
+        FROM curriculum_knowledge_transfers transfer
+        JOIN curriculum_proposal_changes change ON change.id = transfer.change_id
+        JOIN curriculum_proposals proposal ON proposal.id = change.proposal_id
+        WHERE transfer.change_id = NEW.transfer_change_id;
+    END IF;
+    IF old_parent_status = 'accepted' OR new_parent_status = 'accepted' THEN
+        RAISE EXCEPTION 'members of accepted knowledge transfers are immutable';
+    END IF;
+    IF TG_OP = 'DELETE' THEN
+        RETURN OLD;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+-- +goose StatementEnd
+
+CREATE TRIGGER curriculum_knowledge_transfer_sources_accepted_immutable
+BEFORE INSERT OR UPDATE OR DELETE ON curriculum_knowledge_transfer_sources
+FOR EACH ROW EXECUTE FUNCTION protect_accepted_curriculum_knowledge_transfer_member();
+CREATE TRIGGER curriculum_knowledge_transfer_targets_accepted_immutable
+BEFORE INSERT OR UPDATE OR DELETE ON curriculum_knowledge_transfer_targets
+FOR EACH ROW EXECUTE FUNCTION protect_accepted_curriculum_knowledge_transfer_member();
 
 -- +goose StatementBegin
 CREATE FUNCTION validate_curriculum_proposal_change_detail() RETURNS TRIGGER
@@ -341,6 +418,7 @@ BEGIN
         + (SELECT count(*) FROM curriculum_unit_deletions WHERE change_id = NEW.id)
         + (SELECT count(*) FROM curriculum_dependency_additions WHERE change_id = NEW.id)
         + (SELECT count(*) FROM curriculum_dependency_removals WHERE change_id = NEW.id)
+        + (SELECT count(*) FROM curriculum_knowledge_transfers WHERE change_id = NEW.id)
     INTO detail_count;
     IF detail_count <> 1 THEN
         RAISE EXCEPTION 'curriculum proposal change % must have exactly one detail row', NEW.id;
@@ -373,6 +451,7 @@ BEGIN
         + (SELECT count(*) FROM curriculum_unit_deletions WHERE change_id = OLD.change_id)
         + (SELECT count(*) FROM curriculum_dependency_additions WHERE change_id = OLD.change_id)
         + (SELECT count(*) FROM curriculum_dependency_removals WHERE change_id = OLD.change_id)
+        + (SELECT count(*) FROM curriculum_knowledge_transfers WHERE change_id = OLD.change_id)
     INTO detail_count;
     IF detail_count <> 1 THEN
         RAISE EXCEPTION 'curriculum proposal change % must have exactly one detail row', OLD.change_id;
@@ -406,6 +485,53 @@ CREATE CONSTRAINT TRIGGER curriculum_dependency_removals_preserve_change_detail
 AFTER DELETE ON curriculum_dependency_removals
 DEFERRABLE INITIALLY DEFERRED
 FOR EACH ROW EXECUTE FUNCTION validate_curriculum_proposal_change_after_detail_delete();
+CREATE CONSTRAINT TRIGGER curriculum_knowledge_transfers_preserve_change_detail
+AFTER DELETE ON curriculum_knowledge_transfers
+DEFERRABLE INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION validate_curriculum_proposal_change_after_detail_delete();
+
+-- +goose StatementBegin
+CREATE FUNCTION validate_curriculum_knowledge_transfer() RETURNS TRIGGER
+LANGUAGE plpgsql AS $$
+DECLARE
+    transfer_id BIGINT;
+BEGIN
+    IF TG_TABLE_NAME = 'curriculum_knowledge_transfers' THEN
+        transfer_id := NEW.change_id;
+    ELSE
+        transfer_id := OLD.transfer_change_id;
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM curriculum_knowledge_transfers WHERE change_id = transfer_id
+    ) THEN
+        RETURN NULL;
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM curriculum_knowledge_transfer_sources
+        WHERE transfer_change_id = transfer_id
+    ) OR NOT EXISTS (
+        SELECT 1 FROM curriculum_knowledge_transfer_targets
+        WHERE transfer_change_id = transfer_id
+    ) THEN
+        RAISE EXCEPTION 'knowledge transfer % must have at least one source and one target', transfer_id;
+    END IF;
+    RETURN NULL;
+END;
+$$;
+-- +goose StatementEnd
+
+CREATE CONSTRAINT TRIGGER curriculum_knowledge_transfers_require_members
+AFTER INSERT OR UPDATE ON curriculum_knowledge_transfers
+DEFERRABLE INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION validate_curriculum_knowledge_transfer();
+CREATE CONSTRAINT TRIGGER curriculum_knowledge_transfer_sources_preserve_members
+AFTER UPDATE OR DELETE ON curriculum_knowledge_transfer_sources
+DEFERRABLE INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION validate_curriculum_knowledge_transfer();
+CREATE CONSTRAINT TRIGGER curriculum_knowledge_transfer_targets_preserve_members
+AFTER UPDATE OR DELETE ON curriculum_knowledge_transfer_targets
+DEFERRABLE INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION validate_curriculum_knowledge_transfer();
 
 CREATE TABLE learning_paths (
     id BIGSERIAL PRIMARY KEY,
@@ -445,6 +571,9 @@ DROP TABLE curriculum_projection_state;
 DROP TABLE unit_dependencies;
 DROP TABLE units;
 DROP VIEW curriculum_proposal_change_details;
+DROP TABLE curriculum_knowledge_transfer_targets;
+DROP TABLE curriculum_knowledge_transfer_sources;
+DROP TABLE curriculum_knowledge_transfers;
 DROP TABLE curriculum_dependency_removals;
 DROP TABLE curriculum_dependency_additions;
 DROP TABLE curriculum_unit_deletions;
@@ -452,8 +581,10 @@ DROP TABLE curriculum_unit_content_updates;
 DROP TABLE curriculum_unit_renames;
 DROP TABLE curriculum_unit_creations;
 DROP TRIGGER curriculum_proposal_changes_require_detail ON curriculum_proposal_changes;
+DROP FUNCTION validate_curriculum_knowledge_transfer();
 DROP FUNCTION validate_curriculum_proposal_change_after_detail_delete();
 DROP FUNCTION validate_curriculum_proposal_change_detail();
+DROP FUNCTION protect_accepted_curriculum_knowledge_transfer_member();
 DROP FUNCTION protect_accepted_curriculum_proposal_change_detail();
 DROP TABLE curriculum_proposal_changes;
 DROP TRIGGER curriculum_proposals_accepted_immutable ON curriculum_proposals;

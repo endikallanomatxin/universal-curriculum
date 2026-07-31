@@ -537,7 +537,8 @@ a.learning-path-card {
   margin-left: auto;
 }
 
-.unit-completion button {
+.unit-completion button,
+.unit-completion__transferred {
   align-items: center;
   background: transparent;
   border: 0;
@@ -548,6 +549,10 @@ a.learning-path-card {
   gap: var(--space-2);
   padding: var(--space-2);
   white-space: nowrap;
+}
+
+.unit-completion__transferred {
+  color: var(--color-muted);
 }
 
 .unit-completion__indicator {

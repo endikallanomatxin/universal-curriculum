@@ -270,6 +270,12 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	replacement, err := CreateCurriculumUnit(
+		database, authorID, retirement.ID, "Applied algebra", "Apply algebra to practical problems.",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := UpdateCurriculumUnit(database, authorID, retirement.ID, algebra.ID, "Temporary algebra name"); err != nil {
 		t.Fatal(err)
 	}
@@ -279,12 +285,27 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if err := DeleteCurriculumUnit(database, authorID, retirement.ID, algebra.ID); err != nil {
 		t.Fatal(err)
 	}
+	if err := AddCurriculumKnowledgeTransfer(
+		database,
+		authorID,
+		retirement.ID,
+		[]int64{algebra.ID},
+		[]int64{replacement.ID},
+		"Mastering the former algebra unit covers the applied replacement.",
+	); err != nil {
+		t.Fatal(err)
+	}
 	normalizedRetirement, err := db.GetCurriculumProposal(database, retirement.ID)
 	if err != nil || normalizedRetirement == nil ||
-		len(normalizedRetirement.Changes) != 1 ||
-		normalizedRetirement.Changes[0].Kind != "delete_unit" ||
-		normalizedRetirement.Changes[0].UnitName != "Introductory algebra" ||
-		normalizedRetirement.Changes[0].UnitContent != "Work through variables, expressions, and equations." {
+		len(normalizedRetirement.Changes) != 3 ||
+		normalizedRetirement.Changes[1].Kind != "delete_unit" ||
+		normalizedRetirement.Changes[1].UnitName != "Introductory algebra" ||
+		normalizedRetirement.Changes[1].UnitContent != "Work through variables, expressions, and equations." ||
+		normalizedRetirement.Changes[2].Kind != "transfer_knowledge" ||
+		len(normalizedRetirement.Changes[2].KnowledgeTransfer.Sources) != 1 ||
+		normalizedRetirement.Changes[2].KnowledgeTransfer.Sources[0].ID != algebra.ID ||
+		len(normalizedRetirement.Changes[2].KnowledgeTransfer.Targets) != 1 ||
+		normalizedRetirement.Changes[2].KnowledgeTransfer.Targets[0].ID != replacement.ID {
 		t.Fatalf("unit deletion did not remove superseded changes: proposal=%#v err=%v", normalizedRetirement, err)
 	}
 	if err := UpdateCurriculumUnit(database, authorID, retirement.ID, algebra.ID, "Renamed after deletion"); err != ErrUnitNotFound {
@@ -293,14 +314,27 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if err := PublishCurriculumProposal(database, authorID, retirement.ID); err != nil {
 		t.Fatal(err)
 	}
+	transferChangeID := normalizedRetirement.Changes[2].ID
+	if _, err := database.Exec(`
+		DELETE FROM curriculum_knowledge_transfer_targets WHERE transfer_change_id = $1
+	`, transferChangeID); err == nil {
+		t.Fatal("accepted knowledge transfer target was deleted")
+	}
 	persistedPath, err = db.GetLearningPath(database, authorID, learningPath.ID)
 	if err != nil || persistedPath == nil || len(persistedPath.Units) != 1 ||
 		persistedPath.Units[0].ID != algebra.ID || !persistedPath.Units[0].Retired {
 		t.Fatalf("retired path target did not retain its identity: path=%#v err=%v", persistedPath, err)
 	}
 	completedUnitIDs, err = db.CompletedUnitIDs(database, authorID)
-	if err != nil || !completedUnitIDs[algebra.ID] {
-		t.Fatalf("retiring a unit erased progress: ids=%v err=%v", completedUnitIDs, err)
+	if err != nil || !completedUnitIDs[algebra.ID] || !completedUnitIDs[replacement.ID] {
+		t.Fatalf("retiring a unit did not preserve and transfer progress: ids=%v err=%v", completedUnitIDs, err)
+	}
+	completionStatuses, err := db.UnitCompletionStatuses(database, authorID)
+	if err != nil ||
+		!completionStatuses[algebra.ID].Direct ||
+		completionStatuses[replacement.ID].Direct ||
+		!completionStatuses[replacement.ID].Transferred {
+		t.Fatalf("direct and transferred progress were conflated: statuses=%v err=%v", completionStatuses, err)
 	}
 
 	discarded, err := CreateCurriculumProposal(database, authorID, "Discarded draft", "Exercise hypothetical identity cleanup.")
@@ -315,6 +349,16 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := AddUnitDependency(database, authorID, discarded.ID, hypothetical.ID, foundations.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := AddCurriculumKnowledgeTransfer(
+		database,
+		authorID,
+		discarded.ID,
+		[]int64{foundations.ID},
+		[]int64{hypothetical.ID},
+		"Test cleanup of a transfer to a discarded hypothetical unit.",
+	); err != nil {
 		t.Fatal(err)
 	}
 	if err := DeleteCurriculumUnit(database, authorID, discarded.ID, hypothetical.ID); err != nil {

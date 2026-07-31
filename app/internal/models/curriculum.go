@@ -11,6 +11,15 @@ type Unit struct {
 	UpdatedAt time.Time
 }
 
+type UnitCompletionStatus struct {
+	Direct      bool
+	Transferred bool
+}
+
+func (status UnitCompletionStatus) Completed() bool {
+	return status.Direct || status.Transferred
+}
+
 type UnitDependency struct {
 	UnitID           int64
 	UnitName         string

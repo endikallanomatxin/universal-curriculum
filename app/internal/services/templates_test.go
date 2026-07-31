@@ -193,6 +193,58 @@ func TestUnitCompletionRendersNarrowHTMXUpdate(t *testing.T) {
 	}
 }
 
+func TestTransferredUnitCompletionIsReadOnlyRecognition(t *testing.T) {
+	templates := loadTestTemplates(t)
+	output := renderTemplate(t, templates, "unit-completion-form", map[string]any{
+		"UnitID":      int64(7),
+		"Completed":   true,
+		"Transferred": true,
+	})
+
+	if !strings.Contains(output, "Recognized through knowledge transfer") {
+		t.Fatal("transferred completion does not explain its provenance")
+	}
+	if strings.Contains(output, `action="/learn/units/7/completion"`) {
+		t.Fatal("transferred-only completion can be independently changed")
+	}
+}
+
+func TestCurriculumProposalRendersKnowledgeTransferWorkflowAndPublishWarning(t *testing.T) {
+	templates := loadTestTemplates(t)
+	output := renderTemplate(t, templates, "admin-curriculum.html", map[string]any{
+		"User":         &models.User{FullName: "Admin", IsAdmin: true},
+		"CSRFToken":    "csrf",
+		"ProposalView": "work",
+		"ActiveProposal": &models.CurriculumProposal{
+			ID: 12, Title: "Replace foundations", Status: "draft",
+			Changes: []models.CurriculumProposalChange{{
+				ID: 13, Kind: "transfer_knowledge",
+				KnowledgeTransfer: &models.KnowledgeTransfer{
+					Rationale: "Equivalent coverage.",
+					Sources:   []models.Unit{{ID: 1, Name: "Old foundations"}},
+					Targets:   []models.Unit{{ID: 2, Name: "New foundations"}},
+				},
+			}},
+		},
+		"TransferSources": []models.Unit{{ID: 1, Name: "Old foundations"}},
+		"TransferTargets": []models.Unit{{ID: 2, Name: "New foundations"}},
+		"PublishWarning":  "One unit has no recognized successor. Publish anyway?",
+	})
+
+	for _, fragment := range []string{
+		`action="/curriculum-modification/knowledge-transfers"`,
+		`name="source_unit_ids"`,
+		`name="target_unit_ids"`,
+		"Transfer knowledge",
+		"Equivalent coverage.",
+		"Publish anyway?",
+	} {
+		if !strings.Contains(output, fragment) {
+			t.Errorf("rendered knowledge-transfer workflow does not contain %q", fragment)
+		}
+	}
+}
+
 func TestStaticAssetVersionChangesWithContents(t *testing.T) {
 	root := t.TempDir()
 	if err := os.Mkdir(filepath.Join(root, "css"), 0o755); err != nil {
