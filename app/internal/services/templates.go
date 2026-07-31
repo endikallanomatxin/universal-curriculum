@@ -12,6 +12,27 @@ import (
 	"sort"
 )
 
+type viewSwitcherView struct {
+	Label   string
+	Options []viewSwitcherOptionView
+}
+
+type viewSwitcherOptionView struct {
+	Value    string
+	Label    string
+	Selected bool
+}
+
+func newViewSwitcher(label, selected string, options ...string) viewSwitcherView {
+	view := viewSwitcherView{Label: label}
+	for index := 0; index+1 < len(options); index += 2 {
+		view.Options = append(view.Options, viewSwitcherOptionView{
+			Value: options[index], Label: options[index+1], Selected: options[index] == selected,
+		})
+	}
+	return view
+}
+
 func LoadTemplates() (*template.Template, error) {
 	assetVersion, err := staticAssetVersion("web/static")
 	if err != nil {
@@ -22,6 +43,7 @@ func LoadTemplates() (*template.Template, error) {
 		"renderContentDiff":         RenderContentDiff,
 		"renderRenderedContentDiff": RenderRenderedContentDiff,
 		"renderUnitContent":         RenderUnitContent,
+		"viewSwitcher":              newViewSwitcher,
 	}).ParseGlob("web/templates/*.html")
 	if err != nil {
 		return nil, fmt.Errorf("parse templates: %w", err)

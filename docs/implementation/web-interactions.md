@@ -60,6 +60,12 @@ Current system-wide concepts include:
 - buttons, form controls and action hierarchy; and
 - HTMX workspace navigation with View Transitions.
 
+The shared view switcher uses the `view-switcher` template and a surrounding
+`data-view-switcher` owner. Its triggers and panels share opaque values through
+`data-view-switcher-trigger` and `data-view-switcher-panel`. The delegated
+controller updates `aria-selected`, panel visibility and emits a bubbling
+`view-switcher:change` event, including after markup introduced by HTMX swaps.
+
 ## Right-hand details and editors
 
 The pane sequence represents increasing specificity. An action within one pane

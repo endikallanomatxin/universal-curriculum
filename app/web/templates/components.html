@@ -37,6 +37,14 @@
 {{ define "shell-link-attributes-without-view-transition" }}hx-get="{{ . }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML" hx-push-url="true"{{ end }}
 {{ define "home-link-attributes" }}hx-get="/" hx-target="#app-shell" hx-select="#app-shell" hx-swap="outerHTML transition:true" hx-push-url="true"{{ end }}
 
+{{ define "view-switcher" -}}
+<div class="view-switcher" role="tablist" aria-label="{{ .Label }}">
+  {{ range .Options }}
+    <button type="button" role="tab" aria-selected="{{ if .Selected }}true{{ else }}false{{ end }}" tabindex="{{ if .Selected }}0{{ else }}-1{{ end }}" data-view-switcher-trigger="{{ .Value }}">{{ .Label }}</button>
+  {{ end }}
+</div>
+{{- end }}
+
 {{ define "unit-navigation-search" -}}
 <div class="graph-search" data-graph-search>
   <span class="material-symbols-rounded graph-search__icon" aria-hidden="true">search</span>
@@ -283,6 +291,7 @@
   <script src="/static/js/autoresize.js?v={{ assetVersion }}" defer></script>
   <script src="/static/js/panels.js?v={{ assetVersion }}" defer></script>
   <script src="/static/js/inline_editing.js?v={{ assetVersion }}" defer></script>
+  <script src="/static/js/view_switcher.js?v={{ assetVersion }}" defer></script>
   <script src="/static/js/unit_picker.js?v={{ assetVersion }}" defer></script>
   <script src="/static/js/curriculum_editor.js?v={{ assetVersion }}" defer></script>
   <script src="/static/js/curriculum_graph.js?v={{ assetVersion }}" defer></script>

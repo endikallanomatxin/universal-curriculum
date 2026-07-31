@@ -42,19 +42,8 @@
     highlightCode(root);
   }
 
-  document.addEventListener("click", function (event) {
-    const trigger = event.target.closest("[data-content-view-trigger]");
-    if (!trigger) return;
-    const container = trigger.closest("[data-inline-editor-display]");
-    if (!container) return;
-    const view = trigger.dataset.contentViewTrigger;
-    container.querySelectorAll("[data-content-view-trigger]").forEach(function (button) {
-      button.setAttribute("aria-selected", String(button === trigger));
-    });
-    container.querySelectorAll("[data-content-view-panel]").forEach(function (panel) {
-      panel.hidden = panel.dataset.contentViewPanel !== view;
-    });
-    enhanceContent(container);
+  document.addEventListener("view-switcher:change", function (event) {
+    enhanceContent(event.target);
   });
 
   window.addEventListener("message", function (event) {

@@ -216,19 +216,16 @@
                 <textarea id="inline-unit-content" name="content" required rows="1" spellcheck="true" data-autoresize data-autoresize-unbounded>{{ .Content }}</textarea>
               </form>
             {{ end }}
-            <div data-inline-editor-display="inline-edit-unit-content">
+            <div data-inline-editor-display="inline-edit-unit-content" data-view-switcher>
               {{ if .HasContentDiff }}
                 <div class="unit-content__view-header">
                   <p>Proposed content changes</p>
-                  <div class="unit-content__view-switcher" role="tablist" aria-label="Content view">
-                    <button type="button" role="tab" aria-selected="true" data-content-view-trigger="source">Source</button>
-                    <button type="button" role="tab" aria-selected="false" data-content-view-trigger="rendered">Rendered</button>
-                  </div>
+                  {{ template "view-switcher" (viewSwitcher "Content view" "source" "source" "Source" "rendered" "Rendered") }}
                 </div>
-                <div class="unit-content__body unit-content__body--diff" role="tabpanel" data-content-view-panel="source">
+                <div class="unit-content__body unit-content__body--diff" role="tabpanel" data-view-switcher-panel="source">
                   {{ renderContentDiff .PreviousContent .Content }}
                 </div>
-                <div class="unit-content__body" role="tabpanel" data-content-view-panel="rendered" hidden>
+                <div class="unit-content__body" role="tabpanel" data-view-switcher-panel="rendered" hidden>
                   {{ renderRenderedContentDiff .PreviousContent .Content }}
                 </div>
               {{ else }}
