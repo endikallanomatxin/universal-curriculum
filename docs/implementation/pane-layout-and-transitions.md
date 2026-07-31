@@ -95,7 +95,9 @@ to the workspace would retain stale non-home navigation markup after a reload.
 An editor or detail that users can reasonably expect to survive a reload must
 encode its identity in the URL and be rendered open by the server. Use
 client-only `data-open-panel` state only for short-lived auxiliary panels whose
-loss on reload is intentional.
+loss on reload is intentional. If such a server-rendered detail closes locally
+to preserve a custom exit transition, the close must also remove its identifying
+query parameter from the current history entry once the transition completes.
 
 `web/static/js/panels.js` owns this interaction. New panel interactions should
 reuse its declarative triggers and stable panel boundaries rather than adding

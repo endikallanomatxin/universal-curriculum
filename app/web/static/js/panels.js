@@ -10,7 +10,7 @@
     return current && current.parentElement === group ? current : null;
   }
 
-  function beginPanelClose(panel, restoreFocus, preserveLayout) {
+  function beginPanelClose(panel, restoreFocus, preserveLayout, complete) {
     if (!panel || panel.hidden || panel.classList.contains("is-closing")) return false;
     const trigger = panel.activeTrigger ||
       (panel.id && document.querySelector('[data-open-panel="' + panel.id + '"]'));
@@ -29,6 +29,7 @@
           trigger.scrollIntoView({ behavior: "auto", block: "nearest", inline: "end" });
           trigger.focus({ preventScroll: true });
         }
+        if (complete) complete();
       });
     }, recomposeDelay);
     return true;
@@ -99,7 +100,9 @@
       if (!close || close.panelInitialized) return;
       close.panelInitialized = true;
       close.addEventListener("click", function () {
-        beginPanelClose(panel, true, true);
+        beginPanelClose(panel, true, true, function () {
+          updateURLAfterClientClose(panel);
+        });
       });
     });
   }
@@ -196,6 +199,15 @@
       clearTransitionClasses(root);
       complete();
     });
+  }
+
+  function updateURLAfterClientClose(panel) {
+    const queryParameter = panel.dataset.panelCloseQuery;
+    if (!queryParameter) return;
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has(queryParameter)) return;
+    url.searchParams.delete(queryParameter);
+    window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
   }
 
   function resolvedNavigationMode(trigger) {
