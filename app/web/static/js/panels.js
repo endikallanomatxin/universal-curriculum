@@ -105,6 +105,54 @@
     return request && navigationByRequest.get(request);
   }
 
+  function paneTransitionKey(panel) {
+    return panel && (
+      panel.dataset.panelTransitionKey || panel.id || panel.getAttribute("aria-labelledby")
+    );
+  }
+
+  function visibleWorkspacePaneKeys() {
+    const workspace = document.querySelector("#workspace");
+    if (!workspace) return [];
+    return Array.from(workspace.children).filter(function (panel) {
+      return panel.matches("[data-layout-panel]") && !panel.hidden;
+    }).map(paneTransitionKey).filter(Boolean);
+  }
+
+  function markMatchedTransitionContent(root) {
+    Array.from(root.children).forEach(function (panel) {
+      if (!panel.matches("[data-layout-panel]")) return;
+      const inner = Array.from(panel.children).find(function (child) {
+        return child.matches(".ui-pane__inner");
+      });
+      if (inner && getComputedStyle(inner).viewTransitionName.endsWith("-content")) {
+        panel.style.viewTransitionClass = "matched-panel-surface";
+        inner.style.viewTransitionClass = "matched-panel-content";
+      }
+    });
+  }
+
+  function keepTransitionContentOnlyForPersistentPanes(root, navigation) {
+    if (!navigation || !navigation.viewTransition) return;
+    const existing = new Set(navigation.existingPaneKeys || []);
+    Array.from(root.children).forEach(function (panel) {
+      if (!panel.matches("[data-layout-panel]")) return;
+      const persistent = existing.has(paneTransitionKey(panel));
+      const inner = Array.from(panel.children).find(function (child) {
+        return child.matches(".ui-pane__inner");
+      });
+      if (persistent) {
+        if (inner && getComputedStyle(inner).viewTransitionName.endsWith("-content")) {
+          panel.style.viewTransitionClass = "matched-panel-surface";
+          inner.style.viewTransitionClass = "matched-panel-content";
+        }
+        return;
+      }
+      panel.panelContentTransitionSuppressed = true;
+      if (inner) inner.style.removeProperty("view-transition-name");
+    });
+  }
+
   function resolvedNavigationMode(trigger) {
     const declaredMode = trigger && trigger.dataset.panelNavigation;
     if (declaredMode === "workspace") {
@@ -127,7 +175,7 @@
   }
 
   function animateNavigatedPanels(root, navigation) {
-    if (!navigation || navigation.mode !== "open") return;
+    if (!navigation || navigation.mode !== "open" || navigation.viewTransition) return;
     const panels = navigation.scope === "workspace"
       ? [root]
       : Array.from(root.querySelectorAll('[data-panel-motion="horizontal"]:not([hidden])'));
@@ -189,10 +237,21 @@
     if (request && mode) {
       navigationByRequest.set(request, {
         mode: mode,
-        scope: declaredMode === "workspace" ? "workspace" : "panel"
+        scope: declaredMode === "workspace" ? "workspace" : "panel",
+        viewTransition: mode === "open" && typeof document.startViewTransition === "function",
+        existingPaneKeys: visibleWorkspacePaneKeys()
       });
       if (mode === "open") {
-        trigger.setAttribute("hx-swap", "outerHTML settle:0");
+        const workspace = document.querySelector("#workspace");
+        if (workspace && typeof document.startViewTransition === "function") {
+          markMatchedTransitionContent(workspace);
+        }
+        trigger.setAttribute(
+          "hx-swap",
+          typeof document.startViewTransition === "function"
+            ? "outerHTML transition:true"
+            : "outerHTML settle:0"
+        );
         if (window.panelLayout) window.panelLayout.beginSettlement();
       }
       if (mode === "replace") trigger.setAttribute("hx-swap", "outerHTML transition:true");
@@ -204,12 +263,28 @@
       if (window.panelLayout) window.panelLayout.cancelSettlement();
     }
   });
+  document.addEventListener("htmx:afterSwap", function (event) {
+    if (event.target && event.target.id === "workspace") {
+      keepTransitionContentOnlyForPersistentPanes(event.target, navigationFor(event));
+    }
+  });
   document.addEventListener("htmx:afterSettle", function (event) {
     if (event.target && event.target.id === "workspace") {
       const root = event.target;
       const navigation = navigationFor(event);
       if (navigation && navigation.mode === "open" && window.panelLayout) {
         window.panelLayout.settle();
+      }
+      keepTransitionContentOnlyForPersistentPanes(root, navigation);
+      if (navigation && navigation.viewTransition) {
+        window.setTimeout(function () {
+          root.querySelectorAll('[data-layout-panel][style*="view-transition-class"]').forEach(function (panel) {
+            panel.style.removeProperty("view-transition-class");
+          });
+          root.querySelectorAll('.ui-pane__inner[style*="view-transition-class"]').forEach(function (inner) {
+            inner.style.removeProperty("view-transition-class");
+          });
+        }, 500);
       }
       window.requestAnimationFrame(function () {
         animateNavigatedPanels(root, navigation);

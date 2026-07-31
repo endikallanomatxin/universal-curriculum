@@ -70,6 +70,33 @@
     return Math.round(width * 1000) / 1000;
   }
 
+  function transitionToken(value) {
+    return String(value || "").toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "");
+  }
+
+  function contentTransitionState(mode) {
+    return mode === "breadcrumb" || mode === "collapsed" ? mode : "content";
+  }
+
+  function setPanelContentTransition(panel, mode) {
+    const inner = Array.from(panel.children).find(function (child) {
+      return child.matches(".ui-pane__inner");
+    });
+    if (!inner) return;
+    if (panel.panelContentTransitionSuppressed) {
+      inner.style.removeProperty("view-transition-name");
+      return;
+    }
+    const key = transitionToken(
+      panel.dataset.panelTransitionKey || panel.id || panel.getAttribute("aria-labelledby")
+    );
+    if (!key) {
+      inner.style.removeProperty("view-transition-name");
+      return;
+    }
+    inner.style.viewTransitionName = "pane-content-" + key + "-" + contentTransitionState(mode);
+  }
+
   function setPanelGeometry(panel, width, mode) {
     const widthValue = roundedWidth(width) + "rem";
     let changed = false;
@@ -81,6 +108,7 @@
       panel.dataset.panelMode = mode;
       changed = true;
     }
+    setPanelContentTransition(panel, mode);
     return changed;
   }
 

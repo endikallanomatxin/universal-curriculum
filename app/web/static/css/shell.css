@@ -17,7 +17,16 @@
   min-height: 100dvh;
   padding: var(--space-3);
   position: relative;
+  view-transition-name: primary-navigation-pane;
   z-index: 2;
+}
+
+.app-shell--home .primary-navigation__inner {
+  view-transition-name: home-navigation-content;
+}
+
+.app-shell:not(.app-shell--home) .primary-navigation__inner {
+  view-transition-name: detail-navigation-content;
 }
 
 .app-shell:not(.app-shell--home) .primary-navigation {
@@ -607,6 +616,19 @@ button.primary-menu__link {
   overflow-x: auto;
   overscroll-behavior-inline: contain;
   position: relative;
+  view-transition-name: workspace-pane;
+}
+
+.learning-paths-pane {
+  view-transition-name: learning-paths-pane;
+}
+
+.curriculum-map-pane {
+  view-transition-name: curriculum-map-pane;
+}
+
+.unit-content-pane {
+  view-transition-name: unit-content-pane;
 }
 
 .pane-stack.is-panel-motion-active {
@@ -784,12 +806,46 @@ button.primary-menu__link {
 }
 
 ::view-transition-group(brand),
+::view-transition-group(primary-navigation-pane),
+::view-transition-group(workspace-pane),
+::view-transition-group(learning-paths-pane),
+::view-transition-group(curriculum-map-pane),
+::view-transition-group(unit-content-pane),
 ::view-transition-group(account-navigation),
 ::view-transition-group(curriculum-navigation),
 ::view-transition-group(learn-navigation),
 ::view-transition-group(logout-action) {
   animation-duration: var(--motion-duration);
   animation-timing-function: var(--motion-easing);
+}
+
+::view-transition-new(workspace-pane):only-child,
+::view-transition-new(learning-paths-pane):only-child,
+::view-transition-new(curriculum-map-pane):only-child,
+::view-transition-new(unit-content-pane):only-child {
+  animation: horizontal-panel-enter var(--panel-motion-duration) var(--panel-motion-easing);
+}
+
+::view-transition-old(*.matched-panel-content) {
+  animation: none;
+  opacity: 0;
+}
+
+::view-transition-new(*.matched-panel-content) {
+  animation: none;
+  mix-blend-mode: normal;
+  opacity: 1;
+}
+
+::view-transition-old(*.matched-panel-surface) {
+  animation: none;
+  opacity: 0;
+}
+
+::view-transition-new(*.matched-panel-surface) {
+  animation: none;
+  mix-blend-mode: normal;
+  opacity: 1;
 }
 
 @media (max-width: 52rem) {

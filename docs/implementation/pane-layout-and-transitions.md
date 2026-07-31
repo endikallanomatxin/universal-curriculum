@@ -117,12 +117,29 @@ declarations:
   whole workspace from the right, while moving between populated workspaces is
   a replacement.
 
-`open` swaps without a document View Transition, settles HTMX attributes
-synchronously, and then moves the new pane in from beyond the right edge.
-Running the entrance after settlement prevents HTMX's class restoration from
-cancelling it. `replace` preserves the pane boundary and enables a View
-Transition for continuity between its old and new content. `close` moves the
-pane out to the right before triggering its HTMX request. The controller
+`open` uses a document View Transition when available. Persistent panes have
+stable transition identities, so their old snapshots interpolate towards the
+already-settled geometry while a pane present only in the new state enters from
+the right. Pane surfaces and mode-specific inner content use separate
+identities: the surface interpolates its bounds, while old and new content fade
+at their respective geometries instead of scaling towards the new top-left
+corner. The allocator derives mode-specific content identities from stable pane
+keys. Modes that preserve the full content share one identity and interpolate
+without crossfading their old and new snapshots; `breadcrumb` and `collapsed`
+use distinct identities, leaving their old and new snapshots fixed at their
+respective geometries while they crossfade. The no-crossfade transition class is
+applied only to persistent panes during an `open` operation and cleared after
+the motion, so same-level replacements retain their content fade. While a pane
+has an independently captured inner snapshot, its old outer snapshot is hidden;
+this prevents the same content appearing a second time inside the surface that
+interpolates its bounds. The navigation controller removes the content identity
+from genuinely new panes so their surface and content travel together; retained
+panes keep it whenever an opening recomposes the workspace. The home and detail
+menu contents likewise use separate identities. Browsers without View
+Transitions retain the transform-based entry fallback. `replace` preserves the
+pane boundary and enables a View Transition for continuity between its old and
+new content. `close` moves the pane out to the right before triggering its HTMX
+request. The controller
 associates the operation with the individual request rather than storing
 navigation state on `document`, so overlapping or unrelated requests cannot
 consume each other's motion intent. Links retain normal `href` navigation as
