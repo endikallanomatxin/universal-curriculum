@@ -48,7 +48,9 @@
 
   function visiblePanels(group) {
     return Array.from(group.children).filter(function (child) {
-      return child.matches("[data-layout-panel]") && !child.hidden && !child.classList.contains("is-closing");
+      return child.matches("[data-layout-panel]") &&
+        !child.hidden &&
+        (!child.classList.contains("is-closing") || child.panelPreserveLayoutWhileClosing);
     });
   }
 

@@ -826,6 +826,10 @@ button.primary-menu__link {
   animation: horizontal-panel-enter var(--panel-motion-duration) var(--panel-motion-easing);
 }
 
+::view-transition-old(unit-content-pane):only-child {
+  animation: horizontal-panel-exit var(--panel-motion-duration) var(--panel-motion-easing) forwards;
+}
+
 ::view-transition-old(*.matched-panel-content) {
   animation: none;
   opacity: 0;

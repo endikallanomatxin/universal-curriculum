@@ -128,22 +128,28 @@ keys. Modes that preserve the full content share one identity and interpolate
 without crossfading their old and new snapshots; `breadcrumb` and `collapsed`
 use distinct identities, leaving their old and new snapshots fixed at their
 respective geometries while they crossfade. The no-crossfade transition class is
-applied only to persistent panes during an `open` operation and cleared after
-the motion, so same-level replacements retain their content fade. While a pane
-has an independently captured inner snapshot, its old outer snapshot is hidden;
-this prevents the same content appearing a second time inside the surface that
-interpolates its bounds. The navigation controller removes the content identity
-from genuinely new panes so their surface and content travel together; retained
-panes keep it whenever an opening recomposes the workspace. The home and detail
-menu contents likewise use separate identities. Browsers without View
-Transitions retain the transform-based entry fallback. `replace` preserves the
-pane boundary and enables a View Transition for continuity between its old and
-new content. `close` moves the pane out to the right before triggering its HTMX
-request. The controller
-associates the operation with the individual request rather than storing
-navigation state on `document`, so overlapping or unrelated requests cannot
-consume each other's motion intent. Links retain normal `href` navigation as
-their non-JavaScript fallback.
+applied only to persistent panes during an opening or closing recomposition and
+cleared after the motion, so same-level replacements retain their content fade.
+While a pane has an independently captured inner snapshot, its old outer
+snapshot is hidden; this prevents the same content appearing a second time
+inside the surface that interpolates its bounds. The navigation controller
+removes the content identity from genuinely new panes so their surface and
+content travel together; retained panes keep it whenever an opening recomposes
+the workspace. The home and detail menu contents likewise use separate
+identities. Browsers without View Transitions retain the transform-based entry
+fallback. `replace` preserves the pane boundary and enables a View Transition
+for continuity between its old and new content. `close` moves the pane out to
+the right before triggering its HTMX request. The controller associates the
+operation with the individual request rather than storing navigation state on
+`document`, so overlapping or unrelated requests cannot consume each other's
+motion intent. Links retain normal `href` navigation as their non-JavaScript
+fallback.
+
+Client-only pane closure uses one View Transition for both sides of the
+recomposition. The old snapshot of the departing pane moves right while the
+persistent pane surfaces expand from the same starting frame. Their compatible
+or breadcrumb content follows the same matching rules as an opening
+recomposition. Sharing one transition avoids separate exit and resize clocks.
 
 Learning-path selection uses `open-or-replace`: the first selected path adds the
 curriculum-map pane from the right, while choosing another path with the map

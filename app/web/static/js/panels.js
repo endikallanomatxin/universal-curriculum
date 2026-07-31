@@ -10,22 +10,27 @@
     return current && current.parentElement === group ? current : null;
   }
 
-  function beginPanelClose(panel, restoreFocus) {
+  function beginPanelClose(panel, restoreFocus, preserveLayout) {
     if (!panel || panel.hidden || panel.classList.contains("is-closing")) return false;
     const trigger = panel.activeTrigger ||
       (panel.id && document.querySelector('[data-open-panel="' + panel.id + '"]'));
     window.clearTimeout(panel.closeTimer);
+    panel.panelPreserveLayoutWhileClosing = preserveLayout;
+    if (preserveLayout && panel.parentElement) {
+      panel.parentElement.classList.add("is-panel-motion-active");
+    }
     panel.classList.remove("is-opening");
     panel.classList.add("is-closing");
     if (trigger) trigger.setAttribute("aria-expanded", "false");
+    const recomposeDelay = preserveLayout ? 0 : closeDuration;
     panel.closeTimer = window.setTimeout(function () {
-      panel.hidden = true;
-      panel.classList.remove("is-closing");
-      if (restoreFocus && trigger) {
-        trigger.scrollIntoView({ behavior: "auto", block: "nearest", inline: "end" });
-        trigger.focus({ preventScroll: true });
-      }
-    }, closeDuration);
+      recomposeAfterClientClose(panel, function () {
+        if (restoreFocus && trigger) {
+          trigger.scrollIntoView({ behavior: "auto", block: "nearest", inline: "end" });
+          trigger.focus({ preventScroll: true });
+        }
+      });
+    }, recomposeDelay);
     return true;
   }
 
@@ -94,8 +99,7 @@
       if (!close || close.panelInitialized) return;
       close.panelInitialized = true;
       close.addEventListener("click", function () {
-        const changed = beginPanelClose(panel, true);
-        if (changed && window.panelLayout) window.panelLayout.refresh();
+        beginPanelClose(panel, true, true);
       });
     });
   }
@@ -115,13 +119,15 @@
     const workspace = document.querySelector("#workspace");
     if (!workspace) return [];
     return Array.from(workspace.children).filter(function (panel) {
-      return panel.matches("[data-layout-panel]") && !panel.hidden;
+      return panel.matches("[data-layout-panel]") &&
+        !panel.hidden &&
+        !panel.classList.contains("is-closing");
     }).map(paneTransitionKey).filter(Boolean);
   }
 
   function markMatchedTransitionContent(root) {
     Array.from(root.children).forEach(function (panel) {
-      if (!panel.matches("[data-layout-panel]")) return;
+      if (!panel.matches("[data-layout-panel]") || panel.classList.contains("is-closing")) return;
       const inner = Array.from(panel.children).find(function (child) {
         return child.matches(".ui-pane__inner");
       });
@@ -150,6 +156,45 @@
       }
       panel.panelContentTransitionSuppressed = true;
       if (inner) inner.style.removeProperty("view-transition-name");
+    });
+  }
+
+  function clearTransitionClasses(root) {
+    root.querySelectorAll('[data-layout-panel][style*="view-transition-class"]').forEach(function (panel) {
+      panel.style.removeProperty("view-transition-class");
+    });
+    root.querySelectorAll('.ui-pane__inner[style*="view-transition-class"]').forEach(function (inner) {
+      inner.style.removeProperty("view-transition-class");
+    });
+  }
+
+  function recomposeAfterClientClose(panel, complete) {
+    const root = panel.parentElement;
+    const finish = function () {
+      if (root) root.classList.remove("is-panel-motion-active");
+      panel.hidden = true;
+      panel.classList.remove("is-closing");
+      delete panel.panelPreserveLayoutWhileClosing;
+      if (window.panelLayout) window.panelLayout.settle();
+    };
+    if (!root || typeof document.startViewTransition !== "function") {
+      finish();
+      complete();
+      return;
+    }
+
+    const navigation = {
+      viewTransition: true,
+      existingPaneKeys: visibleWorkspacePaneKeys()
+    };
+    markMatchedTransitionContent(root);
+    const transition = document.startViewTransition(function () {
+      finish();
+      keepTransitionContentOnlyForPersistentPanes(root, navigation);
+    });
+    transition.finished.finally(function () {
+      clearTransitionClasses(root);
+      complete();
     });
   }
 
@@ -278,12 +323,7 @@
       keepTransitionContentOnlyForPersistentPanes(root, navigation);
       if (navigation && navigation.viewTransition) {
         window.setTimeout(function () {
-          root.querySelectorAll('[data-layout-panel][style*="view-transition-class"]').forEach(function (panel) {
-            panel.style.removeProperty("view-transition-class");
-          });
-          root.querySelectorAll('.ui-pane__inner[style*="view-transition-class"]').forEach(function (inner) {
-            inner.style.removeProperty("view-transition-class");
-          });
+          clearTransitionClasses(root);
         }, 500);
       }
       window.requestAnimationFrame(function () {
