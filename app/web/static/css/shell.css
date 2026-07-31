@@ -183,10 +183,6 @@
   width: 100%;
 }
 
-.primary-navigation[data-panel-mode="icons"] {
-  padding-inline: var(--space-2);
-}
-
 .primary-navigation[data-panel-mode="icons"] .brand span {
   max-width: 0;
   opacity: 0;
@@ -215,8 +211,8 @@
 .app-shell:not(.app-shell--home) .primary-navigation[data-panel-mode="icons"] .primary-menu__link {
   gap: 0;
   grid-template-columns: 1.5rem 0;
-  justify-content: center;
-  padding-inline: 0.75rem;
+  justify-content: start;
+  padding-inline: 0.75rem 0.625rem;
   width: 100%;
 }
 

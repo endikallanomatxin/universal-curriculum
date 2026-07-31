@@ -173,6 +173,11 @@
 
   function recomposeAfterClientClose(panel, complete) {
     const root = panel.parentElement;
+    const shell = panel.closest("#app-shell");
+    if (shell) shell.classList.add("is-shell-navigation");
+    const finishMotion = function () {
+      if (shell) shell.classList.remove("is-shell-navigation");
+    };
     const finish = function () {
       if (root) root.classList.remove("is-panel-motion-active");
       panel.hidden = true;
@@ -182,6 +187,7 @@
     };
     if (!root || typeof document.startViewTransition !== "function") {
       finish();
+      finishMotion();
       complete();
       return;
     }
@@ -197,6 +203,7 @@
     });
     transition.finished.finally(function () {
       clearTransitionClasses(root);
+      finishMotion();
       complete();
     });
   }

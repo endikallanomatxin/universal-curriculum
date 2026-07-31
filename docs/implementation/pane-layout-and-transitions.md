@@ -166,7 +166,9 @@ its contents temporarily compose against different widths, producing clipping
 that disappears after a reload. Keep the element that owns a visual identity
 stable while its pane changes mode: replacing icons, scaling their containing
 box or changing layout structure mid-transition produces distortion or a final
-visual jump.
+visual jump. The sidebar and icon-only menu modes keep each link's leading edge
+and icon coordinate aligned; internal CSS transitions stay disabled while a
+document View Transition recomposes those modes.
 
 HTMX workspace navigation uses `transition:true`. Stable concepts receive
 stable `view-transition-name` values so the browser can interpolate them
