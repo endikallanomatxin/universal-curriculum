@@ -5,6 +5,10 @@
   overflow: hidden;
 }
 
+.app-shell:not([data-panel-layout-ready]) {
+  visibility: hidden;
+}
+
 .primary-navigation {
   background: linear-gradient(90deg, var(--color-panel-start), var(--color-panel-end));
   display: flex;
@@ -20,6 +24,12 @@
   flex: 0 0 var(--panel-width, var(--sidebar-width));
   overflow: hidden;
   transition: flex-basis var(--panel-motion-duration) var(--panel-motion-easing), padding var(--panel-motion-duration) var(--panel-motion-easing);
+}
+
+.app-shell.is-initial-panel-layout .primary-navigation,
+.app-shell.is-initial-panel-layout .pane-stack,
+.app-shell.is-initial-panel-layout .ui-pane {
+  transition: none;
 }
 
 .app-shell.is-shell-navigation .primary-navigation,

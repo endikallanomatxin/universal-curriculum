@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="/static/vendor/highlight/github.min.css?v={{ assetVersion }}">
   <link rel="stylesheet" href="/static/vendor/katex/katex.min.css?v={{ assetVersion }}">
   <link rel="stylesheet" href="/static/css/learn.css?v={{ assetVersion }}">
+  <noscript><style>.app-shell:not([data-panel-layout-ready]) { visibility: visible !important; }</style></noscript>
 {{- end }}
 
 {{ define "icon-account" -}}
@@ -274,7 +275,7 @@
 
 {{ define "shell-scripts" -}}
   <script src="/static/js/htmx.min.js?v={{ assetVersion }}" defer></script>
-  <script src="/static/js/panel_layout.js?v={{ assetVersion }}" defer></script>
+  <script src="/static/js/panel_layout.js?v={{ assetVersion }}"></script>
   <script src="/static/js/panel_breadcrumbs.js?v={{ assetVersion }}" defer></script>
   <script src="/static/js/shell.js?v={{ assetVersion }}" defer></script>
   <script src="/static/js/autoresize.js?v={{ assetVersion }}" defer></script>

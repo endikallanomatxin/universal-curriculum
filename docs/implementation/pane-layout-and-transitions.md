@@ -133,6 +133,17 @@ View Transitions over imperative animation sequences.
 Motion must degrade to an immediate, correct layout when View Transitions are
 unavailable and respect `prefers-reduced-motion`.
 
+The layout allocator is the one shell script loaded without `defer`. It runs at
+the end of the document, after the pane markup exists but before the browser's
+first complete paint. Because browsers may paint progressively while parsing,
+the shell remains invisible until this calculation marks its layout as ready.
+During that synchronous calculation only, the shell suppresses pane geometry
+interpolation. It flushes the first allocation, measures once more after
+overflow and scrollbar geometry settle, then exposes the shell with negotiated
+widths. A `noscript` fallback keeps the CSS layout visible without JavaScript.
+Pane transitions and document View Transitions remain enabled for every visible
+interaction.
+
 ## History restoration
 
 HTMX history snapshots serialize DOM attributes but not JavaScript listeners or
@@ -147,8 +158,10 @@ such as mobile breadcrumbs follow the same rule for their render signatures.
 The shared layout observes group and shell size with `ResizeObserver`, pane
 visibility with `MutationObserver`, and scroll-driven changes on the next
 animation frame. HTMX swaps reinitialize the observers and trigger a complete
-inner-to-outer negotiation. Observer callbacks are coalesced into one animation
-frame, and the allocator only writes geometry when its resolved value changed.
-Viewport changes resize the observed shell; the next pass reads the mobile
-composition signal resolved by CSS. These constraints prevent layout writes
-from feeding an unbounded resize loop.
+negotiation. Each cycle first runs inner-to-outer so nested groups can publish
+their requirements, then outer-to-inner so every nested group is sized against
+its parent's final allocation before the browser paints. Observer callbacks are
+coalesced into one animation frame, and the allocator only writes geometry when
+its resolved value changed. Viewport changes resize the observed shell; the next
+pass reads the mobile composition signal resolved by CSS. These constraints
+prevent layout writes from feeding an unbounded resize loop.
