@@ -27,10 +27,10 @@ type CurriculumProposalChange struct {
 	UnitContent         string
 	PreviousUnitContent string
 	PrerequisiteID      *int64
-	KnowledgeTransfer   *KnowledgeTransfer
+	Recognition         *Recognition
 }
 
-type KnowledgeTransfer struct {
+type Recognition struct {
 	Rationale string
 	Sources   []Unit
 	Targets   []Unit

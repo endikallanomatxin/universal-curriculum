@@ -196,23 +196,23 @@ func TestUnitCompletionRendersNarrowHTMXUpdate(t *testing.T) {
 	}
 }
 
-func TestTransferredUnitCompletionIsReadOnlyRecognition(t *testing.T) {
+func TestRecognizedUnitCompletionIsReadOnlyRecognition(t *testing.T) {
 	templates := loadTestTemplates(t)
 	output := renderTemplate(t, templates, "unit-completion-form", map[string]any{
-		"UnitID":      int64(7),
-		"Completed":   true,
-		"Transferred": true,
+		"UnitID":     int64(7),
+		"Completed":  true,
+		"Recognized": true,
 	})
 
-	if !strings.Contains(output, "Recognized through knowledge transfer") {
-		t.Fatal("transferred completion does not explain its provenance")
+	if !strings.Contains(output, "Recognized from previous learning") {
+		t.Fatal("recognized completion does not explain its provenance")
 	}
 	if strings.Contains(output, `action="/learn/units/7/completion"`) {
-		t.Fatal("transferred-only completion can be independently changed")
+		t.Fatal("recognized-only completion can be independently changed")
 	}
 }
 
-func TestCurriculumProposalRendersKnowledgeTransferWorkflowAndPublishWarning(t *testing.T) {
+func TestCurriculumProposalRendersRecognitionWorkflowAndPublishWarning(t *testing.T) {
 	templates := loadTestTemplates(t)
 	output := renderTemplate(t, templates, "admin-curriculum.html", map[string]any{
 		"User":         &models.User{FullName: "Admin", IsAdmin: true},
@@ -221,29 +221,29 @@ func TestCurriculumProposalRendersKnowledgeTransferWorkflowAndPublishWarning(t *
 		"ActiveProposal": &models.CurriculumProposal{
 			ID: 12, Title: "Replace foundations", Status: "draft",
 			Changes: []models.CurriculumProposalChange{{
-				ID: 13, Kind: "transfer_knowledge",
-				KnowledgeTransfer: &models.KnowledgeTransfer{
+				ID: 13, Kind: "recognition",
+				Recognition: &models.Recognition{
 					Rationale: "Equivalent coverage.",
 					Sources:   []models.Unit{{ID: 1, Name: "Old foundations"}},
 					Targets:   []models.Unit{{ID: 2, Name: "New foundations"}},
 				},
 			}},
 		},
-		"TransferSources": []models.Unit{{ID: 1, Name: "Old foundations"}},
-		"TransferTargets": []models.Unit{{ID: 2, Name: "New foundations"}},
-		"PublishWarning":  "One unit has no recognized successor. Publish anyway?",
+		"RecognitionSources": []models.Unit{{ID: 1, Name: "Old foundations"}},
+		"RecognitionTargets": []models.Unit{{ID: 2, Name: "New foundations"}},
+		"PublishWarning":     "One unit has no recognized successor. Publish anyway?",
 	})
 
 	for _, fragment := range []string{
-		`action="/curriculum-modification/knowledge-transfers"`,
+		`action="/curriculum-modification/recognitions"`,
 		`name="source_unit_ids"`,
 		`name="target_unit_ids"`,
-		"Transfer knowledge",
+		"Recognition",
 		"Equivalent coverage.",
 		"Publish anyway?",
 	} {
 		if !strings.Contains(output, fragment) {
-			t.Errorf("rendered knowledge-transfer workflow does not contain %q", fragment)
+			t.Errorf("rendered recognition workflow does not contain %q", fragment)
 		}
 	}
 }

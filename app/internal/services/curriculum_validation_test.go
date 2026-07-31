@@ -50,7 +50,7 @@ func TestValidateCurriculumProposalAcceptsExplicitPrerequisiteResolutionBeforeDe
 	}
 }
 
-func TestValidateCurriculumProposalAcceptsKnowledgeTransferAcrossResultingState(t *testing.T) {
+func TestValidateCurriculumProposalAcceptsRecognitionAcrossResultingState(t *testing.T) {
 	base := validationTestGraph()
 	proposal := &models.CurriculumProposal{Changes: []models.CurriculumProposalChange{
 		{
@@ -58,8 +58,8 @@ func TestValidateCurriculumProposalAcceptsKnowledgeTransferAcrossResultingState(
 			UnitName: "Modern geometry", UnitContent: "Learn modern geometry.",
 		},
 		{
-			ID: 11, Position: 2, Kind: "transfer_knowledge",
-			KnowledgeTransfer: &models.KnowledgeTransfer{
+			ID: 11, Position: 2, Kind: "recognition",
+			Recognition: &models.Recognition{
 				Rationale: "The former units jointly cover the new material.",
 				Sources:   []models.Unit{{ID: 1}, {ID: 3}},
 				Targets:   []models.Unit{{ID: 10}},
@@ -68,7 +68,7 @@ func TestValidateCurriculumProposalAcceptsKnowledgeTransferAcrossResultingState(
 	}}
 
 	if err := validateCurriculumProposal(base, proposal); err != nil {
-		t.Fatalf("validate knowledge transfer: %v", err)
+		t.Fatalf("validate recognition: %v", err)
 	}
 }
 
@@ -148,15 +148,15 @@ func TestValidateCurriculumProposalRejectsIncoherentChanges(t *testing.T) {
 			},
 		},
 		{
-			name: "knowledge transfer source outside base",
+			name: "recognition source outside base",
 			changes: []models.CurriculumProposalChange{
 				{
 					ID: 10, Position: 1, Kind: "create_unit", UnitID: 10,
 					UnitName: "New", UnitContent: "New content.",
 				},
 				{
-					ID: 11, Position: 2, Kind: "transfer_knowledge",
-					KnowledgeTransfer: &models.KnowledgeTransfer{
+					ID: 11, Position: 2, Kind: "recognition",
+					Recognition: &models.Recognition{
 						Rationale: "Invalid hypothetical source.",
 						Sources:   []models.Unit{{ID: 10}},
 						Targets:   []models.Unit{{ID: 1}},
@@ -165,10 +165,10 @@ func TestValidateCurriculumProposalRejectsIncoherentChanges(t *testing.T) {
 			},
 		},
 		{
-			name: "knowledge transfer target outside result",
+			name: "recognition target outside result",
 			changes: []models.CurriculumProposalChange{{
-				ID: 10, Position: 1, Kind: "transfer_knowledge",
-				KnowledgeTransfer: &models.KnowledgeTransfer{
+				ID: 10, Position: 1, Kind: "recognition",
+				Recognition: &models.Recognition{
 					Rationale: "Invalid missing target.",
 					Sources:   []models.Unit{{ID: 1}},
 					Targets:   []models.Unit{{ID: 99}},
@@ -176,10 +176,10 @@ func TestValidateCurriculumProposalRejectsIncoherentChanges(t *testing.T) {
 			}},
 		},
 		{
-			name: "knowledge transfer duplicate source",
+			name: "recognition duplicate source",
 			changes: []models.CurriculumProposalChange{{
-				ID: 10, Position: 1, Kind: "transfer_knowledge",
-				KnowledgeTransfer: &models.KnowledgeTransfer{
+				ID: 10, Position: 1, Kind: "recognition",
+				Recognition: &models.Recognition{
 					Rationale: "Duplicate source.",
 					Sources:   []models.Unit{{ID: 1}, {ID: 1}},
 					Targets:   []models.Unit{{ID: 2}},
@@ -201,22 +201,22 @@ func TestValidateCurriculumProposalRejectsIncoherentChanges(t *testing.T) {
 	}
 }
 
-func TestCurriculumKnowledgeTransferCoverageOnlyWarnsForUnmappedStructuralChanges(t *testing.T) {
+func TestCurriculumRecognitionCoverageOnlyWarnsForUnmappedStructuralChanges(t *testing.T) {
 	proposal := &models.CurriculumProposal{Changes: []models.CurriculumProposalChange{
 		{ID: 10, Kind: "create_unit", UnitID: 10, UnitName: "Covered creation"},
 		{ID: 11, Kind: "create_unit", UnitID: 11, UnitName: "Novel creation"},
 		{ID: 12, Kind: "delete_unit", UnitID: 1, UnitName: "Covered retirement"},
 		{ID: 13, Kind: "delete_unit", UnitID: 2, UnitName: "Unmapped retirement"},
 		{
-			ID: 14, Kind: "transfer_knowledge",
-			KnowledgeTransfer: &models.KnowledgeTransfer{
+			ID: 14, Kind: "recognition",
+			Recognition: &models.Recognition{
 				Sources: []models.Unit{{ID: 1}},
 				Targets: []models.Unit{{ID: 10}},
 			},
 		},
 	}}
 
-	warning := CurriculumKnowledgeTransferCoverage(proposal)
+	warning := CurriculumRecognitionCoverage(proposal)
 
 	if len(warning.CreatedWithoutSource) != 1 || warning.CreatedWithoutSource[0].ID != 11 {
 		t.Fatalf("unmapped creations = %#v", warning.CreatedWithoutSource)

@@ -176,7 +176,7 @@ func (server *Server) learn(writer http.ResponseWriter, request *http.Request) {
 			CSRFToken: page.CSRFToken,
 			ReturnURL: request.URL.RequestURI(),
 			Completed: data.CompletedUnitIDs[data.ContentUnit.ID],
-			Transferred: data.CompletionStatuses[data.ContentUnit.ID].Transferred &&
+			Recognized: data.CompletionStatuses[data.ContentUnit.ID].Recognized &&
 				!data.CompletionStatuses[data.ContentUnit.ID].Direct,
 		}
 	}
@@ -295,11 +295,11 @@ func (server *Server) setUnitCompletion(writer http.ResponseWriter, request *htt
 	if request.Header.Get("HX-Request") == "true" {
 		server.render(writer, "unit-completion-update", unitCompletionUpdateView{
 			Completion: unitCompletionView{
-				UnitID:      unitID,
-				CSRFToken:   sessionCSRFToken(request),
-				ReturnURL:   returnURL,
-				Completed:   completed,
-				Transferred: completionStatus.Transferred && !completionStatus.Direct,
+				UnitID:     unitID,
+				CSRFToken:  sessionCSRFToken(request),
+				ReturnURL:  returnURL,
+				Completed:  completed,
+				Recognized: completionStatus.Recognized && !completionStatus.Direct,
 			},
 			Anchor: curriculumGraphNodeView{
 				CurriculumGraphNode: models.CurriculumGraphNode{Unit: *unit},

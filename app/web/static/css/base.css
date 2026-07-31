@@ -8,10 +8,14 @@
   --color-panel-end: #f0f0f0;
   --dependency-purple-hue: 286;
   --color-dependency: oklch(0.52 0.16 var(--dependency-purple-hue));
-  --color-proposal-created: oklch(48% 0.105 148);
-  --color-proposal-deleted: oklch(49% 0.13 25);
-  --color-proposal-rename: oklch(55% 0.12 65);
-  --color-proposal-content: oklch(49% 0.105 250);
+  --proposal-change-lightness: 0.6;
+  --proposal-change-chroma: 0.1;
+  --color-proposal-created: oklch(var(--proposal-change-lightness) var(--proposal-change-chroma) 160);
+  --color-proposal-deleted: oklch(var(--proposal-change-lightness) var(--proposal-change-chroma) 25);
+  --color-proposal-rename: oklch(var(--proposal-change-lightness) var(--proposal-change-chroma) 65);
+  --color-proposal-content: oklch(var(--proposal-change-lightness) var(--proposal-change-chroma) 250);
+  --color-proposal-dependency: oklch(var(--proposal-change-lightness) var(--proposal-change-chroma) var(--dependency-purple-hue));
+  --color-proposal-recognition: oklch(var(--proposal-change-lightness) var(--proposal-change-chroma) 95);
   --color-danger: #c93341;
   --color-selection-outline: oklch(0.58 0 0);
   --radius-surface: 1rem;

@@ -118,8 +118,8 @@ Every published change retains its proposal, authors, discussion, decision and
 previous state. Accepted proposals identify historical curriculum states so
 that learning records and certifications keep their original meaning.
 
-Accepted proposals may define knowledge transfers between the curriculum state
-on which they are based and the state they produce. A transfer may require
+Accepted proposals may define recognitions between the curriculum state on
+which they are based and the state they produce. A recognition may require
 several source units and may recognize several target units, allowing
 replacements, splits and merges to preserve the value of prior learning without
 rewriting its historical record.
@@ -165,9 +165,9 @@ explicit consent.
 
 Curriculum changes must not erase or reinterpret historical progress. A
 completion records the unit and accepted curriculum state in which it occurred.
-The platform applies the knowledge transfers in accepted proposals to show which
+The platform applies the recognitions in accepted proposals to show which
 units in the current graph are also recognized. The original completion remains
-distinct from recognition obtained through a transfer.
+distinct from the derived recognition.
 
 ### 5.4 Employment-informed guidance
 
@@ -238,12 +238,12 @@ A proposal is a coherent collection of changes. It may change:
 A proposal contains its authors, rationale, the accepted proposal on which it
 is based and a readable diff of both content and graph changes.
 
-A knowledge transfer recognizes every target when all of its sources have been
-completed. Transfers are explicit proposal changes and may be proposed even
-when no unit is created or removed. Creating a unit without an incoming transfer
-means that it represents knowledge not previously covered. Removing a unit
-without an outgoing transfer means that it has no recognized successor. These
-choices are valid, but the publishing interface warns the author before
+A recognition marks every target as recognized when all of its sources have
+been completed. Recognitions are explicit proposal changes and may be proposed
+even when no unit is created or removed. Creating a unit without incoming
+recognition means that it represents knowledge not previously covered. Removing
+a unit without outgoing recognition means that it has no recognized successor.
+These choices are valid, but the publishing interface warns the author before
 continuing so they are not made accidentally.
 
 ### 7.2 Isolated work and conflicts
@@ -306,7 +306,7 @@ decisions, but it must remain proportionate and protect participants' privacy.
 ### 7.7 Acceptance
 
 An accepted proposal is validated against the current graph and applied
-atomically. Its units, dependencies, knowledge transfers, resources,
+atomically. Its units, dependencies, recognitions, resources,
 translations and decision record are either published together or not published
 at all.
 
@@ -339,7 +339,7 @@ Institutions can participate at several levels:
 A certification identifies the student, institution, units, accepted curriculum
 state, assessment basis, issue date, validity and revocation status.
 
-Knowledge transfers may show that an older certification covers units in the
+Recognitions may show that an older certification covers units in the
 current curriculum, but they never alter or replace the certification that was
 issued. Issuing a new certification or a formal convalidation remains an
 explicit decision of an authorized institution.

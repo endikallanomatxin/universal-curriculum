@@ -276,8 +276,8 @@ func RebuildCurriculumProjection(q curriculumExecutor, proposalID int64) error {
 			`, change.UnitID, change.PrerequisiteID); err != nil {
 				return fmt.Errorf("project dependency deletion: %w", err)
 			}
-		case "transfer_knowledge":
-			// Knowledge transfers describe continuity between curriculum states;
+		case "recognition":
+			// Recognitions describe continuity between curriculum states;
 			// they do not change the published graph projection.
 		default:
 			return fmt.Errorf("project unsupported curriculum change %q", change.Kind)
@@ -424,7 +424,7 @@ func listCurriculumProposalChanges(q curriculumExecutor, proposalID int64) ([]mo
 		SELECT id, proposal_id, position, kind, unit_id,
 		       COALESCE(unit_name, ''), COALESCE(previous_unit_name, ''),
 		       COALESCE(unit_content, ''), COALESCE(previous_unit_content, ''),
-		       prerequisite_id, COALESCE(transfer_rationale, '')
+		       prerequisite_id, COALESCE(recognition_rationale, '')
 		FROM curriculum_proposal_change_details
 		WHERE proposal_id = $1
 		ORDER BY position
@@ -437,20 +437,20 @@ func listCurriculumProposalChanges(q curriculumExecutor, proposalID int64) ([]mo
 	for rows.Next() {
 		var change models.CurriculumProposalChange
 		var prerequisite sql.NullInt64
-		var transferRationale string
+		var recognitionRationale string
 		if err := rows.Scan(
 			&change.ID, &change.ProposalID, &change.Position, &change.Kind,
 			&change.UnitID, &change.UnitName, &change.PreviousUnitName,
 			&change.UnitContent, &change.PreviousUnitContent, &prerequisite,
-			&transferRationale,
+			&recognitionRationale,
 		); err != nil {
 			return nil, fmt.Errorf("scan curriculum proposal change: %w", err)
 		}
 		if prerequisite.Valid {
 			change.PrerequisiteID = &prerequisite.Int64
 		}
-		if change.Kind == "transfer_knowledge" {
-			change.KnowledgeTransfer = &models.KnowledgeTransfer{Rationale: transferRationale}
+		if change.Kind == "recognition" {
+			change.Recognition = &models.Recognition{Rationale: recognitionRationale}
 		}
 		changes = append(changes, change)
 	}
@@ -460,7 +460,7 @@ func listCurriculumProposalChanges(q curriculumExecutor, proposalID int64) ([]mo
 	if err := rows.Close(); err != nil {
 		return nil, fmt.Errorf("close curriculum proposal changes: %w", err)
 	}
-	if err := loadCurriculumKnowledgeTransferMembers(q, proposalID, changes); err != nil {
+	if err := loadCurriculumRecognitionMembers(q, proposalID, changes); err != nil {
 		return nil, err
 	}
 	return changes, nil
@@ -506,18 +506,18 @@ func insertCurriculumProposalChangeDetail(q curriculumExecutor, change *models.C
 			)
 			VALUES ($1, $2, $3)
 		`, change.ID, change.UnitID, change.PrerequisiteID)
-	case "transfer_knowledge":
-		if change.KnowledgeTransfer == nil {
-			return fmt.Errorf("create curriculum knowledge transfer detail: missing transfer")
+	case "recognition":
+		if change.Recognition == nil {
+			return fmt.Errorf("create curriculum recognition detail: missing recognition")
 		}
 		_, err = q.Exec(`
-			INSERT INTO curriculum_knowledge_transfers (change_id, rationale)
+			INSERT INTO curriculum_recognitions (change_id, rationale)
 			VALUES ($1, $2)
-		`, change.ID, change.KnowledgeTransfer.Rationale)
+		`, change.ID, change.Recognition.Rationale)
 		if err == nil {
-			for _, source := range change.KnowledgeTransfer.Sources {
+			for _, source := range change.Recognition.Sources {
 				if _, err = q.Exec(`
-					INSERT INTO curriculum_knowledge_transfer_sources (transfer_change_id, unit_id)
+					INSERT INTO curriculum_recognition_sources (recognition_change_id, unit_id)
 					VALUES ($1, $2)
 				`, change.ID, source.ID); err != nil {
 					break
@@ -525,9 +525,9 @@ func insertCurriculumProposalChangeDetail(q curriculumExecutor, change *models.C
 			}
 		}
 		if err == nil {
-			for _, target := range change.KnowledgeTransfer.Targets {
+			for _, target := range change.Recognition.Targets {
 				if _, err = q.Exec(`
-					INSERT INTO curriculum_knowledge_transfer_targets (transfer_change_id, unit_id)
+					INSERT INTO curriculum_recognition_targets (recognition_change_id, unit_id)
 					VALUES ($1, $2)
 				`, change.ID, target.ID); err != nil {
 					break
@@ -543,14 +543,14 @@ func insertCurriculumProposalChangeDetail(q curriculumExecutor, change *models.C
 	return nil
 }
 
-func loadCurriculumKnowledgeTransferMembers(
+func loadCurriculumRecognitionMembers(
 	q curriculumExecutor,
 	proposalID int64,
 	changes []models.CurriculumProposalChange,
 ) error {
 	changeIndexes := make(map[int64]int)
 	for index := range changes {
-		if changes[index].KnowledgeTransfer != nil {
+		if changes[index].Recognition != nil {
 			changeIndexes[changes[index].ID] = index
 		}
 	}
@@ -558,49 +558,49 @@ func loadCurriculumKnowledgeTransferMembers(
 		return nil
 	}
 	rows, err := q.Query(`
-		SELECT member.transfer_change_id, member.role, member.unit_id,
+		SELECT member.recognition_change_id, member.role, member.unit_id,
 		       COALESCE(unit.name, creation.name)
 		FROM (
-			SELECT source.transfer_change_id, 'source'::TEXT AS role, source.unit_id
-			FROM curriculum_knowledge_transfer_sources source
+			SELECT source.recognition_change_id, 'source'::TEXT AS role, source.unit_id
+			FROM curriculum_recognition_sources source
 			UNION ALL
-			SELECT target.transfer_change_id, 'target'::TEXT AS role, target.unit_id
-			FROM curriculum_knowledge_transfer_targets target
+			SELECT target.recognition_change_id, 'target'::TEXT AS role, target.unit_id
+			FROM curriculum_recognition_targets target
 		) member
 		JOIN curriculum_unit_creations creation ON creation.change_id = member.unit_id
-		JOIN curriculum_knowledge_transfers transfer ON transfer.change_id = member.transfer_change_id
-		JOIN curriculum_proposal_changes change ON change.id = transfer.change_id
+		JOIN curriculum_recognitions recognition ON recognition.change_id = member.recognition_change_id
+		JOIN curriculum_proposal_changes change ON change.id = recognition.change_id
 		LEFT JOIN units unit ON unit.id = member.unit_id
 		WHERE change.proposal_id = $1
-		ORDER BY member.transfer_change_id, member.role, lower(COALESCE(unit.name, creation.name)), member.unit_id
+		ORDER BY member.recognition_change_id, member.role, lower(COALESCE(unit.name, creation.name)), member.unit_id
 	`, proposalID)
 	if err != nil {
-		return fmt.Errorf("list curriculum knowledge transfer members: %w", err)
+		return fmt.Errorf("list curriculum recognition members: %w", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var changeID, unitID int64
 		var role, name string
 		if err := rows.Scan(&changeID, &role, &unitID, &name); err != nil {
-			return fmt.Errorf("scan curriculum knowledge transfer member: %w", err)
+			return fmt.Errorf("scan curriculum recognition member: %w", err)
 		}
 		index, exists := changeIndexes[changeID]
 		if !exists {
-			return fmt.Errorf("knowledge transfer member references unknown proposal change %d", changeID)
+			return fmt.Errorf("recognition member references unknown proposal change %d", changeID)
 		}
 		unit := models.Unit{ID: unitID, Name: name}
 		if role == "source" {
-			changes[index].KnowledgeTransfer.Sources = append(
-				changes[index].KnowledgeTransfer.Sources, unit,
+			changes[index].Recognition.Sources = append(
+				changes[index].Recognition.Sources, unit,
 			)
 		} else {
-			changes[index].KnowledgeTransfer.Targets = append(
-				changes[index].KnowledgeTransfer.Targets, unit,
+			changes[index].Recognition.Targets = append(
+				changes[index].Recognition.Targets, unit,
 			)
 		}
 	}
 	if err := rows.Err(); err != nil {
-		return fmt.Errorf("iterate curriculum knowledge transfer members: %w", err)
+		return fmt.Errorf("iterate curriculum recognition members: %w", err)
 	}
 	return nil
 }

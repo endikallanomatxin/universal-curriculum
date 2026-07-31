@@ -285,7 +285,7 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if err := DeleteCurriculumUnit(database, authorID, retirement.ID, algebra.ID); err != nil {
 		t.Fatal(err)
 	}
-	if err := AddCurriculumKnowledgeTransfer(
+	if err := AddCurriculumRecognition(
 		database,
 		authorID,
 		retirement.ID,
@@ -301,11 +301,11 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 		normalizedRetirement.Changes[1].Kind != "delete_unit" ||
 		normalizedRetirement.Changes[1].UnitName != "Introductory algebra" ||
 		normalizedRetirement.Changes[1].UnitContent != "Work through variables, expressions, and equations." ||
-		normalizedRetirement.Changes[2].Kind != "transfer_knowledge" ||
-		len(normalizedRetirement.Changes[2].KnowledgeTransfer.Sources) != 1 ||
-		normalizedRetirement.Changes[2].KnowledgeTransfer.Sources[0].ID != algebra.ID ||
-		len(normalizedRetirement.Changes[2].KnowledgeTransfer.Targets) != 1 ||
-		normalizedRetirement.Changes[2].KnowledgeTransfer.Targets[0].ID != replacement.ID {
+		normalizedRetirement.Changes[2].Kind != "recognition" ||
+		len(normalizedRetirement.Changes[2].Recognition.Sources) != 1 ||
+		normalizedRetirement.Changes[2].Recognition.Sources[0].ID != algebra.ID ||
+		len(normalizedRetirement.Changes[2].Recognition.Targets) != 1 ||
+		normalizedRetirement.Changes[2].Recognition.Targets[0].ID != replacement.ID {
 		t.Fatalf("unit deletion did not remove superseded changes: proposal=%#v err=%v", normalizedRetirement, err)
 	}
 	if err := UpdateCurriculumUnit(database, authorID, retirement.ID, algebra.ID, "Renamed after deletion"); err != ErrUnitNotFound {
@@ -314,11 +314,11 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if err := PublishCurriculumProposal(database, authorID, retirement.ID); err != nil {
 		t.Fatal(err)
 	}
-	transferChangeID := normalizedRetirement.Changes[2].ID
+	recognitionChangeID := normalizedRetirement.Changes[2].ID
 	if _, err := database.Exec(`
-		DELETE FROM curriculum_knowledge_transfer_targets WHERE transfer_change_id = $1
-	`, transferChangeID); err == nil {
-		t.Fatal("accepted knowledge transfer target was deleted")
+		DELETE FROM curriculum_recognition_targets WHERE recognition_change_id = $1
+	`, recognitionChangeID); err == nil {
+		t.Fatal("accepted recognition target was deleted")
 	}
 	persistedPath, err = db.GetLearningPath(database, authorID, learningPath.ID)
 	if err != nil || persistedPath == nil || len(persistedPath.Units) != 1 ||
@@ -327,14 +327,14 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	}
 	completedUnitIDs, err = db.CompletedUnitIDs(database, authorID)
 	if err != nil || !completedUnitIDs[algebra.ID] || !completedUnitIDs[replacement.ID] {
-		t.Fatalf("retiring a unit did not preserve and transfer progress: ids=%v err=%v", completedUnitIDs, err)
+		t.Fatalf("retiring a unit did not preserve and recognition progress: ids=%v err=%v", completedUnitIDs, err)
 	}
 	completionStatuses, err := db.UnitCompletionStatuses(database, authorID)
 	if err != nil ||
 		!completionStatuses[algebra.ID].Direct ||
 		completionStatuses[replacement.ID].Direct ||
-		!completionStatuses[replacement.ID].Transferred {
-		t.Fatalf("direct and transferred progress were conflated: statuses=%v err=%v", completionStatuses, err)
+		!completionStatuses[replacement.ID].Recognized {
+		t.Fatalf("direct and recognized progress were conflated: statuses=%v err=%v", completionStatuses, err)
 	}
 
 	discarded, err := CreateCurriculumProposal(database, authorID, "Discarded draft", "Exercise hypothetical identity cleanup.")
@@ -351,13 +351,13 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if err := AddUnitDependency(database, authorID, discarded.ID, hypothetical.ID, foundations.ID); err != nil {
 		t.Fatal(err)
 	}
-	if err := AddCurriculumKnowledgeTransfer(
+	if err := AddCurriculumRecognition(
 		database,
 		authorID,
 		discarded.ID,
 		[]int64{foundations.ID},
 		[]int64{hypothetical.ID},
-		"Test cleanup of a transfer to a discarded hypothetical unit.",
+		"Test cleanup of a recognition to a discarded hypothetical unit.",
 	); err != nil {
 		t.Fatal(err)
 	}

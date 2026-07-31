@@ -41,7 +41,7 @@ type curriculumProposalValidationState struct {
 	deletedUnits        map[int64]bool
 	changedDependencies map[curriculumDependencyKey]bool
 	baseUnits           map[int64]bool
-	knowledgeTransfers  map[string]bool
+	recognitions        map[string]bool
 }
 
 func validateCurriculumProposal(base *models.CurriculumGraph, proposal *models.CurriculumProposal) error {
@@ -60,7 +60,7 @@ func validateCurriculumProposal(base *models.CurriculumGraph, proposal *models.C
 		deletedUnits:        make(map[int64]bool),
 		changedDependencies: make(map[curriculumDependencyKey]bool),
 		baseUnits:           make(map[int64]bool, len(base.Units)),
-		knowledgeTransfers:  make(map[string]bool),
+		recognitions:        make(map[string]bool),
 	}
 	for _, unit := range base.Units {
 		if unit.ID <= 0 || !validCurriculumText(unit.Name) || !validCurriculumText(unit.Content) {
@@ -93,22 +93,22 @@ func validateCurriculumProposal(base *models.CurriculumGraph, proposal *models.C
 	}
 
 	lastPosition := 0
-	var knowledgeTransfers []models.CurriculumProposalChange
+	var recognitions []models.CurriculumProposalChange
 	for _, change := range proposal.Changes {
 		if change.ID <= 0 || change.Position <= lastPosition {
 			return invalidChange(change, "changes are not uniquely ordered")
 		}
 		lastPosition = change.Position
-		if change.Kind == "transfer_knowledge" {
-			knowledgeTransfers = append(knowledgeTransfers, change)
+		if change.Kind == "recognition" {
+			recognitions = append(recognitions, change)
 			continue
 		}
 		if err := state.apply(change); err != nil {
 			return err
 		}
 	}
-	for _, change := range knowledgeTransfers {
-		if err := state.validateKnowledgeTransfer(change); err != nil {
+	for _, change := range recognitions {
+		if err := state.validateRecognition(change); err != nil {
 			return err
 		}
 	}
@@ -134,42 +134,42 @@ func (state *curriculumProposalValidationState) apply(change models.CurriculumPr
 	}
 }
 
-func (state *curriculumProposalValidationState) validateKnowledgeTransfer(
+func (state *curriculumProposalValidationState) validateRecognition(
 	change models.CurriculumProposalChange,
 ) error {
-	transfer := change.KnowledgeTransfer
-	if transfer == nil {
-		return invalidChange(change, "the knowledge transfer detail is missing")
+	recognition := change.Recognition
+	if recognition == nil {
+		return invalidChange(change, "the recognition detail is missing")
 	}
-	if !validCurriculumText(transfer.Rationale) {
-		return invalidChange(change, "the knowledge transfer rationale is empty or not normalized")
+	if !validCurriculumText(recognition.Rationale) {
+		return invalidChange(change, "the recognition rationale is empty or not normalized")
 	}
-	if len(transfer.Sources) == 0 {
-		return invalidChange(change, "the knowledge transfer has no source units")
+	if len(recognition.Sources) == 0 {
+		return invalidChange(change, "the recognition has no source units")
 	}
-	if len(transfer.Targets) == 0 {
-		return invalidChange(change, "the knowledge transfer has no target units")
+	if len(recognition.Targets) == 0 {
+		return invalidChange(change, "the recognition has no target units")
 	}
-	sourceIDs := make([]int64, 0, len(transfer.Sources))
-	seenSources := make(map[int64]bool, len(transfer.Sources))
-	for _, source := range transfer.Sources {
+	sourceIDs := make([]int64, 0, len(recognition.Sources))
+	seenSources := make(map[int64]bool, len(recognition.Sources))
+	for _, source := range recognition.Sources {
 		if source.ID <= 0 || seenSources[source.ID] {
-			return invalidChange(change, "the knowledge transfer contains an invalid or duplicate source")
+			return invalidChange(change, "the recognition contains an invalid or duplicate source")
 		}
 		if !state.baseUnits[source.ID] {
-			return invalidChange(change, "a knowledge transfer source is not present in the base curriculum")
+			return invalidChange(change, "a recognition source is not present in the base curriculum")
 		}
 		seenSources[source.ID] = true
 		sourceIDs = append(sourceIDs, source.ID)
 	}
-	targetIDs := make([]int64, 0, len(transfer.Targets))
-	seenTargets := make(map[int64]bool, len(transfer.Targets))
-	for _, target := range transfer.Targets {
+	targetIDs := make([]int64, 0, len(recognition.Targets))
+	seenTargets := make(map[int64]bool, len(recognition.Targets))
+	for _, target := range recognition.Targets {
 		if target.ID <= 0 || seenTargets[target.ID] {
-			return invalidChange(change, "the knowledge transfer contains an invalid or duplicate target")
+			return invalidChange(change, "the recognition contains an invalid or duplicate target")
 		}
 		if _, exists := state.units[target.ID]; !exists {
-			return invalidChange(change, "a knowledge transfer target is not present in the resulting curriculum")
+			return invalidChange(change, "a recognition target is not present in the resulting curriculum")
 		}
 		seenTargets[target.ID] = true
 		targetIDs = append(targetIDs, target.ID)
@@ -177,10 +177,10 @@ func (state *curriculumProposalValidationState) validateKnowledgeTransfer(
 	sort.Slice(sourceIDs, func(i, j int) bool { return sourceIDs[i] < sourceIDs[j] })
 	sort.Slice(targetIDs, func(i, j int) bool { return targetIDs[i] < targetIDs[j] })
 	key := fmt.Sprintf("%v->%v", sourceIDs, targetIDs)
-	if state.knowledgeTransfers[key] {
-		return invalidChange(change, "the same knowledge transfer is declared more than once")
+	if state.recognitions[key] {
+		return invalidChange(change, "the same recognition is declared more than once")
 	}
-	state.knowledgeTransfers[key] = true
+	state.recognitions[key] = true
 	return nil
 }
 

@@ -46,23 +46,23 @@ func UnitCompletionStatuses(q curriculumExecutor, userID int64) (map[int64]model
 	if err := rows.Close(); err != nil {
 		return nil, fmt.Errorf("close completed unit ids: %w", err)
 	}
-	transfers, err := acceptedKnowledgeTransfers(q)
+	recognitions, err := acceptedRecognitions(q)
 	if err != nil {
 		return nil, err
 	}
-	applyKnowledgeTransfers(statuses, transfers)
+	applyRecognitions(statuses, recognitions)
 	return statuses, nil
 }
 
-func applyKnowledgeTransfers(
+func applyRecognitions(
 	statuses map[int64]models.UnitCompletionStatus,
-	transfers []models.KnowledgeTransfer,
+	recognitions []models.Recognition,
 ) {
 	for changed := true; changed; {
 		changed = false
-		for _, transfer := range transfers {
+		for _, recognition := range recognitions {
 			allSourcesCompleted := true
-			for _, source := range transfer.Sources {
+			for _, source := range recognition.Sources {
 				if !statuses[source.ID].Completed() {
 					allSourcesCompleted = false
 					break
@@ -71,12 +71,12 @@ func applyKnowledgeTransfers(
 			if !allSourcesCompleted {
 				continue
 			}
-			for _, target := range transfer.Targets {
+			for _, target := range recognition.Targets {
 				status := statuses[target.ID]
 				if status.Completed() {
 					continue
 				}
-				status.Transferred = true
+				status.Recognized = true
 				statuses[target.ID] = status
 				changed = true
 			}
@@ -106,7 +106,7 @@ func SetUnitCompleted(q curriculumExecutor, userID, unitID int64, completed bool
 	return nil
 }
 
-func acceptedKnowledgeTransfers(q curriculumExecutor) ([]models.KnowledgeTransfer, error) {
+func acceptedRecognitions(q curriculumExecutor) ([]models.Recognition, error) {
 	rows, err := q.Query(`
 		WITH RECURSIVE proposal_lineage AS (
 			SELECT proposal.id, proposal.base_proposal_id
@@ -122,45 +122,45 @@ func acceptedKnowledgeTransfers(q curriculumExecutor) ([]models.KnowledgeTransfe
 			WHERE proposal.status = 'accepted'
 		),
 		members AS (
-			SELECT source.transfer_change_id, 'source'::TEXT AS role, source.unit_id
-			FROM curriculum_knowledge_transfer_sources source
+			SELECT source.recognition_change_id, 'source'::TEXT AS role, source.unit_id
+			FROM curriculum_recognition_sources source
 			UNION ALL
-			SELECT target.transfer_change_id, 'target'::TEXT AS role, target.unit_id
-			FROM curriculum_knowledge_transfer_targets target
+			SELECT target.recognition_change_id, 'target'::TEXT AS role, target.unit_id
+			FROM curriculum_recognition_targets target
 		)
-		SELECT transfer.change_id, member.role, member.unit_id
+		SELECT recognition.change_id, member.role, member.unit_id
 		FROM proposal_lineage lineage
 		JOIN curriculum_proposal_changes change ON change.proposal_id = lineage.id
-		JOIN curriculum_knowledge_transfers transfer ON transfer.change_id = change.id
-		JOIN members member ON member.transfer_change_id = transfer.change_id
-		ORDER BY transfer.change_id, member.role, member.unit_id
+		JOIN curriculum_recognitions recognition ON recognition.change_id = change.id
+		JOIN members member ON member.recognition_change_id = recognition.change_id
+		ORDER BY recognition.change_id, member.role, member.unit_id
 	`)
 	if err != nil {
-		return nil, fmt.Errorf("list accepted curriculum knowledge transfers: %w", err)
+		return nil, fmt.Errorf("list accepted curriculum recognitions: %w", err)
 	}
 	defer rows.Close()
-	var transfers []models.KnowledgeTransfer
+	var recognitions []models.Recognition
 	indexes := make(map[int64]int)
 	for rows.Next() {
 		var changeID, unitID int64
 		var role string
 		if err := rows.Scan(&changeID, &role, &unitID); err != nil {
-			return nil, fmt.Errorf("scan accepted curriculum knowledge transfer: %w", err)
+			return nil, fmt.Errorf("scan accepted curriculum recognition: %w", err)
 		}
 		index, exists := indexes[changeID]
 		if !exists {
-			index = len(transfers)
+			index = len(recognitions)
 			indexes[changeID] = index
-			transfers = append(transfers, models.KnowledgeTransfer{})
+			recognitions = append(recognitions, models.Recognition{})
 		}
 		if role == "source" {
-			transfers[index].Sources = append(transfers[index].Sources, models.Unit{ID: unitID})
+			recognitions[index].Sources = append(recognitions[index].Sources, models.Unit{ID: unitID})
 		} else {
-			transfers[index].Targets = append(transfers[index].Targets, models.Unit{ID: unitID})
+			recognitions[index].Targets = append(recognitions[index].Targets, models.Unit{ID: unitID})
 		}
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate accepted curriculum knowledge transfers: %w", err)
+		return nil, fmt.Errorf("iterate accepted curriculum recognitions: %w", err)
 	}
-	return transfers, nil
+	return recognitions, nil
 }

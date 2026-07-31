@@ -12,12 +12,12 @@ type Unit struct {
 }
 
 type UnitCompletionStatus struct {
-	Direct      bool
-	Transferred bool
+	Direct     bool
+	Recognized bool
 }
 
 func (status UnitCompletionStatus) Completed() bool {
-	return status.Direct || status.Transferred
+	return status.Direct || status.Recognized
 }
 
 type UnitDependency struct {

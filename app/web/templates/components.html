@@ -141,11 +141,11 @@
 {{- end }}
 
 {{ define "unit-completion-form" -}}
-{{ if .Transferred }}
+{{ if .Recognized }}
 <div class="unit-completion" id="unit-completion-{{ .UnitID }}">
-  <span class="unit-completion__transferred">
+  <span class="unit-completion__recognized">
     <span class="unit-completion__indicator {{ if .Completed }}is-completed{{ end }}" aria-hidden="true"></span>
-    <span>Recognized through knowledge transfer</span>
+    <span>Recognized from previous learning</span>
   </span>
 </div>
 {{ else }}
