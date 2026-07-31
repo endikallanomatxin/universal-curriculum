@@ -100,14 +100,38 @@
     });
   }
 
-  function navigationMode(event) {
+  function navigationFor(event) {
     const request = event.detail && event.detail.xhr;
     return request && navigationByRequest.get(request);
   }
 
-  function animateNavigatedPanels(root, mode) {
-    if (mode !== "open") return;
-    root.querySelectorAll('[data-panel-motion="horizontal"]:not([hidden])').forEach(function (panel) {
+  function resolvedNavigationMode(trigger) {
+    const declaredMode = trigger && trigger.dataset.panelNavigation;
+    if (declaredMode === "workspace") {
+      const workspace = document.querySelector("#workspace");
+      return !workspace || workspace.hidden || workspace.dataset.shellView === "home" ? "open" : "replace";
+    }
+    if (declaredMode !== "open-or-replace") return declaredMode;
+    const group = trigger.closest("[data-panel-group]");
+    const origin = directChildContaining(group, trigger);
+    if (!group || !origin) return "open";
+    const children = Array.from(group.children);
+    const originIndex = children.indexOf(origin);
+    const hasPanelToReplace = children.some(function (panel, index) {
+      return index > originIndex &&
+        panel.matches("[data-nested-panel]") &&
+        !panel.hidden &&
+        !panel.classList.contains("is-closing");
+    });
+    return hasPanelToReplace ? "replace" : "open";
+  }
+
+  function animateNavigatedPanels(root, navigation) {
+    if (!navigation || navigation.mode !== "open") return;
+    const panels = navigation.scope === "workspace"
+      ? [root]
+      : Array.from(root.querySelectorAll('[data-panel-motion="horizontal"]:not([hidden])'));
+    panels.forEach(function (panel) {
       if (panel.panelMotionEntered) return;
       panel.panelMotionEntered = true;
       panel.classList.add("is-opening");
@@ -153,15 +177,20 @@
   document.addEventListener("htmx:beforeRequest", function (event) {
     const trigger = event.detail && event.detail.elt;
     const request = event.detail && event.detail.xhr;
-    const mode = trigger && trigger.dataset.panelNavigation;
+    const declaredMode = trigger && trigger.dataset.panelNavigation;
+    const mode = resolvedNavigationMode(trigger);
     if (request && mode) {
-      navigationByRequest.set(request, mode);
+      navigationByRequest.set(request, {
+        mode: mode,
+        scope: declaredMode === "workspace" ? "workspace" : "panel"
+      });
+      if (mode === "open") trigger.setAttribute("hx-swap", "outerHTML settle:0");
       if (mode === "replace") trigger.setAttribute("hx-swap", "outerHTML transition:true");
     }
   });
-  document.addEventListener("htmx:afterSwap", function (event) {
+  document.addEventListener("htmx:afterSettle", function (event) {
     if (event.target && event.target.id === "workspace") {
-      animateNavigatedPanels(event.target, navigationMode(event));
+      animateNavigatedPanels(event.target, navigationFor(event));
     }
   });
   document.addEventListener("panel:navigate", function (event) {

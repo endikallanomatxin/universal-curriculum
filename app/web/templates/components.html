@@ -115,6 +115,7 @@
              hx-select="#workspace"
              hx-swap="outerHTML transition:true"
              hx-push-url="true"
+             data-panel-navigation="open-or-replace"
              aria-label="Open content for {{ .Name }}"
              title="Open content">
             <span class="material-symbols-rounded" aria-hidden="true">article</span>
@@ -205,14 +206,14 @@
             <div class="home-recommendations__paths">
               {{ range .Recommendations }}
                 <article class="home-recommendation">
-                  <a class="home-recommendation__path" href="{{ .URL }}" {{ template "shell-link-attributes-without-view-transition" .URL }}>
+                  <a class="home-recommendation__path" href="{{ .URL }}" {{ template "shell-link-attributes-without-view-transition" .URL }} data-panel-navigation="workspace">
                     <strong>{{ .Name }}</strong>
                     <span>{{ .PendingCount }} {{ if eq .PendingCount 1 }}unit{{ else }}units{{ end }} remaining</span>
                   </a>
                   <ul>
                     {{ range .NextUnits }}
                       <li>
-                        <a href="{{ .URL }}" {{ template "shell-link-attributes-without-view-transition" .URL }}>
+                        <a href="{{ .URL }}" {{ template "shell-link-attributes-without-view-transition" .URL }} data-panel-navigation="workspace">
                           <span class="home-recommendation__indicator" aria-hidden="true"></span>
                           <span>{{ .Name }}</span>
                         </a>
@@ -230,14 +231,14 @@
     <nav aria-label="Primary navigation">
       <ul class="primary-menu">
         <li class="primary-menu__learn-item">
-          <a class="primary-menu__link primary-menu__link--learn primary-menu__link--session-action" href="/learn" {{ if eq .CurrentSection "learn" }}aria-current="page"{{ end }} {{ template "shell-link-attributes" "/learn" }}>
+          <a class="primary-menu__link primary-menu__link--learn primary-menu__link--session-action" href="/learn" {{ if eq .CurrentSection "learn" }}aria-current="page"{{ end }} {{ template "shell-link-attributes" "/learn" }} data-panel-navigation="workspace">
             {{ template "icon-learn" }}
             <span class="primary-menu__label">Learn</span>
           </a>
         </li>
         {{ if and .User .User.IsAdmin }}
           <li class="primary-menu__admin-item">
-            <a class="primary-menu__link primary-menu__link--curriculum primary-menu__link--session-action" href="/curriculum-modification" {{ if eq .CurrentSection "curriculum" }}aria-current="page"{{ end }} {{ template "shell-link-attributes" "/curriculum-modification" }}>
+            <a class="primary-menu__link primary-menu__link--curriculum primary-menu__link--session-action" href="/curriculum-modification" {{ if eq .CurrentSection "curriculum" }}aria-current="page"{{ end }} {{ template "shell-link-attributes" "/curriculum-modification" }} data-panel-navigation="workspace">
               {{ template "icon-curriculum" }}
               <span class="primary-menu__label">Curriculum<br>modification</span>
             </a>
@@ -245,7 +246,7 @@
         {{ end }}
         <li class="{{ if .User }}primary-menu__account-item{{ else }}primary-menu__login-item{{ end }}">
           {{ if .User }}
-            <a class="primary-menu__link primary-menu__link--account primary-menu__link--session-action" href="/account" {{ if eq .CurrentSection "account" }}aria-current="page"{{ end }} {{ template "shell-link-attributes" "/account" }}>
+            <a class="primary-menu__link primary-menu__link--account primary-menu__link--session-action" href="/account" {{ if eq .CurrentSection "account" }}aria-current="page"{{ end }} {{ template "shell-link-attributes" "/account" }} data-panel-navigation="workspace">
               {{ template "icon-account" }}
               <span class="primary-menu__label">Account</span>
             </a>

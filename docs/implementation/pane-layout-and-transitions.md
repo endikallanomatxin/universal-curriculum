@@ -101,16 +101,23 @@ declarations:
 - the destination pane declares its visual motion with
   `data-panel-motion="horizontal"`;
 - the navigation trigger declares `data-panel-navigation="open"`, `"replace"`
-  or `"close"`.
+  or `"close"`. A trigger that can either add a new right-hand pane or replace
+  the one already there declares `"open-or-replace"`; the controller resolves
+  its mode from the visible sibling panes before issuing the request. Primary
+  navigation declares `"workspace"`: leaving the home composition opens the
+  whole workspace from the right, while moving between populated workspaces is
+  a replacement.
 
-`open` swaps without a document View Transition and moves the new pane in from
-the right. `replace` preserves the pane boundary and enables a View Transition
-for continuity between its old and new content. `close` moves the pane out to
-the right before triggering its HTMX request. The controller associates the
-operation with the individual request rather than storing navigation state on
-`document`, so overlapping or unrelated requests cannot consume each other's
-motion intent. Links retain normal `href` navigation as their non-JavaScript
-fallback.
+`open` swaps without a document View Transition, settles HTMX attributes
+synchronously, and then moves the new pane in from beyond the right edge.
+Running the entrance after settlement prevents HTMX's class restoration from
+cancelling it. `replace` preserves the pane boundary and enables a View
+Transition for continuity between its old and new content. `close` moves the
+pane out to the right before triggering its HTMX request. The controller
+associates the operation with the individual request rather than storing
+navigation state on `document`, so overlapping or unrelated requests cannot
+consume each other's motion intent. Links retain normal `href` navigation as
+their non-JavaScript fallback.
 
 ## Motion and continuity
 

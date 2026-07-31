@@ -471,7 +471,8 @@
   }
 }
 
-.ui-pane[data-panel-motion="horizontal"].is-opening {
+.ui-pane[data-panel-motion="horizontal"].is-opening,
+.pane-stack.is-opening {
   animation: horizontal-panel-enter var(--panel-motion-duration) var(--panel-motion-easing);
   overflow: hidden;
   pointer-events: none;
