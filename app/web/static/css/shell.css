@@ -23,12 +23,14 @@
 .app-shell:not(.app-shell--home) .primary-navigation {
   flex: 0 0 var(--panel-width, var(--sidebar-width));
   overflow: hidden;
-  transition: flex-basis var(--panel-motion-duration) var(--panel-motion-easing), padding var(--panel-motion-duration) var(--panel-motion-easing);
 }
 
 .app-shell.is-initial-panel-layout .primary-navigation,
 .app-shell.is-initial-panel-layout .pane-stack,
-.app-shell.is-initial-panel-layout .ui-pane {
+.app-shell.is-initial-panel-layout .ui-pane,
+.app-shell.is-panel-layout-settling .primary-navigation,
+.app-shell.is-panel-layout-settling .pane-stack,
+.app-shell.is-panel-layout-settling .ui-pane {
   transition: none;
 }
 
@@ -607,6 +609,10 @@ button.primary-menu__link {
   position: relative;
 }
 
+.pane-stack.is-panel-motion-active {
+  overflow: clip;
+}
+
 .ui-pane {
   background: linear-gradient(90deg, var(--color-panel-start), var(--color-panel-end));
   flex: 0 0 var(--panel-width, min(100%, 42rem));
@@ -614,7 +620,6 @@ button.primary-menu__link {
   min-height: 100dvh;
   overflow-y: auto;
   padding: clamp(2rem, 5vw, 6rem);
-  transition: flex-basis var(--motion-duration) var(--motion-easing), padding var(--motion-duration) var(--motion-easing);
 }
 
 .ui-pane[data-panel-mode="compact"] {

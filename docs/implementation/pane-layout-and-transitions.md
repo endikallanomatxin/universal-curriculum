@@ -33,9 +33,12 @@ children's required and desired widths to their parent. Layout therefore runs
 from inner groups outward, allowing an outer context pane to collapse before
 an inner editor loses the space it needs.
 
-The home view is exceptional: navigation participates in the welcome
-composition and fills the available width instead of using negotiated sidebar
-modes.
+The outer app shell is always a panel group, including on the home view. Home
+presentation CSS lets its sole visible navigation pane fill the welcome
+composition, but the pane remains initialized by the allocator. A
+workspace-only HTMX swap can therefore add the workspace to the same retained
+group and immediately negotiate navigation plus content; home is a visual mode
+of the shared shell, not a separate layout tree.
 
 ## Responsive content
 
@@ -125,12 +128,20 @@ navigation state on `document`, so overlapping or unrelated requests cannot
 consume each other's motion intent. Links retain normal `href` navigation as
 their non-JavaScript fallback.
 
+Learning-path selection uses `open-or-replace`: the first selected path adds the
+curriculum-map pane from the right, while choosing another path with the map
+already present replaces its content in place.
+
 ## Motion and continuity
 
-Width and position changes are expressed through shared CSS transitions. Keep
-the element that owns a visual identity stable while its pane changes mode:
-replacing icons, scaling their containing box or changing layout structure
-mid-transition produces distortion or a final visual jump.
+Calculated pane widths and padding are applied without CSS interpolation. The
+allocator owns geometry, while document View Transitions and pane transforms
+own visible motion. Mixing those responsibilities lets an outer flex box and
+its contents temporarily compose against different widths, producing clipping
+that disappears after a reload. Keep the element that owns a visual identity
+stable while its pane changes mode: replacing icons, scaling their containing
+box or changing layout structure mid-transition produces distortion or a final
+visual jump.
 
 HTMX workspace navigation uses `transition:true`. Stable concepts receive
 stable `view-transition-name` values so the browser can interpolate them
@@ -142,6 +153,20 @@ entering or closing phase. Let the remaining panes renegotiate around that
 geometry, then remove the temporary state. This prevents the pane's internal
 content from repeatedly reflowing while it moves. Prefer automatic layout and
 View Transitions over imperative animation sequences.
+
+An `open` navigation settles the complete replacement workspace before its
+entrance begins. Geometry transitions are suppressed for that synchronous
+double allocation, matching direct-load initialization, and motion starts on
+the following frame after shell synchronization. Only the new rightmost pane
+receives horizontal motion. This
+keeps `ResizeObserver` feedback from interpolating the navigation, workspace
+and fill-pane widths while the entering pane is moving. The pane stack clips
+overflow for the duration of that motion so a transformed pane cannot introduce
+scrollbars and change the space being allocated. Replacement navigation
+continues to use document View Transitions instead. Completion and cancellation
+both clear the visual state and refresh the settled layout. Navigation never
+adjusts scroll position as part of motion cleanup because that could move shell
+ancestors outside the pane group.
 
 Motion must degrade to an immediate, correct layout when View Transitions are
 unavailable and respect `prefers-reduced-motion`.

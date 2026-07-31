@@ -131,14 +131,21 @@
     const panels = navigation.scope === "workspace"
       ? [root]
       : Array.from(root.querySelectorAll('[data-panel-motion="horizontal"]:not([hidden])'));
-    panels.forEach(function (panel) {
-      if (panel.panelMotionEntered) return;
-      panel.panelMotionEntered = true;
-      panel.classList.add("is-opening");
-      panel.addEventListener("animationend", function () {
-        panel.classList.remove("is-opening");
-      }, { once: true });
-    });
+    const panel = panels[panels.length - 1];
+    if (!panel || panel.panelMotionEntered) return;
+    panel.panelMotionEntered = true;
+    root.classList.add("is-panel-motion-active");
+    panel.classList.add("is-opening");
+    let motionFinished = false;
+    const finishMotion = function () {
+      if (motionFinished) return;
+      motionFinished = true;
+      panel.classList.remove("is-opening");
+      root.classList.remove("is-panel-motion-active");
+      if (window.panelLayout) window.panelLayout.refresh();
+    };
+    panel.addEventListener("animationend", finishMotion, { once: true });
+    panel.addEventListener("animationcancel", finishMotion, { once: true });
   }
 
   function initializePanelNavigation(root) {
@@ -184,13 +191,29 @@
         mode: mode,
         scope: declaredMode === "workspace" ? "workspace" : "panel"
       });
-      if (mode === "open") trigger.setAttribute("hx-swap", "outerHTML settle:0");
+      if (mode === "open") {
+        trigger.setAttribute("hx-swap", "outerHTML settle:0");
+        if (window.panelLayout) window.panelLayout.beginSettlement();
+      }
       if (mode === "replace") trigger.setAttribute("hx-swap", "outerHTML transition:true");
+    }
+  });
+  document.addEventListener("htmx:afterRequest", function (event) {
+    const navigation = navigationFor(event);
+    if (navigation && navigation.mode === "open" && event.detail && event.detail.failed) {
+      if (window.panelLayout) window.panelLayout.cancelSettlement();
     }
   });
   document.addEventListener("htmx:afterSettle", function (event) {
     if (event.target && event.target.id === "workspace") {
-      animateNavigatedPanels(event.target, navigationFor(event));
+      const root = event.target;
+      const navigation = navigationFor(event);
+      if (navigation && navigation.mode === "open" && window.panelLayout) {
+        window.panelLayout.settle();
+      }
+      window.requestAnimationFrame(function () {
+        animateNavigatedPanels(root, navigation);
+      });
     }
   });
   document.addEventListener("panel:navigate", function (event) {

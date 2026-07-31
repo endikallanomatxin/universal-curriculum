@@ -256,19 +256,8 @@
   function initializePanelLayout() {
     const shell = document.querySelector("#app-shell");
     if (!shell) return;
-    if (shell.classList.contains("app-shell--home")) {
-      shell.querySelectorAll("[data-layout-panel]").forEach(function (panel) {
-        panel.style.removeProperty("--panel-width");
-        delete panel.dataset.panelMode;
-      });
-      shell.querySelectorAll("[data-panel-group]").forEach(function (group) {
-        group.style.removeProperty("--panel-group-width");
-        delete group.dataset.panelChildrenDesiredWidth;
-      });
-      shell.setAttribute("data-panel-layout-ready", "");
-      return;
-    }
     const initialLayout = !shell.panelLayoutInitialized;
+    const settlingLayout = shell.classList.contains("is-panel-layout-settling");
     if (initialLayout) shell.classList.add("is-initial-panel-layout");
     if (shell.panelLayoutObserver) shell.panelLayoutObserver.disconnect();
 
@@ -298,14 +287,32 @@
       });
     }
     layoutFrom(shell);
-    if (initialLayout) {
+    if (initialLayout || settlingLayout) {
       void shell.offsetWidth;
       layoutFrom(shell);
       void shell.offsetWidth;
+    }
+    if (initialLayout) {
       shell.classList.remove("is-initial-panel-layout");
       shell.panelLayoutInitialized = true;
     }
+    if (settlingLayout) shell.classList.remove("is-panel-layout-settling");
     shell.setAttribute("data-panel-layout-ready", "");
+  }
+
+  function beginSettlement() {
+    const shell = document.querySelector("#app-shell");
+    if (shell) shell.classList.add("is-panel-layout-settling");
+  }
+
+  function cancelSettlement() {
+    const shell = document.querySelector("#app-shell");
+    if (shell) shell.classList.remove("is-panel-layout-settling");
+  }
+
+  function settle() {
+    beginSettlement();
+    initializePanelLayout();
   }
 
   if (document.querySelector("#app-shell")) {
@@ -314,5 +321,10 @@
     document.addEventListener("DOMContentLoaded", initializePanelLayout);
   }
   document.addEventListener("htmx:afterSwap", initializePanelLayout);
-  window.panelLayout = { refresh: initializePanelLayout };
+  window.panelLayout = {
+    refresh: initializePanelLayout,
+    beginSettlement: beginSettlement,
+    cancelSettlement: cancelSettlement,
+    settle: settle
+  };
 })();

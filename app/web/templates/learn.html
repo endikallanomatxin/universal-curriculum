@@ -17,12 +17,12 @@
           </header>
           <p class="learning-path-list__heading">Views</p>
           <div class="learning-path-list learning-path-list--cards">
-            <a class="learning-path-card selectable-surface {{ if .ExploreAll }}is-selected{{ end }}" href="/learn?path=all" hx-get="/learn?path=all" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true">
+            <a class="learning-path-card selectable-surface {{ if .ExploreAll }}is-selected{{ end }}" href="/learn?path=all" hx-get="/learn?path=all" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true" data-panel-navigation="open-or-replace">
               <span class="material-symbols-rounded" aria-hidden="true">graph_3</span>
               <span><strong>Full curriculum</strong><small>Explore every unit</small></span>
             </a>
             {{ if .Paths }}
-              <a class="learning-path-card selectable-surface {{ if .CombinePaths }}is-selected{{ end }}" href="/learn?path=mine" hx-get="/learn?path=mine" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true">
+              <a class="learning-path-card selectable-surface {{ if .CombinePaths }}is-selected{{ end }}" href="/learn?path=mine" hx-get="/learn?path=mine" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true" data-panel-navigation="open-or-replace">
                 <span class="material-symbols-rounded" aria-hidden="true">graph_1</span>
                 <span><strong>All my paths</strong><small>Combine {{ len .Paths }} {{ if eq (len .Paths) 1 }}path{{ else }}paths{{ end }}</small></span>
               </a>
@@ -34,7 +34,7 @@
             {{ range .Paths }}
               {{ $path := . }}
               <article class="learning-path-card selectable-surface {{ if $.EditingPath }}{{ if eq $.EditingPath.ID $path.ID }}is-selected{{ end }}{{ else }}{{ with $.SelectedPath }}{{ if eq .ID $path.ID }}is-selected{{ end }}{{ end }}{{ end }}">
-                <a href="/learn?path={{ .ID }}" hx-get="/learn?path={{ .ID }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true">
+                <a href="/learn?path={{ .ID }}" hx-get="/learn?path={{ .ID }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true" data-panel-navigation="open-or-replace">
                   <span class="material-symbols-rounded" aria-hidden="true">route</span>
                   <span>
                     <strong>{{ .Name }}</strong>
@@ -75,7 +75,7 @@
       </section>
 
       {{ if .ShowGraph }}
-        <section class="ui-pane ui-pane--wide" aria-labelledby="learn-graph-title" data-nested-panel data-layout-panel data-panel-modes="collapsed:0 breadcrumb:4 mobile:20 content:34 wide:46" data-panel-required-mode="mobile" data-panel-fill data-panel-breadcrumb="Curriculum map">
+        <section class="ui-pane ui-pane--wide" aria-labelledby="learn-graph-title" data-nested-panel data-panel-motion="horizontal" data-layout-panel data-panel-modes="collapsed:0 breadcrumb:4 mobile:20 content:34 wide:46" data-panel-required-mode="mobile" data-panel-fill data-panel-breadcrumb="Curriculum map">
           <div class="ui-pane__inner learn-view" data-pane-content-width="wide">
             <div class="learn-heading {{ if or .SelectedPath .CombinePaths }}learn-heading--path{{ end }}">
               <div>

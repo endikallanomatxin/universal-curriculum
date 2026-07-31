@@ -448,7 +448,7 @@
   clip-path: inset(0);
   container: form-pane / inline-size;
   transform-origin: left center;
-  transition: flex-basis var(--panel-motion-duration) var(--panel-motion-easing), clip-path var(--panel-motion-duration) var(--panel-motion-easing), opacity 140ms ease, padding var(--panel-motion-duration) var(--panel-motion-easing);
+  transition: clip-path var(--panel-motion-duration) var(--panel-motion-easing), opacity 140ms ease;
 }
 
 .ui-pane--form.is-opening,
