@@ -252,8 +252,14 @@ Starting a proposal freezes its base curriculum. Its changes remain isolated
 until accepted.
 
 If the published curriculum changes meanwhile, the platform identifies
-conflicts. Authors can incorporate the current accepted changes and resolve
-those conflicts before submitting the final proposal for a decision.
+conflicts. Draft proposals whose affected units do not overlap the newly
+accepted work are automatically rebased onto the resulting curriculum. A
+change to a unit, either end of one of its dependencies, or one of its
+recognition relationships counts as affecting that unit. If both lines of work
+affect a unit, the draft remains on its frozen base until its author reviews the
+accepted work and explicitly keeps or drops each conflicting change. The
+rebased proposal is validated as a whole before it can be submitted for a
+decision.
 
 ### 7.3 Discussion
 

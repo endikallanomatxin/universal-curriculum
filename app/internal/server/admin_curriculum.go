@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -31,14 +32,28 @@ type adminCurriculumPageData struct {
 	GraphSearch        unitNavigationSearchView
 	FocusedUnit        *models.Unit
 	ContentUnit        *curriculumUnitView
-	DraftProposals     []models.CurriculumProposal
+	DraftProposals     []curriculumDraftProposalView
 	Proposals          []models.CurriculumProposal
 	ActiveProposal     *models.CurriculumProposal
+	ProposalRebase     *services.CurriculumProposalRebasePlan
+	ProposalHistory    []curriculumProposalHistoryView
+	RootDraftProposals []curriculumDraftProposalView
+	CanEditProposal    bool
 	RecognitionSources []models.Unit
 	RecognitionTargets []models.Unit
 	PublishWarning     string
-	ProposalView       string
 	Error              string
+}
+
+type curriculumDraftProposalView struct {
+	models.CurriculumProposal
+	RebaseStatus string
+}
+
+type curriculumProposalHistoryView struct {
+	models.CurriculumProposal
+	Drafts []curriculumDraftProposalView
+	IsHead bool
 }
 
 func (server *Server) adminCurriculum(writer http.ResponseWriter, request *http.Request) {
@@ -235,7 +250,7 @@ func (server *Server) updateCurriculumProposal(writer http.ResponseWriter, reque
 		server.renderCurriculumMutationError(writer, request, err)
 		return
 	}
-	redirectToProposalView(writer, request, proposalID, "details")
+	redirectToProposal(writer, request, proposalID)
 }
 
 func (server *Server) deleteCurriculumProposal(writer http.ResponseWriter, request *http.Request) {
@@ -265,11 +280,44 @@ func (server *Server) publishCurriculumProposal(writer http.ResponseWriter, requ
 		return
 	}
 	authorID, _ := services.SessionUserID(request)
-	if err := services.PublishCurriculumProposal(server.Database, authorID, proposalID); err != nil {
+	rebaseSummary, err := services.PublishCurriculumProposal(server.Database, authorID, proposalID)
+	if err != nil {
 		server.renderCurriculumMutationError(writer, request, err)
 		return
 	}
+	if rebaseSummary.Failures != nil {
+		log.Printf("rebase drafts after curriculum publication: %v", rebaseSummary.Failures)
+	}
 	http.Redirect(writer, request, "/curriculum-modification", http.StatusSeeOther)
+}
+
+func (server *Server) rebaseCurriculumProposal(writer http.ResponseWriter, request *http.Request) {
+	if !server.parseAdminMutation(writer, request) {
+		return
+	}
+	proposalID, err := parsePositiveID(request.PathValue("id"))
+	if err != nil {
+		http.Error(writer, "Invalid proposal ID", http.StatusBadRequest)
+		return
+	}
+	resolutions := make(map[int64]string)
+	for key, values := range request.Form {
+		if !strings.HasPrefix(key, "resolution_") || len(values) == 0 {
+			continue
+		}
+		changeID, parseErr := parsePositiveID(strings.TrimPrefix(key, "resolution_"))
+		if parseErr == nil {
+			resolutions[changeID] = values[0]
+		}
+	}
+	authorID, _ := services.SessionUserID(request)
+	if err := services.ResolveCurriculumProposalRebase(
+		server.Database, authorID, proposalID, resolutions,
+	); err != nil {
+		server.renderCurriculumMutationError(writer, request, err)
+		return
+	}
+	redirectToProposal(writer, request, proposalID)
 }
 
 func (server *Server) deleteCurriculumProposalChange(writer http.ResponseWriter, request *http.Request) {
@@ -337,7 +385,11 @@ func curriculumErrorResponse(err error) (string, int) {
 	case errors.Is(err, services.ErrProposalEmpty):
 		return "Add at least one proposed change before publishing.", http.StatusBadRequest
 	case errors.Is(err, services.ErrProposalOutdated):
-		return "The curriculum changed after this draft was created. Create a fresh proposal.", http.StatusConflict
+		return "The proposal base could not be reconciled with the accepted curriculum history.", http.StatusConflict
+	case errors.Is(err, services.ErrProposalRebaseRequired):
+		return "Review the proposal changes that overlap with newer accepted work before continuing.", http.StatusConflict
+	case errors.Is(err, services.ErrRebaseResolutionRequired):
+		return "Choose whether to keep or drop every conflicting change.", http.StatusBadRequest
 	case errors.Is(err, services.ErrRecognitionRationaleRequired):
 		return "Explain why this knowledge can be recognized.", http.StatusBadRequest
 	case errors.Is(err, services.ErrRecognitionSourcesRequired):
@@ -372,7 +424,6 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 		return
 	}
 	var activeProposal *models.CurriculumProposal
-	proposalView := ""
 	if proposalValue := request.URL.Query().Get("proposal"); proposalValue != "" {
 		if proposalID, parseErr := parsePositiveID(proposalValue); parseErr == nil {
 			activeProposal, err = db.GetCurriculumProposal(server.Database, proposalID)
@@ -384,21 +435,29 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 			if activeProposal != nil && (activeProposal.Status != "draft" || activeProposal.AuthorID == nil || *activeProposal.AuthorID != userID) {
 				activeProposal = nil
 			}
-			if activeProposal != nil {
-				proposalView = request.URL.Query().Get("view")
-				if proposalView == "" {
-					proposalView = "work"
-				}
-				if proposalView != "work" && proposalView != "details" {
-					http.Error(writer, "Invalid proposal view", http.StatusBadRequest)
-					return
-				}
+		}
+	}
+	var rebasePlan *services.CurriculumProposalRebasePlan
+	proposalBaseGraph := graph
+	if activeProposal != nil {
+		rebasePlan, err = services.PlanCurriculumProposalRebase(server.Database, activeProposal)
+		if err != nil {
+			log.Printf("plan curriculum proposal rebase: %v", err)
+			http.Error(writer, "Unable to inspect curriculum proposal base", http.StatusInternalServerError)
+			return
+		}
+		if rebasePlan.NeedsReview() {
+			proposalBaseGraph, err = services.CurriculumGraphAtProposal(server.Database, activeProposal.BaseProposalID)
+			if err != nil {
+				log.Printf("load proposal base curriculum: %v", err)
+				http.Error(writer, "Unable to load proposal base curriculum", http.StatusInternalServerError)
+				return
 			}
 		}
 	}
-	workingGraph := curriculumGraphWithProposal(graph, activeProposal)
+	workingGraph := curriculumGraphWithProposal(proposalBaseGraph, activeProposal)
 	applyCurriculumChangeLabels(activeProposal, workingGraph)
-	visualGraph := curriculumGraphWithRemovedDependencies(workingGraph, graph, activeProposal)
+	visualGraph := curriculumGraphWithRemovedDependencies(workingGraph, proposalBaseGraph, activeProposal)
 	var focusID *int64
 	if unitValue := request.URL.Query().Get("unit"); unitValue != "" {
 		unitID, parseErr := parsePositiveID(unitValue)
@@ -428,7 +487,7 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 	}
 	layout.Boundaries = boundaries
 	positionIsolatedCreatedUnits(layout, activeProposal)
-	proposals, err := db.ListCurriculumProposals(server.Database, 8)
+	proposals, err := db.ListCurriculumProposals(server.Database, 100)
 	if err != nil {
 		log.Printf("load curriculum proposals: %v", err)
 		http.Error(writer, "Unable to load curriculum proposals", http.StatusInternalServerError)
@@ -440,24 +499,43 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 		http.Error(writer, "Unable to load draft curriculum proposals", http.StatusInternalServerError)
 		return
 	}
+	draftViews := make([]curriculumDraftProposalView, 0, len(draftProposals))
+	for index := range draftProposals {
+		plan := rebasePlan
+		if activeProposal == nil || activeProposal.ID != draftProposals[index].ID {
+			plan, err = services.PlanCurriculumProposalRebase(server.Database, &draftProposals[index])
+			if err != nil {
+				log.Printf("plan draft curriculum proposal rebase: %v", err)
+				http.Error(writer, "Unable to inspect draft proposals", http.StatusInternalServerError)
+				return
+			}
+		}
+		draftViews = append(draftViews, curriculumDraftProposalView{
+			CurriculumProposal: draftProposals[index], RebaseStatus: plan.Status,
+		})
+	}
+	history, rootDrafts := curriculumProposalHistory(proposals, draftViews)
 	data := adminCurriculumPageData{
 		userPageData: userPageData{
 			User: user, CSRFToken: sessionCSRFToken(request), CurrentSection: "curriculum",
 		},
-		Dependencies:       graph.Dependencies,
+		Dependencies:       proposalBaseGraph.Dependencies,
 		Graph:              layout,
 		FocusedUnit:        focusedUnit,
 		Proposals:          proposals,
-		DraftProposals:     draftProposals,
+		DraftProposals:     draftViews,
 		ActiveProposal:     activeProposal,
-		RecognitionSources: graph.Units,
+		ProposalRebase:     rebasePlan,
+		ProposalHistory:    history,
+		RootDraftProposals: rootDrafts,
+		CanEditProposal:    activeProposal != nil && (rebasePlan == nil || !rebasePlan.NeedsReview()),
+		RecognitionSources: proposalBaseGraph.Units,
 		RecognitionTargets: workingGraph.Units,
-		ProposalView:       proposalView,
 		Error:              message,
 	}
 	data.PublishWarning = curriculumRecognitionPublishWarning(activeProposal)
 	data.Units = curriculumUnitViews(workingGraph, layout)
-	if contentValue := request.URL.Query().Get("content"); proposalView == "work" && contentValue != "" {
+	if contentValue := request.URL.Query().Get("content"); contentValue != "" {
 		contentID, parseErr := parsePositiveID(contentValue)
 		if parseErr != nil {
 			http.Error(writer, "Invalid curriculum unit", http.StatusBadRequest)
@@ -478,7 +556,7 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 	unitURL := func(unitID int64) string {
 		target := "/curriculum-modification?"
 		if activeProposal != nil {
-			target += "proposal=" + strconv.FormatInt(activeProposal.ID, 10) + "&view=work&"
+			target += "proposal=" + strconv.FormatInt(activeProposal.ID, 10) + "&"
 		}
 		return target + "unit=" + strconv.FormatInt(unitID, 10)
 	}
@@ -753,24 +831,48 @@ func curriculumRecognitionPublishWarning(proposal *models.CurriculumProposal) st
 }
 
 func redirectToProposal(writer http.ResponseWriter, request *http.Request, proposalID int64) {
-	redirectToProposalView(writer, request, proposalID, "work")
-}
-
-func redirectToProposalView(writer http.ResponseWriter, request *http.Request, proposalID int64, view string) {
-	http.Redirect(writer, request, "/curriculum-modification?proposal="+strconv.FormatInt(proposalID, 10)+"&view="+view, http.StatusSeeOther)
+	http.Redirect(writer, request, "/curriculum-modification?proposal="+strconv.FormatInt(proposalID, 10), http.StatusSeeOther)
 }
 
 func redirectToProposalUnit(writer http.ResponseWriter, request *http.Request, proposalID, unitID int64) {
 	target := "/curriculum-modification?proposal=" + strconv.FormatInt(proposalID, 10) +
-		"&view=work&unit=" + strconv.FormatInt(unitID, 10) +
+		"&unit=" + strconv.FormatInt(unitID, 10) +
 		"&content=" + strconv.FormatInt(unitID, 10)
 	http.Redirect(writer, request, target, http.StatusSeeOther)
 }
 
 func redirectToProposalPanel(writer http.ResponseWriter, request *http.Request, proposalID int64, panel string, subjectID int64) {
 	target := "/curriculum-modification?proposal=" + strconv.FormatInt(proposalID, 10) +
-		"&view=work&" + panel + "=" + strconv.FormatInt(subjectID, 10)
+		"&" + panel + "=" + strconv.FormatInt(subjectID, 10)
 	http.Redirect(writer, request, target, http.StatusSeeOther)
+}
+
+func curriculumProposalHistory(
+	accepted []models.CurriculumProposal,
+	drafts []curriculumDraftProposalView,
+) ([]curriculumProposalHistoryView, []curriculumDraftProposalView) {
+	accepted = slices.DeleteFunc(accepted, func(proposal models.CurriculumProposal) bool {
+		return proposal.Status != "accepted"
+	})
+	draftsByBase := make(map[int64][]curriculumDraftProposalView)
+	var rootDrafts []curriculumDraftProposalView
+	for _, draft := range drafts {
+		if draft.BaseProposalID == nil {
+			rootDrafts = append(rootDrafts, draft)
+			continue
+		}
+		draftsByBase[*draft.BaseProposalID] = append(draftsByBase[*draft.BaseProposalID], draft)
+	}
+	history := make([]curriculumProposalHistoryView, 0, len(accepted))
+	for index := len(accepted) - 1; index >= 0; index-- {
+		proposal := accepted[index]
+		history = append(history, curriculumProposalHistoryView{
+			CurriculumProposal: proposal,
+			Drafts:             draftsByBase[proposal.ID],
+			IsHead:             index == 0,
+		})
+	}
+	return history, rootDrafts
 }
 
 func curriculumUnitViews(graph *models.CurriculumGraph, layout *models.CurriculumGraphLayout) []curriculumUnitView {

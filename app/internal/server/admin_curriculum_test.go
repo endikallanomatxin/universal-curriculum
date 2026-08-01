@@ -20,6 +20,7 @@ func TestCurriculumModificationUsesCleanAdminProtectedRoutes(t *testing.T) {
 	}{
 		{method: http.MethodGet, target: "/curriculum-modification"},
 		{method: http.MethodPost, target: "/curriculum-modification/proposals"},
+		{method: http.MethodPost, target: "/curriculum-modification/proposals/1/rebase"},
 	} {
 		request := httptest.NewRequest(test.method, test.target, nil)
 		recorder := httptest.NewRecorder()
@@ -291,5 +292,29 @@ func TestCurriculumErrorResponse(t *testing.T) {
 	}
 	if message, status = curriculumErrorResponse(errors.New("database unavailable")); status != http.StatusInternalServerError || message == "" {
 		t.Fatalf("unexpected internal error response: %q, %d", message, status)
+	}
+}
+
+func TestCurriculumProposalHistoryShowsAcceptedLineAndDraftBranches(t *testing.T) {
+	baseID := int64(1)
+	history, roots := curriculumProposalHistory(
+		[]models.CurriculumProposal{
+			{ID: 2, Title: "Second", Status: "accepted", BaseProposalID: &baseID},
+			{ID: 1, Title: "First", Status: "accepted"},
+		},
+		[]curriculumDraftProposalView{
+			{CurriculumProposal: models.CurriculumProposal{ID: 3, BaseProposalID: &baseID}},
+			{CurriculumProposal: models.CurriculumProposal{ID: 4}},
+		},
+	)
+
+	if len(history) != 2 || history[0].ID != 1 || history[1].ID != 2 || !history[1].IsHead {
+		t.Fatalf("accepted proposal history = %#v", history)
+	}
+	if len(history[0].Drafts) != 1 || history[0].Drafts[0].ID != 3 {
+		t.Fatalf("draft branches = %#v", history[0].Drafts)
+	}
+	if len(roots) != 1 || roots[0].ID != 4 {
+		t.Fatalf("root drafts = %#v", roots)
 	}
 }

@@ -87,6 +87,7 @@ func (server *Server) routes() http.Handler {
 	mux.Handle("POST /curriculum-modification/proposals/{id}", server.requireAdmin(http.HandlerFunc(server.updateCurriculumProposal)))
 	mux.Handle("POST /curriculum-modification/proposals/{id}/delete", server.requireAdmin(http.HandlerFunc(server.deleteCurriculumProposal)))
 	mux.Handle("POST /curriculum-modification/proposals/{id}/publish", server.requireAdmin(http.HandlerFunc(server.publishCurriculumProposal)))
+	mux.Handle("POST /curriculum-modification/proposals/{id}/rebase", server.requireAdmin(http.HandlerFunc(server.rebaseCurriculumProposal)))
 	mux.Handle("POST /curriculum-modification/proposals/{id}/changes/{changeID}/delete", server.requireAdmin(http.HandlerFunc(server.deleteCurriculumProposalChange)))
 	mux.Handle("POST /curriculum-modification/units", server.requireAdmin(http.HandlerFunc(server.createCurriculumUnit)))
 	mux.Handle("POST /curriculum-modification/units/{id}", server.requireAdmin(http.HandlerFunc(server.updateCurriculumUnit)))

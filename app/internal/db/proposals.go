@@ -174,6 +174,103 @@ func AcceptDraftCurriculumProposal(q curriculumExecutor, proposalID, authorID in
 	return count == 1, err
 }
 
+func ListDraftCurriculumProposalIDs(q curriculumExecutor) ([]int64, error) {
+	rows, err := q.Query(`
+		SELECT id
+		FROM curriculum_proposals
+		WHERE status = 'draft'
+		ORDER BY created_at, id
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("list draft curriculum proposal ids: %w", err)
+	}
+	defer rows.Close()
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("scan draft curriculum proposal id: %w", err)
+		}
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate draft curriculum proposal ids: %w", err)
+	}
+	return ids, nil
+}
+
+func SetDraftCurriculumProposalBase(
+	q curriculumExecutor,
+	proposalID int64,
+	expectedBaseProposalID, baseProposalID *int64,
+) (bool, error) {
+	result, err := q.Exec(`
+		UPDATE curriculum_proposals
+		SET base_proposal_id = $3
+		WHERE id = $1
+		  AND status = 'draft'
+		  AND base_proposal_id IS NOT DISTINCT FROM $2
+	`, proposalID, expectedBaseProposalID, baseProposalID)
+	if err != nil {
+		return false, fmt.Errorf("set draft curriculum proposal base: %w", err)
+	}
+	count, err := result.RowsAffected()
+	return count == 1, err
+}
+
+func UpdateDraftCurriculumProposalChangeSnapshot(
+	q curriculumExecutor,
+	change models.CurriculumProposalChange,
+) error {
+	var result sql.Result
+	var err error
+	switch change.Kind {
+	case "rename_unit":
+		result, err = q.Exec(`
+			UPDATE curriculum_unit_renames rename
+			SET previous_name = $2
+			FROM curriculum_proposal_changes change, curriculum_proposals proposal
+			WHERE rename.change_id = $1
+			  AND change.id = rename.change_id
+			  AND proposal.id = change.proposal_id
+			  AND proposal.status = 'draft'
+		`, change.ID, change.PreviousUnitName)
+	case "update_content":
+		result, err = q.Exec(`
+			UPDATE curriculum_unit_content_updates content_update
+			SET previous_content = $2
+			FROM curriculum_proposal_changes change, curriculum_proposals proposal
+			WHERE content_update.change_id = $1
+			  AND change.id = content_update.change_id
+			  AND proposal.id = change.proposal_id
+			  AND proposal.status = 'draft'
+		`, change.ID, change.PreviousUnitContent)
+	case "delete_unit":
+		result, err = q.Exec(`
+			UPDATE curriculum_unit_deletions deletion
+			SET name = $2, content = $3
+			FROM curriculum_proposal_changes change, curriculum_proposals proposal
+			WHERE deletion.change_id = $1
+			  AND change.id = deletion.change_id
+			  AND proposal.id = change.proposal_id
+			  AND proposal.status = 'draft'
+		`, change.ID, change.UnitName, change.UnitContent)
+	default:
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("update draft curriculum proposal change snapshot: %w", err)
+	}
+	count, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("read draft curriculum proposal change snapshot result: %w", err)
+	}
+	if count != 1 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
 func RebuildCurriculumProjection(q curriculumExecutor, proposalID int64) error {
 	rows, err := q.Query(`
 		WITH RECURSIVE proposal_lineage AS (

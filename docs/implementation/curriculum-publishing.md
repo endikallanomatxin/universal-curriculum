@@ -42,6 +42,33 @@ Discarding a unit created by the draft removes its creation and every change in
 that draft which references it. Deleting a published unit similarly drops draft
 name, content and outgoing-dependency changes that the deletion supersedes.
 
+## Rebasing drafts
+
+After a proposal is accepted, every other draft is considered independently.
+The system follows the accepted lineage from the draft's frozen base to the new
+head and calculates the unit footprint of both lines of work. Unit changes touch
+their unit, dependency changes touch both endpoints, and recognitions touch all
+sources and targets.
+
+If the footprints are disjoint and replaying the complete draft over the new
+head passes publication validation, its base is advanced automatically in a
+separate transaction. A failure to inspect or rebase one draft never rolls back
+the proposal that was already accepted. The same automatic check runs before a
+later edit or publication as recovery from an interrupted maintenance pass.
+
+An overlapping draft remains unchanged on its historical base. Its workspace
+shows the accepted proposals responsible for each overlap and asks the author
+to keep or drop every conflicting draft change. Kept name, content and deletion
+changes receive snapshots from the new base; dependency changes that already
+have their desired result become no-ops. The normalized proposal is validated
+as a whole before its base moves. Until then ordinary curriculum edits and
+publication are blocked, while proposal metadata and draft deletion remain
+available.
+
+The proposal workspace combines metadata, changes, publication and rebase
+resolution. Accepted proposals form a single publication line in the history
+view, with current drafts rendered as branches from their recorded bases.
+
 ## Accepted history
 
 Accepted proposals and their changes are permanently immutable. Mistakes in the

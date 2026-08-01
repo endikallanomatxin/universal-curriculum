@@ -106,7 +106,7 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	}
 
 	// Publish the unit creations first: later proposals can refer to their stable IDs.
-	if err := PublishCurriculumProposal(database, authorID, proposal.ID); err != nil {
+	if _, err := PublishCurriculumProposal(database, authorID, proposal.ID); err != nil {
 		t.Fatal(err)
 	}
 	learningPath, err := CreateLearningPath(
@@ -138,7 +138,7 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if err := invalidChangeTx.Commit(); err != nil {
 		t.Fatal(err)
 	}
-	if err := PublishCurriculumProposal(database, authorID, invalidProposal.ID); !errors.Is(err, ErrProposalInvalid) {
+	if _, err := PublishCurriculumProposal(database, authorID, invalidProposal.ID); !errors.Is(err, ErrProposalInvalid) {
 		t.Fatalf("publish invalid proposal error = %v, want %v", err, ErrProposalInvalid)
 	}
 	invalidProposal, err = db.GetCurriculumProposal(database, invalidProposal.ID)
@@ -150,6 +150,13 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := UpdateCurriculumUnit(database, authorID, staleProposal.ID, foundations.ID, "Alternative foundations"); err != nil {
+		t.Fatal(err)
+	}
+	conflictingProposal, err := CreateCurriculumProposal(database, authorID, "Alternative algebra", "Exercise manual rebase review.")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := UpdateCurriculumUnit(database, authorID, conflictingProposal.ID, algebra.ID, "Competing algebra"); err != nil {
 		t.Fatal(err)
 	}
 	proposal, err = CreateCurriculumProposal(database, authorID, "Algebra path", "Connect and refine the new units.")
@@ -215,11 +222,41 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if changeCounts["rename_unit"] != 1 || changeCounts["update_content"] != 1 {
 		t.Fatalf("unit edits accumulated duplicate proposal changes: %#v", draft.Changes)
 	}
-	if err := PublishCurriculumProposal(database, authorID, proposal.ID); err != nil {
+	if _, err := PublishCurriculumProposal(database, authorID, proposal.ID); err != nil {
 		t.Fatal(err)
 	}
-	if err := PublishCurriculumProposal(database, authorID, staleProposal.ID); err != ErrProposalOutdated {
-		t.Fatalf("publish stale proposal error = %v, want %v", err, ErrProposalOutdated)
+	automaticallyRebased, err := db.GetCurriculumProposal(database, staleProposal.ID)
+	if err != nil || automaticallyRebased == nil ||
+		automaticallyRebased.BaseProposalID == nil || *automaticallyRebased.BaseProposalID != proposal.ID {
+		t.Fatalf("disjoint proposal was not automatically rebased: proposal=%#v err=%v", automaticallyRebased, err)
+	}
+	rebasePlan, err := PlanCurriculumProposalRebase(database, conflictingProposal)
+	if err != nil || !rebasePlan.NeedsReview() || len(rebasePlan.Conflicts) != 1 {
+		t.Fatalf("overlapping proposal rebase plan = %#v, err=%v", rebasePlan, err)
+	}
+	conflictingChangeID := rebasePlan.Conflicts[0].Change.ID
+	if err := ResolveCurriculumProposalRebase(
+		database, authorID, conflictingProposal.ID, nil,
+	); !errors.Is(err, ErrRebaseResolutionRequired) {
+		t.Fatalf("incomplete rebase resolution error = %v, want %v", err, ErrRebaseResolutionRequired)
+	}
+	if err := ResolveCurriculumProposalRebase(
+		database, authorID, conflictingProposal.ID, map[int64]string{conflictingChangeID: "keep"},
+	); err != nil {
+		t.Fatalf("resolve curriculum proposal rebase: %v", err)
+	}
+	conflictingProposal, err = db.GetCurriculumProposal(database, conflictingProposal.ID)
+	if err != nil || conflictingProposal == nil || conflictingProposal.BaseProposalID == nil ||
+		*conflictingProposal.BaseProposalID != proposal.ID ||
+		len(conflictingProposal.Changes) != 1 ||
+		conflictingProposal.Changes[0].PreviousUnitName != "Introductory algebra" {
+		t.Fatalf("manual rebase did not normalize the retained change: proposal=%#v err=%v", conflictingProposal, err)
+	}
+	if err := DeleteCurriculumProposal(database, authorID, conflictingProposal.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := PublishCurriculumProposal(database, authorID, staleProposal.ID); err != nil {
+		t.Fatalf("publish automatically rebased proposal: %v", err)
 	}
 	graph, err = db.GetCurriculumGraph(database)
 	if err != nil {
@@ -311,7 +348,7 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if err := UpdateCurriculumUnit(database, authorID, retirement.ID, algebra.ID, "Renamed after deletion"); err != ErrUnitNotFound {
 		t.Fatalf("rename deleted unit error = %v, want %v", err, ErrUnitNotFound)
 	}
-	if err := PublishCurriculumProposal(database, authorID, retirement.ID); err != nil {
+	if _, err := PublishCurriculumProposal(database, authorID, retirement.ID); err != nil {
 		t.Fatal(err)
 	}
 	recognitionChangeID := normalizedRetirement.Changes[2].ID

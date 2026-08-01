@@ -138,11 +138,17 @@ func CreateCurriculumUnit(database *sql.DB, authorID, proposalID int64, name, co
 	if content == "" {
 		return nil, ErrUnitContentRequired
 	}
+	if err := EnsureCurriculumProposalReady(database, authorID, proposalID); err != nil {
+		return nil, err
+	}
 	tx, err := beginCurriculumProposal(database)
 	if err != nil {
 		return nil, err
 	}
 	defer tx.Rollback()
+	if _, err := currentDraftCurriculumProposal(tx, authorID, proposalID); err != nil {
+		return nil, err
+	}
 	change := &models.CurriculumProposalChange{
 		Kind: "create_unit", UnitName: name, UnitContent: content,
 	}
@@ -162,6 +168,9 @@ func UpdateCurriculumUnit(database *sql.DB, authorID, proposalID, unitID int64, 
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return ErrUnitNameRequired
+	}
+	if err := EnsureCurriculumProposalReady(database, authorID, proposalID); err != nil {
+		return err
 	}
 	created, err := draftCreatedCurriculumUnit(database, authorID, proposalID, unitID)
 	if err != nil {
@@ -198,6 +207,9 @@ func UpdateCurriculumUnitContent(database *sql.DB, authorID, proposalID, unitID 
 	content = strings.TrimSpace(content)
 	if content == "" {
 		return ErrUnitContentRequired
+	}
+	if err := EnsureCurriculumProposalReady(database, authorID, proposalID); err != nil {
+		return err
 	}
 	created, err := draftCreatedCurriculumUnit(database, authorID, proposalID, unitID)
 	if err != nil {
@@ -251,17 +263,17 @@ func draftCreatedCurriculumUnit(database *sql.DB, authorID, proposalID, unitID i
 }
 
 func DeleteCurriculumUnit(database *sql.DB, authorID, proposalID, unitID int64) error {
+	if err := EnsureCurriculumProposalReady(database, authorID, proposalID); err != nil {
+		return err
+	}
 	tx, err := beginCurriculumProposal(database)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
-	proposal, err := db.GetCurriculumProposal(tx, proposalID)
+	proposal, err := currentDraftCurriculumProposal(tx, authorID, proposalID)
 	if err != nil {
 		return err
-	}
-	if proposal == nil || proposal.Status != "draft" || proposal.AuthorID == nil || *proposal.AuthorID != authorID {
-		return ErrProposalNotFound
 	}
 	for _, change := range proposal.Changes {
 		if change.Kind == "create_unit" && change.UnitID == unitID {
@@ -376,17 +388,17 @@ func AddCurriculumRecognition(
 	if len(targetUnitIDs) == 0 {
 		return ErrRecognitionTargetsRequired
 	}
+	if err := EnsureCurriculumProposalReady(database, authorID, proposalID); err != nil {
+		return err
+	}
 	tx, err := beginCurriculumProposal(database)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
-	proposal, err := db.GetCurriculumProposal(tx, proposalID)
+	proposal, err := currentDraftCurriculumProposal(tx, authorID, proposalID)
 	if err != nil {
 		return err
-	}
-	if proposal == nil || proposal.Status != "draft" || proposal.AuthorID == nil || *proposal.AuthorID != authorID {
-		return ErrProposalNotFound
 	}
 	base, err := db.GetCurriculumGraph(tx)
 	if err != nil {
@@ -478,17 +490,17 @@ func RemoveUnitDependency(database *sql.DB, authorID, proposalID, unitID, prereq
 }
 
 func setUnitDependency(database *sql.DB, authorID, proposalID, unitID, prerequisiteID int64, desired bool) error {
+	if err := EnsureCurriculumProposalReady(database, authorID, proposalID); err != nil {
+		return err
+	}
 	tx, err := beginCurriculumProposal(database)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
-	proposal, err := db.GetCurriculumProposal(tx, proposalID)
+	proposal, err := currentDraftCurriculumProposal(tx, authorID, proposalID)
 	if err != nil {
 		return err
-	}
-	if proposal == nil || proposal.Status != "draft" || proposal.AuthorID == nil || *proposal.AuthorID != authorID {
-		return ErrProposalNotFound
 	}
 	graph, err := db.GetCurriculumGraph(tx)
 	if err != nil {
@@ -654,17 +666,17 @@ func curriculumDependencyCreatesCycle(graph *models.CurriculumGraph, unitID, pre
 }
 
 func DeleteCurriculumProposalChange(database *sql.DB, authorID, proposalID, changeID int64) error {
+	if err := EnsureCurriculumProposalReady(database, authorID, proposalID); err != nil {
+		return err
+	}
 	tx, err := beginCurriculumProposal(database)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
-	proposal, err := db.GetCurriculumProposal(tx, proposalID)
+	proposal, err := currentDraftCurriculumProposal(tx, authorID, proposalID)
 	if err != nil {
 		return err
-	}
-	if proposal == nil || proposal.Status != "draft" || proposal.AuthorID == nil || *proposal.AuthorID != authorID {
-		return ErrProposalNotFound
 	}
 	var target *models.CurriculumProposalChange
 	for index := range proposal.Changes {
@@ -698,50 +710,70 @@ func DeleteCurriculumProposalChange(database *sql.DB, authorID, proposalID, chan
 	return nil
 }
 
-func PublishCurriculumProposal(database *sql.DB, authorID, proposalID int64) error {
+func PublishCurriculumProposal(
+	database *sql.DB,
+	authorID, proposalID int64,
+) (CurriculumProposalRebaseSummary, error) {
+	var summary CurriculumProposalRebaseSummary
 	tx, err := beginCurriculumProposal(database)
 	if err != nil {
-		return err
+		return summary, err
 	}
 	defer tx.Rollback()
 	proposal, err := db.GetCurriculumProposal(tx, proposalID)
 	if err != nil {
-		return err
+		return summary, err
 	}
 	if proposal == nil || proposal.Status != "draft" || proposal.AuthorID == nil || *proposal.AuthorID != authorID {
-		return ErrProposalNotFound
+		return summary, ErrProposalNotFound
 	}
 	if len(proposal.Changes) == 0 {
-		return ErrProposalEmpty
+		return summary, ErrProposalEmpty
 	}
 	currentProposalID, err := db.LockCurrentCurriculumProposal(tx)
 	if err != nil {
-		return err
-	}
-	if !sameOptionalID(proposal.BaseProposalID, currentProposalID) {
-		return ErrProposalOutdated
+		return summary, err
 	}
 	graph, err := db.GetCurriculumGraph(tx)
 	if err != nil {
-		return err
+		return summary, err
+	}
+	if !sameOptionalID(proposal.BaseProposalID, currentProposalID) {
+		plan, err := planCurriculumProposalRebase(tx, proposal, currentProposalID, graph)
+		if err != nil {
+			return summary, err
+		}
+		if plan.Status != ProposalRebaseAutomatic {
+			return summary, ErrProposalRebaseRequired
+		}
+		updated, err := db.SetDraftCurriculumProposalBase(
+			tx, proposal.ID, proposal.BaseProposalID, currentProposalID,
+		)
+		if err != nil {
+			return summary, err
+		}
+		if !updated {
+			return summary, ErrProposalOutdated
+		}
+		proposal.BaseProposalID = currentProposalID
 	}
 	if err := validateCurriculumProposal(graph, proposal); err != nil {
-		return err
+		return summary, err
 	}
 	ok, err := db.AcceptDraftCurriculumProposal(tx, proposalID, authorID)
 	if err != nil {
-		return err
+		return summary, err
 	}
 	if !ok {
-		return ErrProposalNotFound
+		return summary, ErrProposalNotFound
 	}
 	if err := db.RebuildCurriculumProjection(tx, proposalID); err != nil {
-		return err
+		return summary, err
 	}
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit curriculum proposal publication: %w", err)
+		return summary, fmt.Errorf("commit curriculum proposal publication: %w", err)
 	}
-	return nil
+	return RebaseDraftCurriculumProposals(database), nil
 }
 
 func sameOptionalID(left, right *int64) bool {
@@ -768,6 +800,9 @@ func replaceUnitProposalChange(database *sql.DB, authorID, proposalID, unitID in
 		return err
 	}
 	defer tx.Rollback()
+	if _, err := currentDraftCurriculumProposal(tx, authorID, proposalID); err != nil {
+		return err
+	}
 	authorized, err := db.DeleteDraftCurriculumProposalUnitChanges(tx, proposalID, authorID, unitID, kind)
 	if err != nil {
 		return err
@@ -799,4 +834,25 @@ func beginCurriculumProposal(database *sql.DB) (*sql.Tx, error) {
 		return nil, err
 	}
 	return tx, nil
+}
+
+func currentDraftCurriculumProposal(
+	tx *sql.Tx,
+	authorID, proposalID int64,
+) (*models.CurriculumProposal, error) {
+	proposal, err := db.GetCurriculumProposal(tx, proposalID)
+	if err != nil {
+		return nil, err
+	}
+	if proposal == nil || proposal.Status != "draft" || proposal.AuthorID == nil || *proposal.AuthorID != authorID {
+		return nil, ErrProposalNotFound
+	}
+	currentProposalID, err := db.LockCurrentCurriculumProposal(tx)
+	if err != nil {
+		return nil, err
+	}
+	if !sameOptionalID(proposal.BaseProposalID, currentProposalID) {
+		return nil, ErrProposalRebaseRequired
+	}
+	return proposal, nil
 }

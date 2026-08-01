@@ -248,9 +248,9 @@ func TestRecognizedUnitCompletionIsReadOnlyRecognition(t *testing.T) {
 func TestCurriculumProposalRendersRecognitionWorkflowAndPublishWarning(t *testing.T) {
 	templates := loadTestTemplates(t)
 	output := renderTemplate(t, templates, "admin-curriculum.html", map[string]any{
-		"User":         &models.User{FullName: "Admin", IsAdmin: true},
-		"CSRFToken":    "csrf",
-		"ProposalView": "work",
+		"User":            &models.User{FullName: "Admin", IsAdmin: true},
+		"CSRFToken":       "csrf",
+		"CanEditProposal": true,
 		"ActiveProposal": &models.CurriculumProposal{
 			ID: 12, Title: "Replace foundations", Status: "draft",
 			Changes: []models.CurriculumProposalChange{{
@@ -287,7 +287,7 @@ func TestCurriculumProposalContentPanelRendersUnitContentDiff(t *testing.T) {
 		"ActiveProposal": &models.CurriculumProposal{
 			ID: 12, Title: "Improve explanations", Status: "draft",
 		},
-		"ProposalView": "work",
+		"CanEditProposal": true,
 		"ContentUnit": map[string]any{
 			"ID": 7, "Name": "Energy", "Content": "Energy can be stored.",
 			"HasContentDiff": true, "PreviousContent": "Energy is stored.",
@@ -311,6 +311,46 @@ func TestCurriculumProposalContentPanelRendersUnitContentDiff(t *testing.T) {
 	}
 	if strings.Contains(output, "View content changes") || strings.Contains(output, "<details") {
 		t.Error("content diff should be shown directly in the unit panel")
+	}
+}
+
+func TestCurriculumProposalRendersRebaseResolutionInUnifiedWorkspace(t *testing.T) {
+	templates := loadTestTemplates(t)
+	change := models.CurriculumProposalChange{
+		ID: 31, Kind: "rename_unit", UnitID: 7, UnitName: "Proposed energy",
+	}
+	output := renderTemplate(t, templates, "admin-curriculum.html", map[string]any{
+		"CSRFToken": "csrf",
+		"ActiveProposal": &models.CurriculumProposal{
+			ID: 12, Title: "Improve energy", Rationale: "Clarify the unit.", Status: "draft",
+			Changes: []models.CurriculumProposalChange{change},
+		},
+		"ProposalRebase": &CurriculumProposalRebasePlan{
+			Status: ProposalRebaseNeedsReview,
+			Conflicts: []CurriculumProposalRebaseConflict{{
+				Change: change,
+				Units:  []models.Unit{{ID: 7, Name: "Energy"}},
+				AcceptedWork: []CurriculumProposalRebaseAcceptedWork{{
+					Proposal: models.CurriculumProposal{ID: 11, Title: "Update physics", Status: "accepted"},
+					Changes:  []models.CurriculumProposalChange{{ID: 30, Kind: "update_content", UnitID: 7, UnitName: "Energy"}},
+				}},
+			}},
+		},
+	})
+
+	for _, fragment := range []string{
+		`action="/curriculum-modification/proposals/12/rebase"`,
+		`name="resolution_31"`,
+		"Update physics",
+		"Keep this proposal's change",
+		`action="/curriculum-modification/proposals/12"`,
+	} {
+		if !strings.Contains(output, fragment) {
+			t.Errorf("rendered rebase workspace does not contain %q", fragment)
+		}
+	}
+	if strings.Contains(output, `id="proposal-details-panel"`) {
+		t.Fatal("proposal details should not be rendered as a separate workspace")
 	}
 }
 

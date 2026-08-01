@@ -27,8 +27,8 @@
                   {{ $proposal := . }}
                   <article class="active-proposal-card selectable-surface {{ with $.ActiveProposal }}{{ if eq .ID $proposal.ID }}is-selected{{ end }}{{ end }}">
                     <a class="active-proposal-card__identity active-proposal-card__work"
-                       href="/curriculum-modification?proposal={{ .ID }}&amp;view=work"
-                       hx-get="/curriculum-modification?proposal={{ .ID }}&amp;view=work"
+                       href="/curriculum-modification?proposal={{ .ID }}"
+                       hx-get="/curriculum-modification?proposal={{ .ID }}"
                        hx-target="#workspace"
                        hx-select="#workspace"
                        hx-swap="outerHTML"
@@ -41,18 +41,10 @@
                         <span>{{ .Rationale }}</span>
                       </span>
                     </a>
-                    <span class="active-proposal-card__meta">{{ .ChangeCount }} {{ if eq .ChangeCount 1 }}change{{ else }}changes{{ end }}</span>
-                    <a class="secondary-button active-proposal-card__details {{ with $.ActiveProposal }}{{ if and (eq .ID $proposal.ID) (eq $.ProposalView "details") }}is-selected{{ end }}{{ end }}"
-                       href="/curriculum-modification?proposal={{ .ID }}&amp;view=details"
-                       hx-get="/curriculum-modification?proposal={{ .ID }}&amp;view=details"
-                       hx-target="#workspace"
-                       hx-select="#workspace"
-                       hx-swap="outerHTML"
-                       hx-push-url="true"
-                       data-panel-navigation="{{ if $.ActiveProposal }}replace{{ else }}open{{ end }}">
-                      <span class="material-symbols-rounded" aria-hidden="true">description</span>
-                      Details
-                    </a>
+                    <span class="active-proposal-card__meta">
+                      {{ .ChangeCount }} {{ if eq .ChangeCount 1 }}change{{ else }}changes{{ end }}
+                      {{ if eq .RebaseStatus "needs_review" }}<span class="proposal-status proposal-status--warning">Needs review</span>{{ end }}
+                    </span>
                   </article>
                 {{ end }}
               </div>
@@ -73,18 +65,84 @@
         </div>
       </section>
 
-      {{ if and .ActiveProposal (eq .ProposalView "work") }}
+      {{ if .ActiveProposal }}
         <section class="ui-pane ui-pane--wide proposal-workspace-pane" id="proposal-workspace-panel" data-nested-panel data-panel-motion="horizontal" data-layout-panel data-panel-modes="collapsed:0 breadcrumb:4 mobile:20 content:34 wide:46" data-panel-required-mode="mobile" data-panel-fill data-panel-breadcrumb="Working on {{ .ActiveProposal.Title }}" aria-labelledby="proposal-workspace-title">
           <div class="ui-pane__inner curriculum-editor" data-pane-content-width="wide">
             <header class="nested-panel__header curriculum-editor__header proposal-workspace__main-header">
               <div>
                 <h1 id="proposal-workspace-title">{{ .ActiveProposal.Title }}</h1>
-                <a class="proposal-workspace__breadcrumb-title" href="/curriculum-modification?proposal={{ .ActiveProposal.ID }}&amp;view=work" hx-get="/curriculum-modification?proposal={{ .ActiveProposal.ID }}&amp;view=work" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true">Working on {{ .ActiveProposal.Title }}</a>
+                <a class="proposal-workspace__breadcrumb-title" href="/curriculum-modification?proposal={{ .ActiveProposal.ID }}" hx-get="/curriculum-modification?proposal={{ .ActiveProposal.ID }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true">Working on {{ .ActiveProposal.Title }}</a>
               </div>
               <a class="icon-button nested-panel__close" href="/curriculum-modification" hx-get="/curriculum-modification" hx-trigger="panel-close" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML" hx-push-url="true" data-panel-navigation="close" aria-label="Close proposal workspace">
                 <span class="material-symbols-rounded" aria-hidden="true">close</span>
               </a>
             </header>
+
+            <section class="proposal-workspace__overview" aria-label="Proposal details">
+              <dl class="proposal-details">
+                <div><dt>Status</dt><dd>{{ if and .ProposalRebase (eq .ProposalRebase.Status "needs_review") }}Needs rebase review{{ else }}Up to date{{ end }}</dd></div>
+                <div><dt>Author</dt><dd>{{ .ActiveProposal.AuthorName }}</dd></div>
+                <div><dt>Changes</dt><dd>{{ len .ActiveProposal.Changes }}</dd></div>
+              </dl>
+              <form class="editor-form proposal-workspace__metadata" action="/curriculum-modification/proposals/{{ .ActiveProposal.ID }}" method="post">
+                <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+                <label for="working-proposal-title">Title</label>
+                <input id="working-proposal-title" name="title" value="{{ .ActiveProposal.Title }}" required maxlength="200">
+                <label for="working-proposal-rationale">Purpose</label>
+                <textarea id="working-proposal-rationale" name="rationale" required rows="3" maxlength="1000" data-autoresize>{{ .ActiveProposal.Rationale }}</textarea>
+                <button class="secondary-button" type="submit">Save proposal</button>
+              </form>
+              <div class="proposal-details__actions">
+                <form action="/curriculum-modification/proposals/{{ .ActiveProposal.ID }}/publish" method="post" {{ with .PublishWarning }}onsubmit="return confirm('{{ . }}')"{{ end }}>
+                  <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+                  <button class="primary-button" type="submit" {{ if not .CanEditProposal }}disabled{{ end }}>Publish {{ len .ActiveProposal.Changes }} changes</button>
+                </form>
+                <form action="/curriculum-modification/proposals/{{ .ActiveProposal.ID }}/delete" method="post" onsubmit="return confirm('Delete this draft proposal?')">
+                  <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+                  <button class="secondary-button destructive-action" type="submit"><span class="material-symbols-rounded" aria-hidden="true">delete</span>Delete draft</button>
+                </form>
+              </div>
+            </section>
+
+            {{ if and .ProposalRebase (eq .ProposalRebase.Status "needs_review") }}
+              <section class="proposal-rebase" aria-labelledby="proposal-rebase-title">
+                <div class="proposal-rebase__heading">
+                  <div>
+                    <p class="section-heading__eyebrow">New accepted work overlaps this draft</p>
+                    <h2 id="proposal-rebase-title">Review rebase conflicts</h2>
+                  </div>
+                </div>
+                <p>This proposal remains attached to its original curriculum. Resolve each overlapping change before continuing.</p>
+                {{ with .ProposalRebase.ValidationReason }}<p class="form-error" role="alert">{{ . }}</p>{{ end }}
+                <form action="/curriculum-modification/proposals/{{ .ActiveProposal.ID }}/rebase" method="post">
+                  <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+                  <div class="proposal-rebase__conflicts">
+                    {{ range .ProposalRebase.Conflicts }}
+                      <fieldset class="proposal-rebase-conflict">
+                        <legend>{{ if .Change.UnitName }}{{ .Change.UnitName }}{{ else }}{{ .Change.Kind }} change #{{ .Change.ID }}{{ end }}</legend>
+                        {{ if .Units }}<p>Affected together: {{ range $index, $unit := .Units }}{{ if $index }}, {{ end }}{{ if $unit.Name }}{{ $unit.Name }}{{ else }}Unit #{{ $unit.ID }}{{ end }}{{ end }}.</p>{{ end }}
+                        {{ if .AcceptedWork }}
+                          <div class="proposal-rebase-conflict__upstream">
+                            <span>Accepted since this draft began</span>
+                            {{ range .AcceptedWork }}
+                              <strong>{{ .Proposal.Title }}</strong>
+                              <ul>
+                                {{ range .Changes }}<li>{{ if eq .Kind "rename_unit" }}Renamed{{ else if eq .Kind "update_content" }}Updated content of{{ else if eq .Kind "delete_unit" }}Deleted{{ else if eq .Kind "add_dependency" }}Added a dependency involving{{ else if eq .Kind "remove_dependency" }}Removed a dependency involving{{ else if eq .Kind "recognition" }}Changed recognition involving{{ else }}Changed{{ end }} {{ if .UnitName }}{{ .UnitName }}{{ else }}the affected unit{{ end }}</li>{{ end }}
+                              </ul>
+                            {{ end }}
+                          </div>
+                        {{ end }}
+                        <div class="proposal-rebase-conflict__choices">
+                          <label><input type="radio" name="resolution_{{ .Change.ID }}" value="keep" required> Keep this proposal's change</label>
+                          <label><input type="radio" name="resolution_{{ .Change.ID }}" value="drop" required> Use the accepted curriculum</label>
+                        </div>
+                      </fieldset>
+                    {{ end }}
+                  </div>
+                  <button class="primary-button" type="submit">Apply resolutions and rebase</button>
+                </form>
+              </section>
+            {{ end }}
 
             <section class="proposal-workspace__changes" aria-labelledby="proposal-changes-title">
               <h2 id="proposal-changes-title">Proposed changes</h2>
@@ -109,13 +167,13 @@
                           {{ if and (eq .Kind "rename_unit") .PreviousUnitName }}<span class="proposal-change__previous">Previously {{ .PreviousUnitName }}</span>{{ end }}
                         {{ end }}
                       </div>
-                      <form action="/curriculum-modification/proposals/{{ $.ActiveProposal.ID }}/changes/{{ .ID }}/delete" method="post">
+                      {{ if $.CanEditProposal }}<form action="/curriculum-modification/proposals/{{ $.ActiveProposal.ID }}/changes/{{ .ID }}/delete" method="post">
                         <input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}">
                         <button class="proposal-change__remove" type="submit" aria-label="Remove proposed change">
                           <span class="material-symbols-rounded" aria-hidden="true">close</span>
                           <span>Remove</span>
                         </button>
-                      </form>
+                      </form>{{ end }}
                     </li>
                   {{ end }}
                 </ol>
@@ -126,7 +184,7 @@
 
             <div class="curriculum-editor__layout">
             <section class="curriculum-units" aria-label="Curriculum">
-              <div class="curriculum-units__heading-actions">
+              {{ if .CanEditProposal }}<div class="curriculum-units__heading-actions">
                 <button class="secondary-button" type="button" data-open-panel="new-unit-panel" aria-controls="new-unit-panel" aria-expanded="false">
                   <span class="material-symbols-rounded" aria-hidden="true">add</span>
                   Add unit creation
@@ -135,7 +193,7 @@
                   <span class="material-symbols-rounded" aria-hidden="true">move_up</span>
                   Add recognition
                 </button>
-              </div>
+              </div>{{ end }}
 
               {{ if .Graph.Nodes }}
                 <section class="curriculum-explorer" id="curriculum-explorer" aria-live="polite">
@@ -167,7 +225,7 @@
               <div>
                 <p class="ui-pane__eyebrow">Published unit content</p>
                 <h1 id="admin-unit-content-title" data-inline-editor-display="inline-rename-unit">{{ .Name }}</h1>
-                {{ if $.ActiveProposal }}
+                {{ if $.CanEditProposal }}
                   <form class="editor-form unit-content__inline-editor unit-content__inline-editor--rename" id="inline-rename-unit" action="/curriculum-modification/units/{{ .ID }}" method="post" data-inline-editor hidden>
                     <input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}">
                     <input type="hidden" name="proposal_id" value="{{ $.ActiveProposal.ID }}">
@@ -181,8 +239,8 @@
                 {{ end }}
               </div>
               <a class="icon-button nested-panel__close"
-                 href="/curriculum-modification?proposal={{ $.ActiveProposal.ID }}&amp;view=work&amp;unit={{ .ID }}"
-                 hx-get="/curriculum-modification?proposal={{ $.ActiveProposal.ID }}&amp;view=work&amp;unit={{ .ID }}"
+                 href="/curriculum-modification?proposal={{ $.ActiveProposal.ID }}&amp;unit={{ .ID }}"
+                 hx-get="/curriculum-modification?proposal={{ $.ActiveProposal.ID }}&amp;unit={{ .ID }}"
                  hx-target="#workspace"
                  hx-select="#workspace"
                  hx-swap="outerHTML transition:true"
@@ -191,7 +249,7 @@
                 <span class="material-symbols-rounded" aria-hidden="true">close</span>
               </a>
             </header>
-            {{ if $.ActiveProposal }}
+            {{ if $.CanEditProposal }}
               <div class="unit-content__admin-actions">
                 <button class="secondary-button secondary-button--compact" type="button" data-inline-editor-trigger="inline-rename-unit" aria-controls="inline-rename-unit" aria-expanded="false"><span class="material-symbols-rounded" aria-hidden="true">edit</span>Rename</button>
                 <button class="secondary-button secondary-button--compact" type="button" data-inline-editor-trigger="inline-edit-unit-content" aria-controls="inline-edit-unit-content" aria-expanded="false"><span class="material-symbols-rounded" aria-hidden="true">article</span>Edit content</button>
@@ -236,47 +294,6 @@
         </section>
       {{ end }}
 
-      {{ if .ActiveProposal }}
-        <section class="ui-pane ui-pane--form" id="proposal-details-panel" data-nested-panel data-panel-motion="horizontal" data-layout-panel data-panel-modes="collapsed:0 compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-breadcrumb="{{ .ActiveProposal.Title }}" {{ if ne .ProposalView "details" }}hidden{{ end }} aria-labelledby="proposal-details-title">
-          <div class="ui-pane__inner nested-panel" data-pane-content-width="narrow">
-            <header class="nested-panel__header">
-              <div>
-                <h1 id="proposal-details-title">Proposal details</h1>
-              </div>
-              <a class="icon-button nested-panel__close" href="/curriculum-modification" hx-get="/curriculum-modification" hx-trigger="panel-close" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML" hx-push-url="true" data-panel-navigation="close" aria-label="Close proposal details">
-                <span class="material-symbols-rounded" aria-hidden="true">close</span>
-              </a>
-            </header>
-            <dl class="proposal-details">
-              <div><dt>Status</dt><dd>{{ .ActiveProposal.Status }}</dd></div>
-              <div><dt>Author</dt><dd>{{ .ActiveProposal.AuthorName }}</dd></div>
-              <div><dt>Changes</dt><dd>{{ len .ActiveProposal.Changes }}</dd></div>
-            </dl>
-            <form class="editor-form editor-form--panel" action="/curriculum-modification/proposals/{{ .ActiveProposal.ID }}" method="post">
-              <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
-              <label for="working-proposal-title">Title</label>
-              <input id="working-proposal-title" name="title" value="{{ .ActiveProposal.Title }}" required maxlength="200">
-              <label for="working-proposal-rationale">Purpose</label>
-              <textarea id="working-proposal-rationale" name="rationale" required rows="4" maxlength="1000" data-autoresize>{{ .ActiveProposal.Rationale }}</textarea>
-              <button class="primary-button" type="submit">Save proposal</button>
-            </form>
-            <div class="proposal-details__actions">
-              <form action="/curriculum-modification/proposals/{{ .ActiveProposal.ID }}/publish" method="post" {{ with .PublishWarning }}onsubmit="return confirm('{{ . }}')"{{ end }}>
-                <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
-                <button class="primary-button" type="submit">Publish {{ len .ActiveProposal.Changes }} changes</button>
-              </form>
-              <form action="/curriculum-modification/proposals/{{ .ActiveProposal.ID }}/delete" method="post" onsubmit="return confirm('Delete this draft proposal?')">
-                <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
-                <button class="secondary-button destructive-action" type="submit">
-                  <span class="material-symbols-rounded" aria-hidden="true">delete</span>
-                  Delete draft
-                </button>
-              </form>
-            </div>
-          </div>
-        </section>
-      {{ end }}
-
       <section class="ui-pane ui-pane--form" id="proposal-history-panel" data-nested-panel data-layout-panel data-panel-modes="collapsed:0 compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-breadcrumb="History" hidden aria-labelledby="proposal-history-title">
         <div class="ui-pane__inner nested-panel" data-pane-content-width="narrow">
           <header class="nested-panel__header">
@@ -287,18 +304,32 @@
               <span class="material-symbols-rounded" aria-hidden="true">close</span>
             </button>
           </header>
-          <p class="nested-panel__introduction">Inspect accepted and rejected curriculum proposals.</p>
-          {{ if .Proposals }}
-            <ol class="proposal-list proposal-list--panel">
-              {{ range .Proposals }}
-                <li>
-                  <div>
-                    <strong>{{ .Title }}</strong>
-                    <span>{{ .AuthorName }}</span>
+          <p class="nested-panel__introduction">Accepted proposals form the publication line. Drafts branch from the state on which they are based.</p>
+          {{ if or .ProposalHistory .RootDraftProposals }}
+            <ol class="proposal-history-tree">
+              {{ range .RootDraftProposals }}
+                <li class="proposal-history-tree__branch">
+                  <a href="/curriculum-modification?proposal={{ .ID }}" hx-get="/curriculum-modification?proposal={{ .ID }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML" hx-push-url="true"><strong>{{ .Title }}</strong><span>Draft before first publication</span></a>
+                </li>
+              {{ end }}
+              {{ range .ProposalHistory }}
+                <li class="proposal-history-tree__accepted {{ if .IsHead }}is-head{{ end }}">
+                  <div class="proposal-history-tree__commit">
+                    <span class="proposal-history-tree__node" aria-hidden="true"></span>
+                    <div><strong>{{ .Title }}</strong><span>{{ .AuthorName }} · accepted</span></div>
                   </div>
-                  <div class="proposal-list__actions">
-                    <span class="proposal-status">{{ .Status }}</span>
-                  </div>
+                  {{ if .Drafts }}
+                    <ol class="proposal-history-tree__branches">
+                      {{ range .Drafts }}
+                        <li>
+                          <a href="/curriculum-modification?proposal={{ .ID }}" hx-get="/curriculum-modification?proposal={{ .ID }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML" hx-push-url="true">
+                            <strong>{{ .Title }}</strong>
+                            <span>{{ if eq .RebaseStatus "needs_review" }}Needs review{{ else }}Draft{{ end }}</span>
+                          </a>
+                        </li>
+                      {{ end }}
+                    </ol>
+                  {{ end }}
                 </li>
               {{ end }}
             </ol>
