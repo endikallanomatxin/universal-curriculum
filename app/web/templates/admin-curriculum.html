@@ -25,7 +25,7 @@
               <div class="active-proposal-list">
                 {{ range .DraftProposals }}
                   {{ $proposal := . }}
-                  <article class="active-proposal-card selectable-surface {{ with $.ActiveProposal }}{{ if eq .ID $proposal.ID }}is-selected{{ end }}{{ end }}">
+                  <article class="active-proposal-card selectable-surface {{ with $.ActiveProposal }}{{ if eq .ID $proposal.ID }}is-selected{{ end }}{{ end }}" style="view-transition-name:active-proposal-card-{{ .ID }};">
                     <a class="active-proposal-card__identity active-proposal-card__work"
                        href="/curriculum-modification?proposal={{ .ID }}"
                        hx-get="/curriculum-modification?proposal={{ .ID }}"
@@ -35,10 +35,10 @@
                        hx-push-url="true"
                        data-panel-navigation="{{ if $.ActiveProposal }}replace{{ else }}open{{ end }}"
                        aria-label="Work on {{ .Title }}">
-                      <span class="material-symbols-rounded active-proposal-card__icon" aria-hidden="true">rebase_edit</span>
-                      <strong class="active-proposal-card__title" data-proposal-title-preview="{{ .ID }}">{{ .Title }}</strong>
-                      <span class="active-proposal-card__rationale" data-proposal-rationale-preview="{{ .ID }}">{{ .Rationale }}</span>
-                      <span class="active-proposal-card__meta">
+                      <span class="material-symbols-rounded active-proposal-card__icon" style="view-transition-name:active-proposal-icon-{{ .ID }};" aria-hidden="true">rebase_edit</span>
+                      <strong class="active-proposal-card__title" style="view-transition-name:active-proposal-title-{{ .ID }};" data-proposal-title-preview="{{ .ID }}">{{ .Title }}</strong>
+                      <span class="active-proposal-card__rationale" style="view-transition-name:active-proposal-rationale-{{ .ID }};" data-proposal-rationale-preview="{{ .ID }}">{{ .Rationale }}</span>
+                      <span class="active-proposal-card__meta" style="view-transition-name:active-proposal-meta-{{ .ID }};">
                         <span>{{ .ChangeCount }} {{ if eq .ChangeCount 1 }}change{{ else }}changes{{ end }}</span>
                         {{ if eq .RebaseStatus "needs_review" }}<span class="proposal-status proposal-status--warning">Needs review</span>{{ end }}
                       </span>

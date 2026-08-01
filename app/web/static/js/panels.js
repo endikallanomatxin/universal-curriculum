@@ -319,6 +319,7 @@
         if (window.panelLayout) window.panelLayout.beginSettlement();
       }
       if (mode === "replace") trigger.setAttribute("hx-swap", "outerHTML transition:true");
+      if (mode === "close") trigger.setAttribute("hx-swap", "outerHTML transition:true");
     }
   });
   document.addEventListener("htmx:afterRequest", function (event) {

@@ -837,6 +837,22 @@ button.primary-menu__link {
   animation-timing-function: var(--motion-easing);
 }
 
+::view-transition-group(*.layout-position) {
+  animation-duration: var(--motion-duration);
+  animation-timing-function: var(--motion-easing);
+}
+
+::view-transition-old(*.layout-position) {
+  animation: none;
+  opacity: 0;
+}
+
+::view-transition-new(*.layout-position) {
+  animation: none;
+  mix-blend-mode: normal;
+  opacity: 1;
+}
+
 ::view-transition-old(brand-u),
 ::view-transition-old(brand-c) {
   animation: none;

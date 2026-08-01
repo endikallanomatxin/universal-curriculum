@@ -265,6 +265,14 @@
   min-height: 5rem;
 }
 
+.active-proposal-card,
+.active-proposal-card__icon,
+.active-proposal-card__title,
+.active-proposal-card__rationale,
+.active-proposal-card__meta {
+  view-transition-class: layout-position;
+}
+
 .active-proposal-card__identity {
   color: inherit;
   display: grid;

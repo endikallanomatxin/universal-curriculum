@@ -152,6 +152,9 @@ recomposition. The old snapshot of the departing pane moves right while the
 persistent pane surfaces expand from the same starting frame. Their compatible
 or breadcrumb content follows the same matching rules as an opening
 recomposition. Sharing one transition avoids separate exit and resize clocks.
+Server-rendered closure keeps its pane exit phase, then enables the HTMX View
+Transition for the resulting workspace swap so persistent elements interpolate
+back into their expanded layout instead of jumping after the pane disappears.
 
 Learning-path selection uses `open-or-replace`: the first selected path adds the
 curriculum-map pane from the right, while choosing another path with the map
@@ -190,6 +193,14 @@ Persistent shell icons suppress the browser's default snapshot crossfade so
 they remain opaque while their shared transition group interpolates position.
 That shared class also keeps them above the separate home and detail content
 snapshots, whose crossfade must not temporarily cover persistent controls.
+
+Elements whose identity survives a responsive reflow use stable, entity-based
+`view-transition-name` values and the shared `layout-position` transition
+class. The group interpolates its old and new boxes while only the new snapshot
+is painted, so grid and container-query changes read as movement rather than a
+scale or crossfade. Name the smallest meaningful persistent pieces as well as
+their surface when internal placement changes; names must remain unique in the
+rendered document.
 
 When adding or removing a pane, preserve its resolved width during the
 entering or closing phase. Let the remaining panes renegotiate around that
