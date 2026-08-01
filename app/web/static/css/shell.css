@@ -668,6 +668,7 @@ button.primary-menu__link {
   min-height: 100dvh;
   overflow-y: auto;
   padding: clamp(2rem, 5vw, 6rem);
+  position: relative;
 }
 
 .ui-pane[data-panel-mode="compact"] {

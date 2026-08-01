@@ -73,7 +73,7 @@
                 <h1 id="proposal-workspace-title">{{ .ActiveProposal.Title }}</h1>
                 <a class="proposal-workspace__breadcrumb-title" href="/curriculum-modification?proposal={{ .ActiveProposal.ID }}" hx-get="/curriculum-modification?proposal={{ .ActiveProposal.ID }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true">Working on {{ .ActiveProposal.Title }}</a>
               </div>
-              <a class="icon-button nested-panel__close" href="/curriculum-modification" hx-get="/curriculum-modification" hx-trigger="panel-close" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML" hx-push-url="true" data-panel-navigation="close" aria-label="Close proposal workspace">
+              <a class="icon-button ui-pane__close" href="/curriculum-modification" hx-get="/curriculum-modification" hx-trigger="panel-close" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML" hx-push-url="true" data-panel-navigation="close" aria-label="Close proposal workspace">
                 <span class="material-symbols-rounded" aria-hidden="true">close</span>
               </a>
             </header>
@@ -238,7 +238,7 @@
                   </form>
                 {{ end }}
               </div>
-              <a class="icon-button nested-panel__close"
+              <a class="icon-button ui-pane__close"
                  href="/curriculum-modification?proposal={{ $.ActiveProposal.ID }}&amp;unit={{ .ID }}"
                  hx-get="/curriculum-modification?proposal={{ $.ActiveProposal.ID }}&amp;unit={{ .ID }}"
                  hx-target="#workspace"
@@ -300,7 +300,7 @@
             <div>
               <h1 id="proposal-history-title">Proposal history</h1>
             </div>
-            <button class="icon-button nested-panel__close" type="button" data-close-panel aria-label="Close proposal history">
+            <button class="icon-button ui-pane__close" type="button" data-close-panel aria-label="Close proposal history">
               <span class="material-symbols-rounded" aria-hidden="true">close</span>
             </button>
           </header>
@@ -345,7 +345,7 @@
             <div>
               <h1 id="create-proposal-title">New proposal</h1>
             </div>
-            <button class="icon-button nested-panel__close" type="button" data-close-panel aria-label="Close new proposal panel">
+            <button class="icon-button ui-pane__close" type="button" data-close-panel aria-label="Close new proposal panel">
               <span class="material-symbols-rounded" aria-hidden="true">close</span>
             </button>
           </header>
@@ -367,7 +367,7 @@
             <div>
               <h1 id="create-unit-title">New unit</h1>
             </div>
-            <button class="icon-button nested-panel__close" type="button" data-close-panel aria-label="Close new unit panel">
+            <button class="icon-button ui-pane__close" type="button" data-close-panel aria-label="Close new unit panel">
               <span class="material-symbols-rounded" aria-hidden="true">close</span>
             </button>
           </header>
@@ -392,7 +392,7 @@
               <p class="ui-pane__eyebrow">Edit dependencies</p>
               <h1 id="edit-dependencies-title" data-dependent-name>Unit</h1>
             </div>
-            <button class="icon-button nested-panel__close" type="button" data-close-panel aria-label="Close dependencies panel">
+            <button class="icon-button ui-pane__close" type="button" data-close-panel aria-label="Close dependencies panel">
               <span class="material-symbols-rounded" aria-hidden="true">close</span>
             </button>
           </header>
@@ -444,7 +444,7 @@
             <div>
               <h1 id="create-recognition-title">Recognition</h1>
             </div>
-            <button class="icon-button nested-panel__close" type="button" data-close-panel aria-label="Close recognition panel">
+            <button class="icon-button ui-pane__close" type="button" data-close-panel aria-label="Close recognition panel">
               <span class="material-symbols-rounded" aria-hidden="true">close</span>
             </button>
           </header>

@@ -518,6 +518,10 @@
   will-change: transform;
 }
 
+.ui-pane {
+  --ui-pane-close-inset: clamp(var(--space-3), 2.5vw, var(--space-6));
+}
+
 .nested-panel__header {
   align-items: start;
   display: flex;
@@ -531,8 +535,22 @@
   overflow-wrap: anywhere;
 }
 
-.nested-panel__close {
-  flex: none;
+.nested-panel__header:has(> .ui-pane__close),
+.learn-heading:has(> .ui-pane__close) {
+  padding-inline-end: 3rem;
+}
+
+.ui-pane__close {
+  inset-block-start: var(--ui-pane-close-block-start, var(--ui-pane-close-inset));
+  inset-inline-end: var(--ui-pane-close-inset);
+  position: absolute;
+  z-index: 3;
+}
+
+@media (max-width: 42rem) {
+  .ui-pane {
+    --ui-pane-close-block-start: calc(2.75rem + var(--ui-pane-close-inset));
+  }
 }
 
 .nested-panel__introduction {

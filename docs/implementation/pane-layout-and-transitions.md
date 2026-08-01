@@ -157,6 +157,18 @@ Learning-path selection uses `open-or-replace`: the first selected path adds the
 curriculum-map pane from the right, while choosing another path with the map
 already present replaces its content in place.
 
+## Pane close control
+
+Every closable pane uses `ui-pane__close`. Its position belongs to the pane
+surface rather than to a title or form: `.ui-pane` is the positioning context
+and keeps the control at a responsive inset from its upper inline-end corner.
+That inset follows half the pane's fluid padding, within shared minimum and
+maximum bounds, so wide surfaces retain proportionate breathing room.
+Headers containing the control reserve the shared close-control clearance, so
+long titles and adjacent actions cannot occupy that area. Consumer styles must
+not reposition the close control. In mobile composition the system-level inset
+also clears the shared breadcrumb bar.
+
 ## Motion and continuity
 
 Calculated pane widths and padding are applied without CSS interpolation. The

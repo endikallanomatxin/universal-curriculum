@@ -83,7 +83,7 @@
                 <h1 id="learn-graph-title">{{ if .SelectedPath }}{{ .SelectedPath.Name }}{{ else if .CombinePaths }}All my paths{{ else }}Full curriculum{{ end }}</h1>
                 {{ with .SelectedPath }}{{ if .Description }}<p>{{ .Description }}</p>{{ end }}{{ end }}
               </div>
-              <a class="icon-button nested-panel__close"
+              <a class="icon-button ui-pane__close"
                  href="/learn"
                  hx-get="/learn"
                  hx-trigger="panel-close"
@@ -134,7 +134,7 @@
               {{ if $.User }}
                 {{ template "unit-completion-form" $.ContentCompletion }}
               {{ end }}
-              <button class="icon-button nested-panel__close" type="button" data-close-panel aria-label="Close unit content"><span class="material-symbols-rounded" aria-hidden="true">close</span></button>
+              <button class="icon-button ui-pane__close" type="button" data-close-panel aria-label="Close unit content"><span class="material-symbols-rounded" aria-hidden="true">close</span></button>
             </header>
             <div class="unit-content__body">{{ renderUnitContent .Content }}</div>
           </article>
@@ -146,7 +146,7 @@
           <div class="ui-pane__inner nested-panel" data-pane-content-width="narrow">
             <header class="nested-panel__header">
               <div><h1 id="learning-path-editor-title">{{ if .EditingPath }}Edit path{{ else }}New path{{ end }}</h1></div>
-              <a class="icon-button nested-panel__close"
+              <a class="icon-button ui-pane__close"
                  href="/learn"
                  hx-get="/learn"
                  hx-trigger="panel-close"
