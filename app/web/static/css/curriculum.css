@@ -475,7 +475,15 @@
 }
 
 .proposal-rebase__intro h2 {
-  font-size: 1rem;
+  align-items: center;
+  display: flex;
+  font-size: 1.12rem;
+  gap: var(--space-2);
+}
+
+.proposal-rebase__intro h2 .material-symbols-rounded {
+  color: var(--color-ink-strong);
+  font-size: 1.35rem;
 }
 
 .proposal-rebase__intro p {
@@ -493,7 +501,6 @@
   --proposal-rebase-lane-spacing: 1.55rem;
 
   isolation: isolate;
-  margin-inline: auto;
   max-width: 32rem;
   position: relative;
 }
@@ -585,6 +592,15 @@
 .proposal-rebase__conflicts {
   display: grid;
   gap: var(--space-3);
+}
+
+.proposal-rebase__conflict-list {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.proposal-rebase__conflict-list h3 {
+  margin: 0;
 }
 
 .proposal-rebase-conflict {
@@ -1253,7 +1269,23 @@ textarea.proposal-rebase-merge-part {
 }
 
 .proposal-status--warning {
-  color: var(--color-proposal-rename);
+  align-items: center;
+  color: var(--color-ink-strong);
+  display: inline-flex;
+  gap: 0.25rem;
+  justify-self: start;
+}
+
+.proposal-status--warning .material-symbols-rounded {
+  font-size: 0.82rem;
+}
+
+.active-proposal-card__meta .proposal-status--warning {
+  margin-left: auto;
+}
+
+.proposal-history-tree a .proposal-status--warning {
+  color: var(--color-ink-strong);
 }
 
 .proposal-history-tree,

@@ -40,7 +40,7 @@
                       <span class="active-proposal-card__rationale" style="view-transition-name:active-proposal-rationale-{{ .ID }};" data-proposal-rationale-preview="{{ .ID }}">{{ .Rationale }}</span>
                       <span class="active-proposal-card__meta" style="view-transition-name:active-proposal-meta-{{ .ID }};">
                         <span>{{ .ChangeCount }} {{ if eq .ChangeCount 1 }}change{{ else }}changes{{ end }}</span>
-                        {{ if eq .RebaseStatus "needs_review" }}<span class="proposal-status proposal-status--warning">Needs review</span>{{ end }}
+                        {{ if eq .RebaseStatus "needs_review" }}<span class="proposal-status proposal-status--warning"><span class="material-symbols-rounded" aria-hidden="true">fork_right</span>Needs rebase review</span>{{ end }}
                       </span>
                     </a>
                   </article>
@@ -106,8 +106,8 @@
                   <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
                   <header class="proposal-rebase__header">
                     <div class="proposal-rebase__intro">
-                      <h2 id="proposal-rebase-title">Review overlapping changes</h2>
-                      <p>The accepted curriculum changed after this draft began. Review the final result for each affected unit.</p>
+                      <h2 id="proposal-rebase-title"><span class="material-symbols-rounded" aria-hidden="true">fork_right</span>Rebase your proposal</h2>
+                      <p>The accepted curriculum changed after this proposal was created. Review the final result for each affected unit.</p>
                     </div>
                   </header>
                   {{ with .ProposalRebase.ValidationReason }}<p class="form-error" role="alert">{{ . }}</p>{{ end }}
@@ -137,7 +137,7 @@
                             {{ else }}
                               <li class="proposal-rebase-graph__item {{ if .Current }}proposal-rebase-graph__item--current{{ end }}" data-rebase-node="accepted-{{ .ID }}" data-rebase-lane="0">
                                 <span class="proposal-rebase-graph__node" data-rebase-anchor aria-hidden="true"></span>
-                                <div><span class="label">{{ if .Current }}Proposal to rebase to{{ else }}Accepted proposal{{ end }}</span><strong>{{ .Title }}</strong></div>
+                                <div>{{ if .Current }}<span class="label">Proposal to rebase to</span>{{ end }}<strong>{{ .Title }}</strong></div>
                               </li>
                             {{ end }}
                           {{ end }}
@@ -149,6 +149,8 @@
                       <figcaption class="visually-hidden">The draft currently points to {{ .BaseTitle }} and will be rebased onto {{ range .Items }}{{ if .Current }}{{ .Title }}{{ end }}{{ end }}. Ellipses represent accepted proposals without overlapping changes.</figcaption>
                     </figure>
                   {{ end }}
+                  <section class="proposal-rebase__conflict-list" aria-labelledby="proposal-rebase-conflicts-title">
+                  <h3 class="label" id="proposal-rebase-conflicts-title">Conflicting changes</h3>
                   <div class="proposal-rebase__conflicts">
                     {{ range .ProposalRebase.Conflicts }}
                       <section class="proposal-rebase-conflict {{ if eq .Change.Kind "rename_unit" }}proposal-rebase-conflict--rename{{ else if eq .Change.Kind "update_content" }}proposal-rebase-conflict--content{{ else if eq .Change.Kind "delete_unit" }}proposal-rebase-conflict--deletion{{ else if or (eq .Change.Kind "add_dependency") (eq .Change.Kind "remove_dependency") }}proposal-rebase-conflict--dependency{{ else if eq .Change.Kind "recognition" }}proposal-rebase-conflict--recognition{{ else }}proposal-rebase-conflict--neutral{{ end }}" aria-labelledby="proposal-rebase-conflict-{{ .Change.ID }}">
@@ -225,6 +227,7 @@
                       </section>
                     {{ end }}
                   </div>
+                  </section>
                   <div class="proposal-rebase__actions">
                     <button class="primary-button" type="submit">Apply resolutions</button>
                   </div>
@@ -428,7 +431,11 @@
                         <li>
                           <a href="/curriculum-modification?proposal={{ .ID }}" hx-get="/curriculum-modification?proposal={{ .ID }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML" hx-push-url="true">
                             <strong>{{ .Title }}</strong>
-                            <span>{{ if eq .RebaseStatus "needs_review" }}Needs review{{ else }}Draft{{ end }}</span>
+                            {{ if eq .RebaseStatus "needs_review" }}
+                              <span class="proposal-status proposal-status--warning"><span class="material-symbols-rounded" aria-hidden="true">fork_right</span>Needs rebase review</span>
+                            {{ else }}
+                              <span>Draft</span>
+                            {{ end }}
                           </a>
                         </li>
                       {{ end }}

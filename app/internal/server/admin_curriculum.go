@@ -926,13 +926,24 @@ func curriculumRebaseTimeline(
 	if plan.BaseProposal != nil && plan.BaseProposal.Title != "" {
 		view.BaseTitle = plan.BaseProposal.Title
 	}
-	if len(plan.AcceptedProposals) > 1 {
-		view.Items = append(view.Items, curriculumRebaseTimelineItemView{Ellipsis: true})
+	conflicting := make(map[int64]bool)
+	for _, conflict := range plan.Conflicts {
+		for _, work := range conflict.AcceptedWork {
+			conflicting[work.Proposal.ID] = true
+		}
 	}
-	current := plan.AcceptedProposals[len(plan.AcceptedProposals)-1]
-	view.Items = append(view.Items, curriculumRebaseTimelineItemView{
-		ID: current.ID, Title: current.Title, Current: true,
-	})
+	for index, proposal := range plan.AcceptedProposals {
+		current := index == len(plan.AcceptedProposals)-1
+		if !current && !conflicting[proposal.ID] {
+			if len(view.Items) == 0 || !view.Items[len(view.Items)-1].Ellipsis {
+				view.Items = append(view.Items, curriculumRebaseTimelineItemView{Ellipsis: true})
+			}
+			continue
+		}
+		view.Items = append(view.Items, curriculumRebaseTimelineItemView{
+			ID: proposal.ID, Title: proposal.Title, Current: current,
+		})
+	}
 	view.Edges = append(view.Edges, curriculumRebaseTimelineEdgeView{Source: "base", Target: "draft"})
 	previous := "base"
 	for _, item := range view.Items {

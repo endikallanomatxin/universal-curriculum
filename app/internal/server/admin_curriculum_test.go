@@ -342,12 +342,13 @@ func TestCurriculumRebaseTimelineKeepsConflictsAndCompressesOtherAcceptedWork(t 
 	if view == nil || view.BaseTitle != "Original base" || view.DraftTitle != "Working draft" {
 		t.Fatalf("rebase timeline identity = %#v", view)
 	}
-	if len(view.Items) != 2 || !view.Items[0].Ellipsis ||
-		view.Items[1].Title != "Current head" || !view.Items[1].Current {
+	if len(view.Items) != 4 || !view.Items[0].Ellipsis ||
+		view.Items[1].Title != "Overlapping work" || view.Items[1].Current ||
+		!view.Items[2].Ellipsis || view.Items[3].Title != "Current head" || !view.Items[3].Current {
 		t.Fatalf("rebase timeline items = %#v", view.Items)
 	}
-	if len(view.Edges) != 2 || view.Edges[0].Source != "base" || view.Edges[0].Target != "draft" ||
-		view.Edges[1].Target != "accepted-5" {
+	if len(view.Edges) != 3 || view.Edges[0].Source != "base" || view.Edges[0].Target != "draft" ||
+		view.Edges[1].Target != "accepted-3" || view.Edges[2].Target != "accepted-5" {
 		t.Fatalf("rebase timeline edges = %#v", view.Edges)
 	}
 }
