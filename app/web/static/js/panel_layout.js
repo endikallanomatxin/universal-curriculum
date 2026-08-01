@@ -99,6 +99,16 @@
     inner.style.viewTransitionName = "pane-content-" + key + "-" + contentTransitionState(mode);
   }
 
+  function setPanelSurfaceTransition(panel) {
+    if (!panel.parentElement || !panel.parentElement.matches(".pane-stack")) return;
+    const key = transitionToken(
+      panel.dataset.panelTransitionKey || panel.id || panel.getAttribute("aria-labelledby")
+    );
+    if (!key) return;
+    panel.style.viewTransitionName = "pane-surface-" + key;
+    panel.style.viewTransitionClass = "panel-surface";
+  }
+
   function setPanelGeometry(panel, width, mode) {
     const widthValue = roundedWidth(width) + "rem";
     let changed = false;
@@ -110,6 +120,7 @@
       panel.dataset.panelMode = mode;
       changed = true;
     }
+    setPanelSurfaceTransition(panel);
     setPanelContentTransition(panel, mode);
     return changed;
   }

@@ -269,7 +269,8 @@
 .active-proposal-card__icon,
 .active-proposal-card__title,
 .active-proposal-card__rationale,
-.active-proposal-card__meta {
+.active-proposal-card__meta,
+#active-proposals-title {
   view-transition-class: layout-position;
 }
 

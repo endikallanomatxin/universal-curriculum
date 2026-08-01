@@ -517,13 +517,25 @@
 
 @keyframes horizontal-panel-enter {
   from {
-    transform: translateX(100%);
+    opacity: 0;
+    transform: translateX(var(--panel-motion-distance));
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
   }
 }
 
 @keyframes horizontal-panel-exit {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
   to {
-    transform: translateX(100%);
+    opacity: 0;
+    transform: translateX(var(--panel-motion-distance));
   }
 }
 
@@ -532,7 +544,7 @@
   animation: horizontal-panel-enter var(--panel-motion-duration) var(--panel-motion-easing);
   overflow: hidden;
   pointer-events: none;
-  will-change: transform;
+  will-change: opacity, transform;
 }
 
 .ui-pane[data-panel-motion="horizontal"].is-closing {
@@ -541,7 +553,7 @@
   opacity: 1;
   overflow: hidden;
   pointer-events: none;
-  will-change: transform;
+  will-change: opacity, transform;
 }
 
 .ui-pane {

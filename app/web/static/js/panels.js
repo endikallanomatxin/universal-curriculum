@@ -3,7 +3,7 @@
 
   const closeDuration = 280;
   const closeLayoutDelay = 120;
-  const closeNavigationDelay = 140;
+  const closeNavigationDelay = closeDuration + 50;
   const navigationByRequest = new WeakMap();
 
   function directChildContaining(group, element) {
@@ -137,7 +137,7 @@
         return child.matches(".ui-pane__inner");
       });
       if (inner && getComputedStyle(inner).viewTransitionName.endsWith("-content")) {
-        panel.style.viewTransitionClass = "matched-panel-surface";
+        panel.style.viewTransitionClass = "panel-surface matched-panel-surface";
         inner.style.viewTransitionClass = "matched-panel-content";
       }
     });
@@ -154,7 +154,7 @@
       });
       if (persistent) {
         if (inner && getComputedStyle(inner).viewTransitionName.endsWith("-content")) {
-          panel.style.viewTransitionClass = "matched-panel-surface";
+          panel.style.viewTransitionClass = "panel-surface matched-panel-surface";
           inner.style.viewTransitionClass = "matched-panel-content";
         }
         return;
@@ -166,10 +166,41 @@
 
   function clearTransitionClasses(root) {
     root.querySelectorAll('[data-layout-panel][style*="view-transition-class"]').forEach(function (panel) {
-      panel.style.removeProperty("view-transition-class");
+      if (panel.parentElement && panel.parentElement.matches(".pane-stack")) {
+        panel.style.viewTransitionClass = "panel-surface";
+      } else {
+        panel.style.removeProperty("view-transition-class");
+      }
     });
     root.querySelectorAll('.ui-pane__inner[style*="view-transition-class"]').forEach(function (inner) {
       inner.style.removeProperty("view-transition-class");
+    });
+  }
+
+  function recomposeDuringPanelExit(panel) {
+    const root = panel && panel.parentElement;
+    if (!root || !window.panelLayout) return;
+    if (typeof document.startViewTransition !== "function") {
+      window.panelLayout.refresh();
+      return;
+    }
+    const navigation = {
+      viewTransition: true,
+      existingPaneKeys: visibleWorkspacePaneKeys()
+    };
+    markMatchedTransitionContent(root);
+    root.classList.add("is-panel-layout-snapshot");
+    const transition = document.startViewTransition(function () {
+      window.panelLayout.refresh();
+      root.getBoundingClientRect();
+      keepTransitionContentOnlyForPersistentPanes(root, navigation);
+    });
+    transition.ready.finally(function () {
+      root.classList.remove("is-panel-layout-snapshot");
+    });
+    transition.finished.finally(function () {
+      root.classList.remove("is-panel-layout-snapshot");
+      clearTransitionClasses(root);
     });
   }
 
@@ -279,7 +310,7 @@
           group.getBoundingClientRect();
         }
         panel.panelLayoutTimer = window.setTimeout(function () {
-          if (window.panelLayout) window.panelLayout.refresh();
+          recomposeDuringPanelExit(panel);
         }, closeLayoutDelay);
         let navigated = false;
         const navigate = function () {
@@ -329,7 +360,7 @@
         if (window.panelLayout) window.panelLayout.beginSettlement();
       }
       if (mode === "replace") trigger.setAttribute("hx-swap", "outerHTML transition:true");
-      if (mode === "close") trigger.setAttribute("hx-swap", "outerHTML transition:true");
+      if (mode === "close") trigger.setAttribute("hx-swap", "outerHTML settle:0");
     }
   });
   document.addEventListener("htmx:afterRequest", function (event) {

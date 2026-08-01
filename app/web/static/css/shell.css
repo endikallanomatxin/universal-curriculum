@@ -665,6 +665,10 @@ button.primary-menu__link {
   transition: flex-basis var(--panel-motion-duration) var(--panel-motion-easing);
 }
 
+.pane-stack.is-panel-motion-active.is-panel-layout-snapshot > [data-layout-panel] {
+  transition: none;
+}
+
 .ui-pane {
   background: linear-gradient(90deg, var(--color-panel-start), var(--color-panel-end));
   flex: 0 0 var(--panel-width, min(100%, 42rem));
@@ -836,6 +840,7 @@ button.primary-menu__link {
 ::view-transition-group(learning-paths-pane),
 ::view-transition-group(curriculum-map-pane),
 ::view-transition-group(unit-content-pane),
+::view-transition-group(*.panel-surface),
 ::view-transition-group(*.persistent-shell-icon) {
   animation-duration: var(--motion-duration);
   animation-timing-function: var(--motion-easing);
@@ -855,6 +860,14 @@ button.primary-menu__link {
   animation: none;
   mix-blend-mode: normal;
   opacity: 1;
+}
+
+::view-transition-new(*.layout-position):only-child {
+  animation: horizontal-panel-enter var(--panel-motion-duration) var(--panel-motion-easing);
+}
+
+::view-transition-old(*.layout-position):only-child {
+  animation: horizontal-panel-exit var(--panel-motion-duration) var(--panel-motion-easing) forwards;
 }
 
 ::view-transition-old(brand-u),
@@ -880,6 +893,14 @@ button.primary-menu__link {
 }
 
 ::view-transition-old(unit-content-pane):only-child {
+  animation: horizontal-panel-exit var(--panel-motion-duration) var(--panel-motion-easing) forwards;
+}
+
+::view-transition-new(*.panel-surface):only-child {
+  animation: horizontal-panel-enter var(--panel-motion-duration) var(--panel-motion-easing);
+}
+
+::view-transition-old(*.panel-surface):only-child {
   animation: horizontal-panel-exit var(--panel-motion-duration) var(--panel-motion-easing) forwards;
 }
 
