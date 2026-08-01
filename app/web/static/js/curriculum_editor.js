@@ -42,29 +42,8 @@
     if (form) form.requestSubmit();
   });
 
-  function syncMergeResult(editor) {
-    const output = editor.closest(".proposal-rebase-merge-editor").querySelector("[data-merge-result]");
-    output.value = Array.from(editor.querySelectorAll("[data-merge-result-part]"), function (part) {
-      return part.value;
-    }).join("");
-  }
-
-  document.addEventListener("click", function (event) {
-    const button = event.target.closest && event.target.closest("[data-use-merge-alternative]");
-    if (!button) return;
-    const change = button.closest(".proposal-rebase-merge-part--change");
-    const result = change.querySelector("[data-merge-result-part]");
-    const alternative = button.closest(".proposal-rebase-merge-part__alternative");
-    const source = alternative.querySelector("[data-alternative-source]");
-    result.value = source.value;
-    result.dispatchEvent(new Event("input", { bubbles: true }));
-    result.focus();
-  });
-
   document.addEventListener("input", function (event) {
     const field = event.target;
-    const mergeEditor = field.closest && field.closest("[data-merge-editor]");
-    if (mergeEditor && field.matches("[data-merge-result-part]")) syncMergeResult(mergeEditor);
     const form = field.closest && field.closest("[data-proposal-metadata]");
     if (!form) return;
     const proposalID = form.dataset.proposalMetadata;

@@ -498,7 +498,44 @@
 
 .proposal-rebase-merge-editor__document {
   border-top: 1px solid color-mix(in srgb, var(--color-ink) 10%, transparent);
+  display: block;
+}
+
+.proposal-rebase-merge-editor__fallback {
+  color: var(--color-muted);
   display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+
+.proposal-rebase-merge-editor__fallback > p,
+.proposal-rebase-merge-editor__fallback pre {
+  margin: 0;
+}
+
+.proposal-rebase-merge-editor__fallback pre {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  margin-top: var(--space-1);
+  white-space: pre-wrap;
+}
+
+.proposal-rebase-merge-editor__result {
+  background: color-mix(in srgb, var(--color-surface) 45%, transparent);
+  border: 0;
+  border-radius: 0;
+  border-top: 1px solid color-mix(in srgb, var(--color-ink) 10%, transparent);
+  color: var(--color-ink);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  line-height: 1.55;
+  min-height: 12rem;
+  padding: var(--space-3);
+  resize: vertical;
+  width: 100%;
+}
+
+.proposal-rebase-merge-editor__result:focus {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--color-ink) 18%, transparent);
+  outline: 0;
 }
 
 .proposal-rebase-merge-part,
@@ -529,10 +566,27 @@ textarea.proposal-rebase-merge-part {
   color: var(--color-muted);
 }
 
+.proposal-rebase-merge-part + .proposal-rebase-merge-part {
+  border-top: 1px solid color-mix(in srgb, var(--color-ink) 8%, transparent);
+}
+
 .proposal-rebase-merge-part--change {
-  border-left: 3px solid var(--color-proposal-content);
   display: grid;
-  padding: var(--space-2) 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.proposal-rebase-merge-part--change::before {
+  background: var(--color-proposal-content);
+  content: "";
+  inset: 0 auto 0 0;
+  position: absolute;
+  width: 3px;
+  z-index: 1;
+}
+
+.proposal-rebase-merge-part--change > textarea {
+  padding-bottom: var(--space-2);
 }
 
 .proposal-rebase-merge-part__result-heading,
@@ -541,7 +595,7 @@ textarea.proposal-rebase-merge-part {
   display: flex;
   gap: var(--space-2);
   justify-content: space-between;
-  padding: 0 var(--space-3) var(--space-1);
+  padding: var(--space-2) var(--space-3) var(--space-1);
 }
 
 .proposal-rebase-merge-part__alternative > div {
@@ -551,14 +605,10 @@ textarea.proposal-rebase-merge-part {
 .proposal-rebase-merge-part__alternative {
   background: color-mix(in srgb, var(--color-proposal-content) 8%, transparent);
   border-top: 1px solid color-mix(in srgb, var(--color-proposal-content) 22%, transparent);
-  padding: var(--space-2) 0;
+  padding-bottom: var(--space-2);
 }
 
-.proposal-rebase-merge-part__alternative--accepted {
-  margin-top: var(--space-2);
-}
-
-.proposal-rebase-merge-part__alternative--original {
+.proposal-rebase-merge-part__alternative--proposal {
   background: color-mix(in srgb, var(--color-ink) 4%, transparent);
   border-top-color: color-mix(in srgb, var(--color-ink) 12%, transparent);
 }
@@ -571,17 +621,7 @@ textarea.proposal-rebase-merge-part {
   margin: 0;
   overflow-x: auto;
   padding: 0 var(--space-3);
-  white-space: pre-wrap;
-}
-
-.proposal-rebase-merge-editor[data-view-switcher-value="result"] .proposal-rebase-merge-part__result-heading,
-.proposal-rebase-merge-editor[data-view-switcher-value="result"] .proposal-rebase-merge-part__alternative {
-  display: none;
-}
-
-.proposal-rebase-merge-editor[data-view-switcher-value="result"] .proposal-rebase-merge-part--change {
-  border-left: 0;
-  padding: 0;
+  white-space: break-spaces;
 }
 
 .proposal-workspace__changes h2 {
