@@ -153,12 +153,12 @@ func TestPasswordRecoverySendsOneTimeLinkAndRevokesExistingSessions(t *testing.T
 	}
 }
 
-func TestPasswordRecoveryRateLimitsRequestsAndAttemptsSeparately(t *testing.T) {
+func TestAuthenticationRateLimitsScopesIndependently(t *testing.T) {
 	database := openAuthIntegrationDatabase(t, "password_recovery_rate_limit")
-	limiter := NewPasswordResetRateLimiter(database)
+	limiter := NewAuthenticationRateLimiter(database)
 
 	for attempt := 1; attempt <= passwordResetRequestBlockThreshold; attempt++ {
-		blocked, err := limiter.RegisterRequest("198.51.100.7")
+		blocked, err := limiter.RegisterPasswordResetRequest("198.51.100.7")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -168,12 +168,39 @@ func TestPasswordRecoveryRateLimitsRequestsAndAttemptsSeparately(t *testing.T) {
 		}
 	}
 
-	blocked, err := limiter.RegisterAttempt("198.51.100.7")
+	blocked, err := limiter.RegisterPasswordResetAttempt("198.51.100.7")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if blocked {
 		t.Fatal("request rate limit also blocked the independent reset-attempt scope")
+	}
+
+	for attempt := 1; attempt <= loginBlockThreshold; attempt++ {
+		blocked, err := limiter.RegisterLogin("203.0.113.8")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if blocked != (attempt == loginBlockThreshold) {
+			t.Fatalf("login %d blocked = %v", attempt, blocked)
+		}
+	}
+	blocked, err = limiter.RegisterRegistration("203.0.113.8")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if blocked {
+		t.Fatal("login rate limit also blocked the independent registration scope")
+	}
+
+	for attempt := 2; attempt <= registrationBlockThreshold; attempt++ {
+		blocked, err = limiter.RegisterRegistration("203.0.113.8")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if blocked != (attempt == registrationBlockThreshold) {
+			t.Fatalf("registration %d blocked = %v", attempt, blocked)
+		}
 	}
 }
 

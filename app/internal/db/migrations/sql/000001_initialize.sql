@@ -56,7 +56,12 @@ CREATE INDEX password_reset_tokens_expires_at_idx
 
 CREATE TABLE authentication_rate_limits (
     scope TEXT NOT NULL CHECK (
-        scope IN ('password_reset_request_ip', 'password_reset_attempt_ip')
+        scope IN (
+            'login_ip',
+            'registration_ip',
+            'password_reset_request_ip',
+            'password_reset_attempt_ip'
+        )
     ),
     key TEXT NOT NULL,
     window_started_at TIMESTAMPTZ NOT NULL,

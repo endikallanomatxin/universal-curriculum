@@ -6,6 +6,8 @@ import (
 )
 
 const (
+	AuthenticationRateScopeLogin                = "login_ip"
+	AuthenticationRateScopeRegistration         = "registration_ip"
 	AuthenticationRateScopePasswordResetRequest = "password_reset_request_ip"
 	AuthenticationRateScopePasswordResetAttempt = "password_reset_attempt_ip"
 )

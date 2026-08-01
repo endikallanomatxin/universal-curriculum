@@ -62,6 +62,23 @@ func (server *Server) login(writer http.ResponseWriter, request *http.Request) {
 		email := models.NormalizeEmail(request.FormValue("email"))
 		password := request.FormValue("password")
 		next := safeRedirectPath(request.FormValue("next"), "/account")
+		blocked, err := server.registerAuthenticationRateEvent(
+			request,
+			(*services.AuthenticationRateLimiter).RegisterLogin,
+		)
+		if err != nil {
+			log.Printf("rate limit login: %v", err)
+			http.Error(writer, "Unable to log in", http.StatusInternalServerError)
+			return
+		}
+		if blocked {
+			writer.Header().Set("Retry-After", "900")
+			server.renderStatus(writer, http.StatusTooManyRequests, "login.html", authPageData{
+				Error: "Too many attempts. Try again later.",
+				Next:  next,
+			})
+			return
+		}
 		if email == "" || password == "" {
 			server.renderStatus(writer, http.StatusUnauthorized, "login.html", authPageData{Error: invalidLoginMessage, Next: next})
 			return
@@ -91,6 +108,17 @@ func (server *Server) login(writer http.ResponseWriter, request *http.Request) {
 	}
 }
 
+func (server *Server) registerAuthenticationRateEvent(
+	request *http.Request,
+	register func(*services.AuthenticationRateLimiter, string) (bool, error),
+) (bool, error) {
+	clientIP, err := ClientIP(request)
+	if err != nil {
+		return false, err
+	}
+	return register(services.NewAuthenticationRateLimiter(server.Database), clientIP.String())
+}
+
 func (server *Server) register(writer http.ResponseWriter, request *http.Request) {
 	if _, authenticated := services.SessionUserID(request); authenticated && request.Method == http.MethodGet {
 		http.Redirect(writer, request, "/account", http.StatusSeeOther)
@@ -116,7 +144,24 @@ func (server *Server) register(writer http.ResponseWriter, request *http.Request
 		email := models.NormalizeEmail(request.FormValue("email"))
 		password := request.FormValue("password")
 		next := safeRedirectPath(request.FormValue("next"), "/account")
-		_, err := services.RegisterLocalUser(server.Database, fullName, email, password)
+		blocked, err := server.registerAuthenticationRateEvent(
+			request,
+			(*services.AuthenticationRateLimiter).RegisterRegistration,
+		)
+		if err != nil {
+			log.Printf("rate limit registration: %v", err)
+			http.Error(writer, "Unable to create account", http.StatusInternalServerError)
+			return
+		}
+		if blocked {
+			writer.Header().Set("Retry-After", "900")
+			server.renderStatus(writer, http.StatusTooManyRequests, "register.html", registrationPageData{
+				Error: "Too many attempts. Try again later.",
+				Next:  next,
+			})
+			return
+		}
+		_, err = services.RegisterLocalUser(server.Database, fullName, email, password)
 		if err != nil {
 			data := registrationPageData{Next: next}
 			switch {
@@ -178,13 +223,14 @@ func (server *Server) forgotPassword(writer http.ResponseWriter, request *http.R
 			})
 			return
 		}
-		blocked, err := services.NewPasswordResetRateLimiter(server.Database).RegisterRequest(clientIP.String())
+		blocked, err := services.NewAuthenticationRateLimiter(server.Database).RegisterPasswordResetRequest(clientIP.String())
 		if err != nil {
 			log.Printf("rate limit password reset request: %v", err)
 			http.Error(writer, "Unable to request password reset", http.StatusInternalServerError)
 			return
 		}
 		if blocked {
+			writer.Header().Set("Retry-After", "900")
 			server.renderStatus(writer, http.StatusTooManyRequests, "forgot-password.html", forgotPasswordPageData{
 				Error: "Too many requests. Try again later.",
 			})
@@ -265,13 +311,14 @@ func (server *Server) resetPassword(writer http.ResponseWriter, request *http.Re
 			server.renderStatus(writer, http.StatusBadRequest, "reset-password.html", data)
 			return
 		}
-		blocked, err := services.NewPasswordResetRateLimiter(server.Database).RegisterAttempt(clientIP.String())
+		blocked, err := services.NewAuthenticationRateLimiter(server.Database).RegisterPasswordResetAttempt(clientIP.String())
 		if err != nil {
 			log.Printf("rate limit password reset attempt: %v", err)
 			http.Error(writer, "Unable to reset password", http.StatusInternalServerError)
 			return
 		}
 		if blocked {
+			writer.Header().Set("Retry-After", "900")
 			data.Error = "Too many attempts. Try again later."
 			server.renderStatus(writer, http.StatusTooManyRequests, "reset-password.html", data)
 			return
