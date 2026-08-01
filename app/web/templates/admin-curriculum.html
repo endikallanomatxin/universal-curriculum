@@ -114,6 +114,7 @@
                   <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
                   <div class="proposal-rebase__conflicts">
                     {{ range .ProposalRebase.Conflicts }}
+                      {{ $changeID := .Change.ID }}
                       <fieldset class="proposal-rebase-conflict">
                         <legend>{{ if .Change.UnitName }}{{ .Change.UnitName }}{{ else }}{{ .Change.Kind }} change #{{ .Change.ID }}{{ end }}</legend>
                         {{ if .Units }}<p>Affected together: {{ range $index, $unit := .Units }}{{ if $index }}, {{ end }}{{ if $unit.Name }}{{ $unit.Name }}{{ else }}Unit #{{ $unit.ID }}{{ end }}{{ end }}.</p>{{ end }}
@@ -129,19 +130,43 @@
                           </div>
                         {{ end }}
                         {{ if and (eq .Change.Kind "update_content") .AcceptedUnit }}
-                          <div class="proposal-rebase-content-versions">
-                            <div class="proposal-rebase-content-version">
-                              <label class="proposal-rebase-content-version__heading"><input type="radio" name="resolution_{{ .Change.ID }}" value="drop" required> Accepted version</label>
-                              <div class="unit-content proposal-rebase-content-version__preview">{{ renderUnitContent .AcceptedUnit.Content }}</div>
+                          <div class="proposal-rebase-merge-editor" data-view-switcher>
+                            <div class="proposal-rebase-merge-editor__heading">
+                              <span class="label">Resolved source</span>
+                              {{ template "view-switcher" (viewSwitcher "Rebase content view" "comparison" "comparison" "Comparison" "result" "Result") }}
                             </div>
-                            <div class="proposal-rebase-content-version">
-                              <label class="proposal-rebase-content-version__heading"><input type="radio" name="resolution_{{ .Change.ID }}" value="keep" required> This proposal's version</label>
-                              <div class="unit-content proposal-rebase-content-version__preview">{{ renderUnitContent .Change.UnitContent }}</div>
+                            <input type="hidden" name="resolution_{{ .Change.ID }}" value="edit">
+                            <textarea name="resolution_content_{{ .Change.ID }}" required data-merge-result hidden>{{ .Change.UnitContent }}</textarea>
+                            <div class="proposal-rebase-merge-editor__document" data-merge-editor>
+                              {{ range $partIndex, $part := .ContentMerge }}
+                                {{ if eq $part.Kind "same" }}
+                                  <textarea class="proposal-rebase-merge-part proposal-rebase-merge-part--same" name="resolution_content_part_{{ $changeID }}" aria-label="Shared content" rows="1" spellcheck="true" data-autoresize data-autoresize-unbounded data-merge-result-part>{{ $part.Proposed }}</textarea>
+                                {{ else }}
+                                  <section class="proposal-rebase-merge-part proposal-rebase-merge-part--change" aria-label="Content discrepancy">
+                                    <div class="proposal-rebase-merge-part__result-heading">
+                                      <span class="label">Proposal · current result</span>
+                                    </div>
+                                    <textarea name="resolution_content_part_{{ $changeID }}" aria-label="Proposed content, used in the result" rows="1" spellcheck="true" data-autoresize data-autoresize-unbounded data-merge-result-part>{{ $part.Proposed }}</textarea>
+                                    <div class="proposal-rebase-merge-part__alternative proposal-rebase-merge-part__alternative--accepted">
+                                      <div>
+                                        <span class="label">Accepted change</span>
+                                        <button class="secondary-button secondary-button--compact" type="button" data-use-merge-alternative>Use this version</button>
+                                      </div>
+                                      {{ if $part.Accepted }}<pre>{{ $part.Accepted }}</pre>{{ else }}<p>This passage was removed from the accepted curriculum.</p>{{ end }}
+                                      <textarea hidden data-alternative-source>{{ $part.Accepted }}</textarea>
+                                    </div>
+                                    <div class="proposal-rebase-merge-part__alternative proposal-rebase-merge-part__alternative--original">
+                                      <div>
+                                        <span class="label">Before this rebase</span>
+                                        <button class="secondary-button secondary-button--compact" type="button" data-use-merge-alternative>Use this version</button>
+                                      </div>
+                                      {{ if $part.Original }}<pre>{{ $part.Original }}</pre>{{ else }}<p>This passage did not exist when the proposal began.</p>{{ end }}
+                                      <textarea hidden data-alternative-source>{{ $part.Original }}</textarea>
+                                    </div>
+                                  </section>
+                                {{ end }}
+                              {{ end }}
                             </div>
-                          </div>
-                          <div class="proposal-rebase-content-edit">
-                            <label class="proposal-rebase-content-version__heading"><input type="radio" name="resolution_{{ .Change.ID }}" value="edit" required data-rebase-edit-choice> Edit a resolved version</label>
-                            <textarea name="resolution_content_{{ .Change.ID }}" rows="8" data-autoresize data-autoresize-unbounded data-rebase-content-editor>{{ .Change.UnitContent }}</textarea>
                           </div>
                         {{ else }}
                           <div class="proposal-rebase-conflict__choices">

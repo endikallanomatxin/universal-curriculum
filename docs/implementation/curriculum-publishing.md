@@ -58,10 +58,15 @@ later edit or publication as recovery from an interrupted maintenance pass.
 
 An overlapping draft remains unchanged on its historical base. Its workspace
 shows the accepted proposals responsible for each overlap and asks the author
-to resolve every conflicting draft change. Content conflicts show the complete
-accepted and proposed versions; either can be selected directly, or the author
-can edit a resolved version which replaces the draft change's desired content.
-Other changes can be kept or dropped. Kept name, content and deletion changes
+to resolve every conflicting draft change. Content conflicts use one editable
+merge document initialized to the proposal's intended result. Unchanged source
+appears once; each differing passage shows the editable proposed result beside
+the accepted alternative and the proposal's immutable pre-rebase passage.
+Either reference can replace that local passage directly, so editing never
+removes the author's view of its starting state. The composed source replaces
+the draft change's desired content. The editor can toggle between the comparison
+and that composed result without maintaining a second editable document. Other changes can
+be kept or dropped. Kept name, content and deletion changes
 receive snapshots from the new base; dependency changes that already have their
 desired result become no-ops. The normalized proposal is validated as a whole
 before its base moves. Until then ordinary curriculum edits and publication are

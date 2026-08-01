@@ -70,6 +70,10 @@ The shared view switcher uses the `view-switcher` template and a surrounding
 `data-view-switcher-trigger` and `data-view-switcher-panel`. The delegated
 controller updates `aria-selected`, panel visibility and emits a bubbling
 `view-switcher:change` event, including after markup introduced by HTMX swaps.
+It also publishes the active value as `data-view-switcher-value` on the owner,
+so consumers can express alternate presentations in CSS without adding local
+click handlers. The shared two-option indicator interpolates between equal
+columns; consumers must not recreate its selection styling or motion locally.
 
 ## Right-hand details and editors
 

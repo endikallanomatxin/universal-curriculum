@@ -320,9 +320,13 @@ func (server *Server) rebaseCurriculumProposal(writer http.ResponseWriter, reque
 		}
 		changeID, parseErr := parsePositiveID(strings.TrimPrefix(key, "resolution_"))
 		if parseErr == nil {
+			content := request.FormValue(fmt.Sprintf("resolution_content_%d", changeID))
+			if parts := request.Form[fmt.Sprintf("resolution_content_part_%d", changeID)]; len(parts) > 0 {
+				content = strings.Join(parts, "")
+			}
 			resolutions[changeID] = services.CurriculumProposalRebaseResolution{
 				Choice:  values[0],
-				Content: request.FormValue(fmt.Sprintf("resolution_content_%d", changeID)),
+				Content: content,
 			}
 		}
 	}

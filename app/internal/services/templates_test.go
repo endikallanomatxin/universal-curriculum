@@ -331,7 +331,10 @@ func TestCurriculumProposalRendersRebaseResolutionInUnifiedWorkspace(t *testing.
 			Conflicts: []CurriculumProposalRebaseConflict{{
 				Change:       change,
 				AcceptedUnit: &models.Unit{ID: 7, Name: "Energy", Content: "Accepted energy content."},
-				Units:        []models.Unit{{ID: 7, Name: "Energy"}},
+				ContentMerge: []EditableContentMergePart{{
+					Kind: "change", Accepted: "Accepted energy content.", Proposed: "Proposed energy content.",
+				}},
+				Units: []models.Unit{{ID: 7, Name: "Energy"}},
 				AcceptedWork: []CurriculumProposalRebaseAcceptedWork{{
 					Proposal: models.CurriculumProposal{ID: 11, Title: "Update physics", Status: "accepted"},
 					Changes:  []models.CurriculumProposalChange{{ID: 30, Kind: "update_content", UnitID: 7, UnitName: "Energy"}},
@@ -344,9 +347,13 @@ func TestCurriculumProposalRendersRebaseResolutionInUnifiedWorkspace(t *testing.
 		`action="/curriculum-modification/proposals/12/rebase"`,
 		`name="resolution_31"`,
 		"Update physics",
-		"Accepted version",
-		"This proposal's version",
-		"Edit a resolved version",
+		"Resolved source",
+		"Proposal · current result",
+		"Accepted change",
+		"Use this version",
+		"Before this rebase",
+		"Comparison",
+		"Result",
 		`name="resolution_content_31"`,
 		`action="/curriculum-modification/proposals/12"`,
 	} {

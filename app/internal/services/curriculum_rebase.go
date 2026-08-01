@@ -38,6 +38,7 @@ func (plan *CurriculumProposalRebasePlan) NeedsReview() bool {
 type CurriculumProposalRebaseConflict struct {
 	Change       models.CurriculumProposalChange
 	AcceptedUnit *models.Unit
+	ContentMerge []EditableContentMergePart
 	Units        []models.Unit
 	AcceptedWork []CurriculumProposalRebaseAcceptedWork
 }
@@ -377,6 +378,7 @@ func planCurriculumProposalRebase(
 			if unit := curriculumUnitByID(currentGraph, change.UnitID); unit != nil {
 				acceptedUnit := *unit
 				conflict.AcceptedUnit = &acceptedUnit
+				conflict.ContentMerge = EditableContentMerge(change.PreviousUnitContent, acceptedUnit.Content, change.UnitContent)
 			}
 		}
 		for proposalIndex, acceptedProposal := range accepted {
@@ -413,6 +415,7 @@ func planCurriculumProposalRebase(
 					if unit := curriculumUnitByID(currentGraph, change.UnitID); unit != nil {
 						acceptedUnit := *unit
 						conflict.AcceptedUnit = &acceptedUnit
+						conflict.ContentMerge = EditableContentMerge(change.PreviousUnitContent, acceptedUnit.Content, change.UnitContent)
 					}
 				}
 				plan.Conflicts = append(plan.Conflicts, conflict)

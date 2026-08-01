@@ -4,6 +4,7 @@ import (
 	"html"
 	"html/template"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -73,6 +74,124 @@ func RenderRenderedContentDiff(previous, current string) template.HTML {
 	}
 	output.WriteString(`</div>`)
 	return template.HTML(output.String())
+}
+
+type EditableContentMergePart struct {
+	Kind     string
+	Original string
+	Accepted string
+	Proposed string
+}
+
+type contentMergeChange struct {
+	start, end  int
+	replacement []string
+}
+
+func EditableContentMerge(original, accepted, proposed string) []EditableContentMergePart {
+	base := contentMergeLines(original)
+	acceptedChanges := contentMergeChanges(base, contentMergeLines(accepted))
+	proposedChanges := contentMergeChanges(base, contentMergeLines(proposed))
+	allChanges := append(append([]contentMergeChange(nil), acceptedChanges...), proposedChanges...)
+	sort.SliceStable(allChanges, func(i, j int) bool {
+		if allChanges[i].start == allChanges[j].start {
+			return allChanges[i].end < allChanges[j].end
+		}
+		return allChanges[i].start < allChanges[j].start
+	})
+
+	merge := make([]EditableContentMergePart, 0, len(allChanges)*2+1)
+	cursor := 0
+	for index := 0; index < len(allChanges); {
+		start, end := allChanges[index].start, allChanges[index].end
+		index++
+		for index < len(allChanges) && allChanges[index].start <= end {
+			end = max(end, allChanges[index].end)
+			index++
+		}
+		if start > cursor {
+			shared := strings.Join(base[cursor:start], "")
+			merge = append(merge, EditableContentMergePart{
+				Kind: "same", Original: shared, Accepted: shared, Proposed: shared,
+			})
+		}
+		originalPart := strings.Join(base[start:end], "")
+		acceptedPart := applyContentMergeChanges(base, start, end, acceptedChanges)
+		proposedPart := applyContentMergeChanges(base, start, end, proposedChanges)
+		kind := "change"
+		if acceptedPart == proposedPart {
+			kind = "same"
+		}
+		merge = append(merge, EditableContentMergePart{
+			Kind: kind, Original: originalPart, Accepted: acceptedPart, Proposed: proposedPart,
+		})
+		cursor = end
+	}
+	if cursor < len(base) {
+		shared := strings.Join(base[cursor:], "")
+		merge = append(merge, EditableContentMergePart{
+			Kind: "same", Original: shared, Accepted: shared, Proposed: shared,
+		})
+	}
+	if len(merge) == 0 {
+		merge = append(merge, EditableContentMergePart{
+			Kind: "same", Original: original, Accepted: accepted, Proposed: proposed,
+		})
+	}
+	return merge
+}
+
+func contentMergeLines(content string) []string {
+	content = strings.ReplaceAll(content, "\r\n", "\n")
+	if content == "" {
+		return nil
+	}
+	lines := strings.SplitAfter(content, "\n")
+	if lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
+	}
+	return lines
+}
+
+func contentMergeChanges(original, variant []string) []contentMergeChange {
+	parts := contentDiffParts(original, variant)
+	changes := make([]contentMergeChange, 0)
+	position := 0
+	for index := 0; index < len(parts); {
+		if parts[index].kind == "same" {
+			position += len(contentMergeLines(parts[index].text))
+			index++
+			continue
+		}
+		change := contentMergeChange{start: position, end: position}
+		for index < len(parts) && parts[index].kind != "same" {
+			lines := contentMergeLines(parts[index].text)
+			if parts[index].kind == "deleted" {
+				change.end += len(lines)
+				position += len(lines)
+			} else {
+				change.replacement = append(change.replacement, lines...)
+			}
+			index++
+		}
+		changes = append(changes, change)
+	}
+	return changes
+}
+
+func applyContentMergeChanges(base []string, start, end int, changes []contentMergeChange) string {
+	position := start
+	var output strings.Builder
+	for _, change := range changes {
+		if change.start < start || change.start > end || change.end > end {
+			continue
+		}
+		output.WriteString(strings.Join(base[position:change.start], ""))
+		output.WriteString(strings.Join(change.replacement, ""))
+		position = change.end
+	}
+	output.WriteString(strings.Join(base[position:end], ""))
+	return output.String()
 }
 
 func markdownContentBlocks(source string) []string {
