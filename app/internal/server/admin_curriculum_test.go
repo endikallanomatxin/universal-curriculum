@@ -343,12 +343,26 @@ func TestCurriculumRebaseTimelineKeepsConflictsAndCompressesOtherAcceptedWork(t 
 		t.Fatalf("rebase timeline identity = %#v", view)
 	}
 	if len(view.Items) != 4 || !view.Items[0].Ellipsis ||
-		view.Items[1].Title != "Overlapping work" || view.Items[1].Current ||
+		view.Items[1].Title != "Overlapping work" || view.Items[1].Current || !view.Items[1].Conflicts ||
 		!view.Items[2].Ellipsis || view.Items[3].Title != "Current head" || !view.Items[3].Current {
 		t.Fatalf("rebase timeline items = %#v", view.Items)
 	}
 	if len(view.Edges) != 3 || view.Edges[0].Source != "base" || view.Edges[0].Target != "draft" ||
 		view.Edges[1].Target != "accepted-3" || view.Edges[2].Target != "accepted-5" {
 		t.Fatalf("rebase timeline edges = %#v", view.Edges)
+	}
+	related := visibleRebaseProposal(plan, 3)
+	if related == nil || related.Title != "Overlapping work" {
+		t.Fatalf("related conflicting proposal = %#v", related)
+	}
+	current := visibleRebaseProposal(plan, 5)
+	if current == nil || current.Title != "Current head" {
+		t.Fatalf("visible current proposal = %#v", current)
+	}
+	if hidden := visibleRebaseProposal(plan, 4); hidden != nil {
+		t.Fatalf("hidden proposal should not be inspectable: %#v", hidden)
+	}
+	if relatedBase := visibleRebaseProposal(plan, 1); relatedBase == nil || relatedBase.Title != "Original base" {
+		t.Fatalf("visible base proposal = %#v", relatedBase)
 	}
 }

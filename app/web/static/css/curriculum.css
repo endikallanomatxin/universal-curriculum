@@ -557,7 +557,43 @@
   overflow-wrap: anywhere;
 }
 
+.proposal-rebase-graph__proposal-link {
+  align-items: center;
+  color: inherit;
+  display: inline-flex;
+  gap: var(--space-1);
+  justify-self: start;
+  text-decoration: none;
+}
+
+.proposal-rebase-graph__proposal-link:hover strong,
+.proposal-rebase-graph__proposal-link:focus-visible strong {
+  text-decoration: underline;
+  text-underline-offset: 0.16em;
+}
+
+.proposal-rebase-graph__proposal-link > .material-symbols-rounded {
+  font-size: 0.9rem;
+}
+
+.related-proposal {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.related-proposal__purpose,
+.related-proposal__changes {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.related-proposal__purpose p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
 .proposal-rebase-graph__node {
+  align-items: center;
   align-self: center;
   background: var(--color-ink-strong);
   border: 0;
@@ -565,10 +601,56 @@
   grid-column: 1;
   grid-row: 1;
   height: 0.9rem;
+  justify-content: center;
   justify-self: start;
   margin-left: calc(0.45rem + var(--rebase-node-lane, 0) * var(--proposal-rebase-lane-spacing));
   width: 0.9rem;
   z-index: 3;
+}
+
+.proposal-rebase-graph__node--conflict {
+  color: var(--color-surface);
+  display: flex;
+  font-size: 0.67rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.proposal-change__dependency {
+  align-items: center;
+  color: var(--color-ink-strong);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.proposal-list li > div .proposal-change__dependency > span {
+  color: inherit;
+  font-size: inherit;
+}
+
+.proposal-change__dependency-direction {
+  align-items: center;
+  display: inline-flex;
+  flex: none;
+  justify-content: center;
+  position: relative;
+  width: 1.4rem;
+}
+
+.proposal-change__dependency-direction > .material-symbols-rounded:first-child {
+  font-size: 1.2rem;
+}
+
+.proposal-change__dependency-remove {
+  background: var(--color-surface);
+  border-radius: 50%;
+  font-size: 0.62rem !important;
+  font-weight: 700;
+  left: 50%;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
 }
 
 .proposal-rebase-graph__item[data-rebase-lane="1"] .proposal-rebase-graph__node {

@@ -125,7 +125,7 @@
                         <ol class="proposal-rebase-graph__list">
                           <li class="proposal-rebase-graph__item" data-rebase-node="base" data-rebase-lane="0">
                             <span class="proposal-rebase-graph__node" data-rebase-anchor aria-hidden="true"></span>
-                            <div><span class="label">Your proposal’s base</span><strong>{{ .BaseTitle }}</strong></div>
+                            <div><span class="label">Your proposal’s base</span>{{ if .BaseID }}<a class="proposal-rebase-graph__proposal-link" href="/curriculum-modification?proposal={{ $.ActiveProposal.ID }}&amp;review-proposal={{ .BaseID }}" hx-get="/curriculum-modification?proposal={{ $.ActiveProposal.ID }}&amp;review-proposal={{ .BaseID }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true" data-panel-navigation="open-or-replace"><strong>{{ .BaseTitle }}</strong><span class="material-symbols-rounded" aria-hidden="true">arrow_forward</span></a>{{ else }}<strong>{{ .BaseTitle }}</strong>{{ end }}</div>
                           </li>
                           <li class="proposal-rebase-graph__item proposal-rebase-graph__item--draft" data-rebase-node="draft" data-rebase-lane="1">
                             <span class="proposal-rebase-graph__node" data-rebase-anchor aria-hidden="true"></span>
@@ -136,8 +136,18 @@
                               <li class="proposal-rebase-graph__item proposal-rebase-graph__item--ellipsis" aria-hidden="true"><span>•••</span></li>
                             {{ else }}
                               <li class="proposal-rebase-graph__item {{ if .Current }}proposal-rebase-graph__item--current{{ end }}" data-rebase-node="accepted-{{ .ID }}" data-rebase-lane="0">
-                                <span class="proposal-rebase-graph__node" data-rebase-anchor aria-hidden="true"></span>
-                                <div>{{ if .Current }}<span class="label">Proposal to rebase to</span>{{ end }}<strong>{{ .Title }}</strong></div>
+                                <span class="proposal-rebase-graph__node {{ if .Conflicts }}proposal-rebase-graph__node--conflict{{ end }}" data-rebase-anchor aria-hidden="true">{{ if .Conflicts }}!{{ end }}</span>
+                                <div>
+                                  {{ if .Current }}<span class="label">Proposal to rebase to</span>{{ end }}
+                                  <a class="proposal-rebase-graph__proposal-link"
+                                       href="/curriculum-modification?proposal={{ $.ActiveProposal.ID }}&amp;review-proposal={{ .ID }}"
+                                       hx-get="/curriculum-modification?proposal={{ $.ActiveProposal.ID }}&amp;review-proposal={{ .ID }}"
+                                       hx-target="#workspace"
+                                       hx-select="#workspace"
+                                       hx-swap="outerHTML transition:true"
+                                       hx-push-url="true"
+                                       data-panel-navigation="open-or-replace"><strong>{{ .Title }}</strong>{{ if .Conflicts }}<span class="visually-hidden">, conflicting proposal</span>{{ end }}<span class="material-symbols-rounded" aria-hidden="true">arrow_forward</span></a>
+                                </div>
                               </li>
                             {{ end }}
                           {{ end }}
@@ -259,7 +269,11 @@
                           </strong>
                           <span class="proposal-change__previous">{{ .Recognition.Rationale }}</span>
                         {{ else }}
-                          <strong class="proposal-change__subject">{{ if .UnitName }}{{ .UnitName }}{{ else }}Unit #{{ .UnitID }}{{ end }}</strong>
+                          {{ if or (eq .Kind "add_dependency") (eq .Kind "remove_dependency") }}
+                            {{ template "proposal-dependency-change" . }}
+                          {{ else }}
+                            <strong class="proposal-change__subject">{{ if .UnitName }}{{ .UnitName }}{{ else }}Unit #{{ .UnitID }}{{ end }}</strong>
+                          {{ end }}
                           {{ if and (eq .Kind "rename_unit") .PreviousUnitName }}<span class="proposal-change__previous">Previously {{ .PreviousUnitName }}</span>{{ end }}
                         {{ end }}
                       </div>
@@ -322,6 +336,66 @@
               </form>
             </footer>
           </div>
+        </section>
+      {{ end }}
+
+      {{ with .ReviewedProposal }}
+        <section class="ui-pane ui-pane--wide related-proposal-pane" data-nested-panel data-panel-motion="horizontal" data-layout-panel data-panel-modes="collapsed:0 breadcrumb:4 mobile:20 content:32 wide:42" data-panel-required-mode="mobile" data-panel-fill data-panel-breadcrumb="{{ .Title }}" aria-labelledby="related-proposal-title">
+          <article class="ui-pane__inner related-proposal" data-pane-content-width="reading">
+            <header class="nested-panel__header">
+              <div>
+                <p class="label">Related accepted proposal</p>
+                <h1 id="related-proposal-title">{{ .Title }}</h1>
+              </div>
+              <a class="icon-button ui-pane__close"
+                 href="/curriculum-modification?proposal={{ $.ActiveProposal.ID }}"
+                 hx-get="/curriculum-modification?proposal={{ $.ActiveProposal.ID }}"
+                 hx-trigger="panel-close"
+                 hx-target="#workspace"
+                 hx-select="#workspace"
+                 hx-swap="outerHTML transition:true"
+                 hx-push-url="true"
+                 data-panel-navigation="close"
+                 aria-label="Close related proposal">
+                <span class="material-symbols-rounded" aria-hidden="true">close</span>
+              </a>
+            </header>
+            <dl class="proposal-details">
+              <div><dt class="label">Author</dt><dd>{{ .AuthorName }}</dd></div>
+              <div><dt class="label">Status</dt><dd>Accepted</dd></div>
+            </dl>
+            {{ with .Rationale }}<section class="related-proposal__purpose"><h2 class="label">Purpose</h2><p>{{ . }}</p></section>{{ end }}
+            <section class="related-proposal__changes" aria-labelledby="related-proposal-changes-title">
+              <h2 class="label" id="related-proposal-changes-title">Accepted changes</h2>
+              {{ if .Changes }}
+                <ol class="proposal-list proposal-change-list">
+                  {{ range .Changes }}
+                    <li class="proposal-change {{ if eq .Kind "create_unit" }}proposal-change--addition{{ else if eq .Kind "delete_unit" }}proposal-change--removal{{ else if eq .Kind "rename_unit" }}proposal-change--rename{{ else if eq .Kind "update_content" }}proposal-change--content{{ else if eq .Kind "recognition" }}proposal-change--recognition{{ else }}proposal-change--dependency{{ end }}">
+                      <span class="proposal-change__badge">
+                        <span class="material-symbols-rounded" aria-hidden="true">{{ if eq .Kind "create_unit" }}add{{ else if eq .Kind "rename_unit" }}edit{{ else if eq .Kind "update_content" }}description{{ else if eq .Kind "delete_unit" }}delete{{ else if eq .Kind "add_dependency" }}arrow_downward{{ else if eq .Kind "remove_dependency" }}link_off{{ else }}move_up{{ end }}</span>
+                        <span>{{ if eq .Kind "create_unit" }}Create unit{{ else if eq .Kind "rename_unit" }}Rename{{ else if eq .Kind "update_content" }}Edit content{{ else if eq .Kind "delete_unit" }}Delete unit{{ else if eq .Kind "add_dependency" }}Add dependency{{ else if eq .Kind "remove_dependency" }}Remove dependency{{ else }}Recognition{{ end }}</span>
+                      </span>
+                      <div class="proposal-change__description">
+                        {{ if .Recognition }}
+                          <strong class="proposal-change__subject">{{ range $index, $unit := .Recognition.Sources }}{{ if $index }}, {{ end }}{{ $unit.Name }}{{ end }} → {{ range $index, $unit := .Recognition.Targets }}{{ if $index }}, {{ end }}{{ $unit.Name }}{{ end }}</strong>
+                          <span class="proposal-change__previous">{{ .Recognition.Rationale }}</span>
+                        {{ else }}
+                          {{ if or (eq .Kind "add_dependency") (eq .Kind "remove_dependency") }}
+                            {{ template "proposal-dependency-change" . }}
+                          {{ else }}
+                            <strong class="proposal-change__subject">{{ if .UnitName }}{{ .UnitName }}{{ else }}Affected unit{{ end }}</strong>
+                          {{ end }}
+                          {{ if and (eq .Kind "rename_unit") .PreviousUnitName }}<span class="proposal-change__previous">Previously {{ .PreviousUnitName }}</span>{{ end }}
+                        {{ end }}
+                      </div>
+                    </li>
+                  {{ end }}
+                </ol>
+              {{ else }}
+                <p class="empty-message">This proposal has no recorded changes.</p>
+              {{ end }}
+            </section>
+          </article>
         </section>
       {{ end }}
 

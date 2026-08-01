@@ -27,6 +27,7 @@ type CurriculumProposalChange struct {
 	UnitContent         string
 	PreviousUnitContent string
 	PrerequisiteID      *int64
+	PrerequisiteName    string
 	Recognition         *Recognition
 }
 

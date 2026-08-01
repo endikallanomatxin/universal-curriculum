@@ -37,6 +37,7 @@ type adminCurriculumPageData struct {
 	ActiveProposal     *models.CurriculumProposal
 	ProposalRebase     *services.CurriculumProposalRebasePlan
 	RebaseTimeline     *curriculumRebaseTimelineView
+	ReviewedProposal   *models.CurriculumProposal
 	ProposalHistory    []curriculumProposalHistoryView
 	RootDraftProposals []curriculumDraftProposalView
 	CanEditProposal    bool
@@ -47,6 +48,8 @@ type adminCurriculumPageData struct {
 }
 
 type curriculumRebaseTimelineView struct {
+	DraftID    int64
+	BaseID     int64
 	BaseTitle  string
 	DraftTitle string
 	Items      []curriculumRebaseTimelineItemView
@@ -54,10 +57,11 @@ type curriculumRebaseTimelineView struct {
 }
 
 type curriculumRebaseTimelineItemView struct {
-	ID       int64
-	Title    string
-	Ellipsis bool
-	Current  bool
+	ID        int64
+	Title     string
+	Ellipsis  bool
+	Current   bool
+	Conflicts bool
 }
 
 type curriculumRebaseTimelineEdgeView struct {
@@ -491,6 +495,26 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 			}
 		}
 	}
+	var reviewedProposal *models.CurriculumProposal
+	if reviewedValue := request.URL.Query().Get("review-proposal"); reviewedValue != "" {
+		reviewedID, parseErr := parsePositiveID(reviewedValue)
+		if parseErr != nil {
+			http.Error(writer, "Invalid curriculum proposal", http.StatusBadRequest)
+			return
+		}
+		reviewedProposal = visibleRebaseProposal(rebasePlan, reviewedID)
+		if reviewedProposal == nil {
+			http.Error(writer, "Related curriculum proposal not found", http.StatusNotFound)
+			return
+		}
+		reviewedGraph, graphErr := services.CurriculumGraphAtProposal(server.Database, &reviewedProposal.ID)
+		if graphErr != nil {
+			log.Printf("load related proposal curriculum: %v", graphErr)
+			http.Error(writer, "Unable to load related curriculum proposal", http.StatusInternalServerError)
+			return
+		}
+		applyCurriculumChangeLabels(reviewedProposal, reviewedGraph)
+	}
 	workingGraph := curriculumGraphWithProposal(proposalBaseGraph, activeProposal)
 	applyCurriculumChangeLabels(activeProposal, workingGraph)
 	visualGraph := curriculumGraphWithRemovedDependencies(workingGraph, proposalBaseGraph, activeProposal)
@@ -563,6 +587,7 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 		ActiveProposal:     activeProposal,
 		ProposalRebase:     rebasePlan,
 		RebaseTimeline:     curriculumRebaseTimeline(rebasePlan, activeProposal),
+		ReviewedProposal:   reviewedProposal,
 		ProposalHistory:    history,
 		RootDraftProposals: rootDrafts,
 		CanEditProposal:    activeProposal != nil && (rebasePlan == nil || !rebasePlan.NeedsReview()),
@@ -817,6 +842,9 @@ func applyCurriculumChangeLabels(proposal *models.CurriculumProposal, graph *mod
 		if proposal.Changes[index].UnitName == "" {
 			proposal.Changes[index].UnitName = names[proposal.Changes[index].UnitID]
 		}
+		if proposal.Changes[index].PrerequisiteID != nil && proposal.Changes[index].PrerequisiteName == "" {
+			proposal.Changes[index].PrerequisiteName = names[*proposal.Changes[index].PrerequisiteID]
+		}
 		if proposal.Changes[index].Recognition == nil {
 			continue
 		}
@@ -920,10 +948,12 @@ func curriculumRebaseTimeline(
 		return nil
 	}
 	view := &curriculumRebaseTimelineView{
+		DraftID:    draft.ID,
 		BaseTitle:  "Previous accepted curriculum",
 		DraftTitle: draft.Title,
 	}
 	if plan.BaseProposal != nil && plan.BaseProposal.Title != "" {
+		view.BaseID = plan.BaseProposal.ID
 		view.BaseTitle = plan.BaseProposal.Title
 	}
 	conflicting := make(map[int64]bool)
@@ -941,7 +971,7 @@ func curriculumRebaseTimeline(
 			continue
 		}
 		view.Items = append(view.Items, curriculumRebaseTimelineItemView{
-			ID: proposal.ID, Title: proposal.Title, Current: current,
+			ID: proposal.ID, Title: proposal.Title, Current: current, Conflicts: conflicting[proposal.ID],
 		})
 	}
 	view.Edges = append(view.Edges, curriculumRebaseTimelineEdgeView{Source: "base", Target: "draft"})
@@ -955,6 +985,33 @@ func curriculumRebaseTimeline(
 		previous = target
 	}
 	return view
+}
+
+func visibleRebaseProposal(plan *services.CurriculumProposalRebasePlan, proposalID int64) *models.CurriculumProposal {
+	if plan == nil || !plan.NeedsReview() {
+		return nil
+	}
+	if plan.BaseProposal != nil && plan.BaseProposal.ID == proposalID {
+		return plan.BaseProposal
+	}
+	conflicting := make(map[int64]bool)
+	for _, conflict := range plan.Conflicts {
+		for _, work := range conflict.AcceptedWork {
+			conflicting[work.Proposal.ID] = true
+		}
+	}
+	for index := range plan.AcceptedProposals {
+		proposal := &plan.AcceptedProposals[index]
+		if proposal.ID != proposalID {
+			continue
+		}
+		current := index == len(plan.AcceptedProposals)-1
+		if current || conflicting[proposalID] {
+			return proposal
+		}
+		return nil
+	}
+	return nil
 }
 
 func curriculumUnitViews(graph *models.CurriculumGraph, layout *models.CurriculumGraphLayout) []curriculumUnitView {

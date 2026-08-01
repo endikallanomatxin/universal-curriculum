@@ -45,6 +45,17 @@
 </div>
 {{- end }}
 
+{{ define "proposal-dependency-change" }}
+  <strong class="proposal-change__subject proposal-change__dependency">
+    <span>{{ if .PrerequisiteName }}{{ .PrerequisiteName }}{{ else }}Prerequisite unit{{ end }}</span>
+    <span class="proposal-change__dependency-direction" aria-label="{{ if eq .Kind "remove_dependency" }}no longer required by{{ else }}required by{{ end }}">
+      <span class="material-symbols-rounded" aria-hidden="true">trending_flat</span>
+      {{ if eq .Kind "remove_dependency" }}<span class="material-symbols-rounded proposal-change__dependency-remove" aria-hidden="true">close</span>{{ end }}
+    </span>
+    <span>{{ if .UnitName }}{{ .UnitName }}{{ else }}Dependent unit{{ end }}</span>
+  </strong>
+{{ end }}
+
 {{ define "unit-navigation-search" -}}
 <div class="graph-search" data-graph-search>
   <span class="material-symbols-rounded graph-search__icon" aria-hidden="true">search</span>
