@@ -156,6 +156,11 @@
   padding: 0.8rem 1rem;
 }
 
+.primary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
 .secondary-button {
   align-items: center;
   background: transparent;
@@ -320,13 +325,18 @@
   margin-bottom: var(--space-3);
 }
 
-.section-heading__eyebrow {
-  color: var(--color-muted);
+.label {
+  color: color-mix(in srgb, var(--color-muted) 72%, var(--color-surface));
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.1em;
-  margin: 0 0 0.2rem;
+  margin: 0;
   text-transform: uppercase;
+}
+
+.nested-panel__header .label,
+.learn-heading .label {
+  margin-bottom: var(--space-2);
 }
 
 .section-heading h2 {
@@ -426,11 +436,6 @@
   padding: 0.65rem 0.9rem;
 }
 
-.editor-form .primary-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.4;
-}
-
 .editor-form-actions {
   align-items: center;
   display: flex;
@@ -452,13 +457,13 @@
   padding: 0.65rem 0.9rem;
 }
 
-.learning-path-save-status {
+.autosave-status {
   color: var(--color-muted);
   font-size: 0.75rem;
   font-weight: 650;
 }
 
-.learning-path-save-status [data-save-state-saving] {
+.autosave-status [data-save-state-saving] {
   display: none;
 }
 
@@ -470,7 +475,7 @@
   display: inline;
 }
 
-.learning-path-save-status.is-error {
+.autosave-status.is-error {
   color: var(--color-danger);
 }
 

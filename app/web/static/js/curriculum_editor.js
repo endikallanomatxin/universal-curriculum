@@ -42,6 +42,39 @@
     if (form) form.requestSubmit();
   });
 
+  document.addEventListener("input", function (event) {
+    const field = event.target;
+    const form = field.closest && field.closest("[data-proposal-metadata]");
+    if (!form) return;
+    const proposalID = form.dataset.proposalMetadata;
+    if (field.matches("[data-proposal-title-input]")) {
+      const title = field.value.trim();
+      if (!title) return;
+      document.querySelectorAll('[data-proposal-title-preview="' + CSS.escape(proposalID) + '"]').forEach(function (preview) {
+        preview.textContent = title;
+      });
+      const panel = form.closest("[data-panel-breadcrumb]");
+      const breadcrumbTitle = form.querySelector(".proposal-workspace__breadcrumb-title");
+      const breadcrumb = "Working on " + title;
+      if (panel) panel.dataset.panelBreadcrumb = breadcrumb;
+      if (breadcrumbTitle) breadcrumbTitle.textContent = breadcrumb;
+      const workspace = panel && panel.parentElement;
+      const trail = workspace && workspace.querySelector(":scope > [data-mobile-panel-breadcrumbs]");
+      if (trail) {
+        const panels = Array.from(workspace.children).filter(function (candidate) {
+          return candidate.matches("[data-layout-panel][data-panel-breadcrumb]") && !candidate.hidden;
+        });
+        const index = panels.indexOf(panel);
+        if (index >= 0 && trail.children[index]) trail.children[index].textContent = breadcrumb;
+      }
+    }
+    if (field.matches("[data-proposal-rationale-input]")) {
+      document.querySelectorAll('[data-proposal-rationale-preview="' + CSS.escape(proposalID) + '"]').forEach(function (preview) {
+        preview.textContent = field.value.trim();
+      });
+    }
+  });
+
   document.addEventListener("DOMContentLoaded", function () {
     const dependencyID = new URL(window.location.href).searchParams.get("edit_dependencies");
     if (!dependencyID) return;

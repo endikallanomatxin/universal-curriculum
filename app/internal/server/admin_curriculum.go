@@ -56,6 +56,10 @@ type curriculumProposalHistoryView struct {
 	IsHead bool
 }
 
+type proposalMetadataSaveStatusView struct {
+	Error string
+}
+
 func (server *Server) adminCurriculum(writer http.ResponseWriter, request *http.Request) {
 	server.renderAdminCurriculum(writer, request, http.StatusOK, "")
 }
@@ -247,7 +251,16 @@ func (server *Server) updateCurriculumProposal(writer http.ResponseWriter, reque
 	}
 	authorID, _ := services.SessionUserID(request)
 	if err := services.UpdateCurriculumProposal(server.Database, authorID, proposalID, request.FormValue("title"), request.FormValue("rationale")); err != nil {
+		if request.Header.Get("HX-Request") == "true" {
+			message, _ := curriculumErrorResponse(err)
+			server.render(writer, "proposal-metadata-save-status", proposalMetadataSaveStatusView{Error: message})
+			return
+		}
 		server.renderCurriculumMutationError(writer, request, err)
+		return
+	}
+	if request.Header.Get("HX-Request") == "true" {
+		server.render(writer, "proposal-metadata-save-status", proposalMetadataSaveStatusView{})
 		return
 	}
 	redirectToProposal(writer, request, proposalID)

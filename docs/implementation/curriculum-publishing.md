@@ -68,6 +68,12 @@ available.
 The proposal workspace combines metadata, changes, publication and rebase
 resolution. Accepted proposals form a single publication line in the history
 view, with current drafts rendered as branches from their recorded bases.
+Proposal title and rationale are document-like inline fields which autosave
+after a short input delay; their list and breadcrumb mirrors update immediately
+without replacing the workspace or moving focus. Status, author and change
+count precede the rationale as a compact vertical definition list. Publication
+and deletion are terminal actions and therefore remain at the end of the full
+proposal workspace rather than alongside frequently edited metadata.
 
 ## Accepted history
 

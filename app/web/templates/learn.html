@@ -79,7 +79,7 @@
           <div class="ui-pane__inner learn-view" data-pane-content-width="wide">
             <div class="learn-heading learn-heading--closable {{ if or .SelectedPath .CombinePaths }}learn-heading--path{{ end }}">
               <div>
-                <p class="ui-pane__eyebrow">Learning path</p>
+                <p class="label">Learning path</p>
                 <h1 id="learn-graph-title">{{ if .SelectedPath }}{{ .SelectedPath.Name }}{{ else if .CombinePaths }}All my paths{{ else }}Full curriculum{{ end }}</h1>
                 {{ with .SelectedPath }}{{ if .Description }}<p>{{ .Description }}</p>{{ end }}{{ end }}
               </div>
@@ -128,7 +128,7 @@
           <article class="ui-pane__inner unit-content" data-pane-content-width="reading">
             <header class="nested-panel__header">
               <div>
-                <p class="ui-pane__eyebrow">Unit content</p>
+                <p class="label">Unit content</p>
                 <h1 id="unit-content-title">{{ .Name }}</h1>
               </div>
               {{ if $.User }}

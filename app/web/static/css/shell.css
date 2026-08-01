@@ -706,7 +706,7 @@ button.primary-menu__link {
   height: 100%;
 }
 
-.ui-pane[data-panel-mode="breadcrumb"] .ui-pane__eyebrow,
+.ui-pane[data-panel-mode="breadcrumb"] .label,
 .ui-pane[data-panel-mode="breadcrumb"] .learn-view > :not(.learn-heading),
 .ui-pane[data-panel-mode="breadcrumb"] .learn-heading > :not(h1),
 .ui-pane[data-panel-mode="breadcrumb"] .curriculum-editor > :not(.curriculum-editor__header),
@@ -752,15 +752,6 @@ button.primary-menu__link {
 
 .ui-pane__inner[data-pane-content-width="wide"] {
   --pane-content-max: 72rem;
-}
-
-.ui-pane__eyebrow {
-  color: var(--color-muted);
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  margin: 0 0 var(--space-2);
-  text-transform: uppercase;
 }
 
 @media (max-width: 42rem) {

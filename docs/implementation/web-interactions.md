@@ -60,6 +60,11 @@ Current system-wide concepts include:
 - buttons, form controls and action hierarchy; and
 - HTMX workspace navigation with View Transitions.
 
+Use `label` for short labels that introduce content without creating a second
+title hierarchy. It is the only label class for this role across panes
+and sections. Consumers may control surrounding space but must not alias or
+recreate its typography locally.
+
 The shared view switcher uses the `view-switcher` template and a surrounding
 `data-view-switcher` owner. Its triggers and panels share opaque values through
 `data-view-switcher-trigger` and `data-view-switcher-panel`. The delegated

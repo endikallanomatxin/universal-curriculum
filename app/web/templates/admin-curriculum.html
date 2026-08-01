@@ -37,8 +37,8 @@
                        aria-label="Work on {{ .Title }}">
                       <span class="material-symbols-rounded active-proposal-card__icon" aria-hidden="true">rebase_edit</span>
                       <span class="active-proposal-card__body">
-                        <strong>{{ .Title }}</strong>
-                        <span>{{ .Rationale }}</span>
+                        <strong data-proposal-title-preview="{{ .ID }}">{{ .Title }}</strong>
+                        <span data-proposal-rationale-preview="{{ .ID }}">{{ .Rationale }}</span>
                       </span>
                     </a>
                     <span class="active-proposal-card__meta">
@@ -68,47 +68,45 @@
       {{ if .ActiveProposal }}
         <section class="ui-pane ui-pane--wide proposal-workspace-pane" id="proposal-workspace-panel" data-nested-panel data-panel-motion="horizontal" data-layout-panel data-panel-modes="collapsed:0 breadcrumb:4 mobile:20 content:34 wide:46" data-panel-required-mode="mobile" data-panel-fill data-panel-breadcrumb="Working on {{ .ActiveProposal.Title }}" aria-labelledby="proposal-workspace-title">
           <div class="ui-pane__inner curriculum-editor" data-pane-content-width="wide">
-            <header class="nested-panel__header curriculum-editor__header proposal-workspace__main-header">
-              <div>
-                <h1 id="proposal-workspace-title">{{ .ActiveProposal.Title }}</h1>
+            <form class="proposal-workspace__metadata"
+                  data-proposal-metadata="{{ .ActiveProposal.ID }}"
+                  action="/curriculum-modification/proposals/{{ .ActiveProposal.ID }}"
+                  method="post"
+                  hx-post="/curriculum-modification/proposals/{{ .ActiveProposal.ID }}"
+                  hx-trigger="input changed delay:700ms from:#working-proposal-title, input changed delay:700ms from:#working-proposal-rationale"
+                  hx-target="#proposal-metadata-save-status"
+                  hx-swap="outerHTML">
+              <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+              <header class="nested-panel__header curriculum-editor__header proposal-workspace__main-header">
+                <div>
+                  <label class="visually-hidden" for="working-proposal-title">Proposal title</label>
+                  <textarea class="proposal-workspace__title-input" id="working-proposal-title" name="title" required maxlength="200" rows="1" data-autoresize data-autoresize-unbounded data-proposal-title-input>{{ .ActiveProposal.Title }}</textarea>
                 <a class="proposal-workspace__breadcrumb-title" href="/curriculum-modification?proposal={{ .ActiveProposal.ID }}" hx-get="/curriculum-modification?proposal={{ .ActiveProposal.ID }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true">Working on {{ .ActiveProposal.Title }}</a>
-              </div>
-              <a class="icon-button ui-pane__close" href="/curriculum-modification" hx-get="/curriculum-modification" hx-trigger="panel-close" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML" hx-push-url="true" data-panel-navigation="close" aria-label="Close proposal workspace">
-                <span class="material-symbols-rounded" aria-hidden="true">close</span>
-              </a>
-            </header>
+                </div>
+                <a class="icon-button ui-pane__close" href="/curriculum-modification" hx-get="/curriculum-modification" hx-trigger="panel-close" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML" hx-push-url="true" data-panel-navigation="close" aria-label="Close proposal workspace">
+                  <span class="material-symbols-rounded" aria-hidden="true">close</span>
+                </a>
+              </header>
 
-            <section class="proposal-workspace__overview" aria-label="Proposal details">
-              <dl class="proposal-details">
-                <div><dt>Status</dt><dd>{{ if and .ProposalRebase (eq .ProposalRebase.Status "needs_review") }}Needs rebase review{{ else }}Up to date{{ end }}</dd></div>
-                <div><dt>Author</dt><dd>{{ .ActiveProposal.AuthorName }}</dd></div>
-                <div><dt>Changes</dt><dd>{{ len .ActiveProposal.Changes }}</dd></div>
-              </dl>
-              <form class="editor-form proposal-workspace__metadata" action="/curriculum-modification/proposals/{{ .ActiveProposal.ID }}" method="post">
-                <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
-                <label for="working-proposal-title">Title</label>
-                <input id="working-proposal-title" name="title" value="{{ .ActiveProposal.Title }}" required maxlength="200">
-                <label for="working-proposal-rationale">Purpose</label>
-                <textarea id="working-proposal-rationale" name="rationale" required rows="3" maxlength="1000" data-autoresize>{{ .ActiveProposal.Rationale }}</textarea>
-                <button class="secondary-button" type="submit">Save proposal</button>
-              </form>
-              <div class="proposal-details__actions">
-                <form action="/curriculum-modification/proposals/{{ .ActiveProposal.ID }}/publish" method="post" {{ with .PublishWarning }}onsubmit="return confirm('{{ . }}')"{{ end }}>
-                  <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
-                  <button class="primary-button" type="submit" {{ if not .CanEditProposal }}disabled{{ end }}>Publish {{ len .ActiveProposal.Changes }} changes</button>
-                </form>
-                <form action="/curriculum-modification/proposals/{{ .ActiveProposal.ID }}/delete" method="post" onsubmit="return confirm('Delete this draft proposal?')">
-                  <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
-                  <button class="secondary-button destructive-action" type="submit"><span class="material-symbols-rounded" aria-hidden="true">delete</span>Delete draft</button>
-                </form>
-              </div>
-            </section>
+              <section class="proposal-workspace__overview" aria-label="Proposal details">
+                <div class="proposal-workspace__metadata-summary">
+                  <dl class="proposal-details">
+                    <div><dt class="label">Author</dt><dd>{{ .ActiveProposal.AuthorName }}</dd></div>
+                    <div><dt class="label">Status</dt><dd>{{ if and .ProposalRebase (eq .ProposalRebase.Status "needs_review") }}Needs rebase review{{ else }}Up to date{{ end }}</dd></div>
+                  </dl>
+                  {{ template "proposal-metadata-save-status" . }}
+                </div>
+                <label class="label proposal-workspace__purpose-label" for="working-proposal-rationale">Purpose</label>
+                <textarea class="proposal-workspace__rationale-input" id="working-proposal-rationale" name="rationale" required rows="1" maxlength="1000" data-autoresize data-autoresize-unbounded data-proposal-rationale-input>{{ .ActiveProposal.Rationale }}</textarea>
+                <noscript><button class="secondary-button" type="submit">Save proposal details</button></noscript>
+              </section>
+            </form>
 
             {{ if and .ProposalRebase (eq .ProposalRebase.Status "needs_review") }}
               <section class="proposal-rebase" aria-labelledby="proposal-rebase-title">
                 <div class="proposal-rebase__heading">
                   <div>
-                    <p class="section-heading__eyebrow">New accepted work overlaps this draft</p>
+                    <p class="label">New accepted work overlaps this draft</p>
                     <h2 id="proposal-rebase-title">Review rebase conflicts</h2>
                   </div>
                 </div>
@@ -145,7 +143,7 @@
             {{ end }}
 
             <section class="proposal-workspace__changes" aria-labelledby="proposal-changes-title">
-              <h2 id="proposal-changes-title">Proposed changes</h2>
+              <h2 class="label" id="proposal-changes-title">Proposed changes</h2>
               {{ if .ActiveProposal.Changes }}
                 <ol class="proposal-list proposal-change-list">
                   {{ range .ActiveProposal.Changes }}
@@ -214,6 +212,17 @@
               {{ end }}
             </section>
             </div>
+
+            <footer class="proposal-workspace__terminal-actions" aria-label="Proposal actions">
+              <form action="/curriculum-modification/proposals/{{ .ActiveProposal.ID }}/delete" method="post" onsubmit="return confirm('Delete this draft proposal?')">
+                <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+                <button class="secondary-button destructive-action" type="submit"><span class="material-symbols-rounded" aria-hidden="true">delete</span>Delete proposal</button>
+              </form>
+              <form action="/curriculum-modification/proposals/{{ .ActiveProposal.ID }}/publish" method="post" {{ with .PublishWarning }}onsubmit="return confirm('{{ . }}')"{{ end }}>
+                <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+                <button class="primary-button" type="submit" {{ if not .CanEditProposal }}disabled{{ end }}>Publish proposal</button>
+              </form>
+            </footer>
           </div>
         </section>
       {{ end }}
@@ -223,7 +232,7 @@
           <article class="ui-pane__inner unit-content" data-pane-content-width="reading" data-inline-editing>
             <header class="nested-panel__header">
               <div>
-                <p class="ui-pane__eyebrow">Published unit content</p>
+                <p class="label">Published unit content</p>
                 <h1 id="admin-unit-content-title" data-inline-editor-display="inline-rename-unit">{{ .Name }}</h1>
                 {{ if $.CanEditProposal }}
                   <form class="editor-form unit-content__inline-editor unit-content__inline-editor--rename" id="inline-rename-unit" action="/curriculum-modification/units/{{ .ID }}" method="post" data-inline-editor hidden>
@@ -389,7 +398,7 @@
         <div class="ui-pane__inner nested-panel" data-pane-content-width="narrow">
           <header class="nested-panel__header">
             <div>
-              <p class="ui-pane__eyebrow">Edit dependencies</p>
+              <p class="label">Edit dependencies</p>
               <h1 id="edit-dependencies-title" data-dependent-name>Unit</h1>
             </div>
             <button class="icon-button ui-pane__close" type="button" data-close-panel aria-label="Close dependencies panel">
@@ -403,7 +412,7 @@
           <section class="selection-editor" aria-labelledby="current-dependencies-title">
             <div class="section-heading">
               <div>
-                <p class="section-heading__eyebrow">Current selection</p>
+                <p class="label">Current selection</p>
                 <h2 id="current-dependencies-title">Requires</h2>
               </div>
             </div>

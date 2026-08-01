@@ -181,14 +181,24 @@
 {{- end }}
 
 {{ define "learning-path-save-status" -}}
-<span class="learning-path-save-status {{ if .Error }}is-error{{ end }}" id="learning-path-save-status" role="status" aria-live="polite">
+<span class="autosave-status learning-path-save-status {{ if .Error }}is-error{{ end }}" id="learning-path-save-status" role="status" aria-live="polite">
+  {{ template "autosave-status-content" . }}
+</span>
+{{- end }}
+
+{{ define "proposal-metadata-save-status" -}}
+<span class="autosave-status proposal-metadata-save-status {{ if .Error }}is-error{{ end }}" id="proposal-metadata-save-status" role="status" aria-live="polite">
+  {{ template "autosave-status-content" . }}
+</span>
+{{- end }}
+
+{{ define "autosave-status-content" -}}
   {{ if .Error }}
     {{ .Error }}
   {{ else }}
     <span data-save-state-saved>Saved</span>
     <span data-save-state-saving>Saving…</span>
   {{ end }}
-</span>
 {{- end }}
 
 {{ define "primary-navigation" -}}

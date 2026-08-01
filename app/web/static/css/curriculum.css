@@ -46,7 +46,7 @@
   text-decoration: none;
 }
 
-.proposal-workspace-pane.ui-pane[data-panel-mode="breadcrumb"] .curriculum-editor .proposal-workspace__main-header h1 {
+.proposal-workspace-pane.ui-pane[data-panel-mode="breadcrumb"] .curriculum-editor .proposal-workspace__title-input {
   display: none;
 }
 
@@ -336,23 +336,87 @@
 }
 
 .proposal-workspace__overview {
-  border-bottom: 1px solid color-mix(in srgb, var(--color-ink) 10%, transparent);
   display: grid;
-  gap: var(--space-3);
-  grid-template-columns: minmax(10rem, 0.7fr) minmax(16rem, 1.6fr) auto;
+  gap: 0;
   margin-bottom: var(--space-5);
-  padding-bottom: var(--space-4);
+  max-width: 46rem;
 }
 
-.proposal-workspace__metadata,
+.proposal-workspace__overview:has(+ .proposal-rebase) {
+  margin-bottom: 0;
+}
+
 .proposal-rebase-conflict__upstream,
 .proposal-rebase-conflict__choices {
   display: grid;
   gap: var(--space-2);
 }
 
-.proposal-workspace__metadata textarea {
-  min-height: 4.5rem;
+.proposal-workspace__title-input,
+.proposal-workspace__rationale-input {
+  background: transparent;
+  border: 0;
+  border-radius: 0.65rem;
+  color: inherit;
+  display: block;
+  font: inherit;
+  margin-inline: -0.45rem;
+  overflow: hidden;
+  padding: 0.35rem 0.45rem;
+  resize: none;
+  width: calc(100% + 0.9rem);
+}
+
+.proposal-workspace__title-input {
+  color: var(--color-ink-strong);
+  font-size: var(--font-size-pane-title);
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 1;
+}
+
+.proposal-workspace__rationale-input {
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+.proposal-workspace__title-input:focus,
+.proposal-workspace__rationale-input:focus {
+  background: transparent;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-ink) 18%, transparent);
+  outline: 0;
+}
+
+.proposal-workspace__purpose-label {
+  margin-top: var(--space-3);
+}
+
+.proposal-workspace__metadata-summary {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  justify-content: flex-start;
+}
+
+.proposal-metadata-save-status {
+  color: var(--color-ink-strong);
+  flex: none;
+  font-size: 0.84rem;
+  font-weight: 400;
+  min-height: 1.2rem;
+}
+
+.proposal-metadata-save-status.is-error {
+  color: var(--color-danger);
+}
+
+.proposal-workspace__metadata.htmx-request .proposal-metadata-save-status [data-save-state-saved] {
+  display: none;
+}
+
+.proposal-workspace__metadata.htmx-request .proposal-metadata-save-status [data-save-state-saving] {
+  display: inline;
 }
 
 .proposal-rebase {
@@ -360,7 +424,7 @@
   border-left: 3px solid var(--color-proposal-rename);
   display: grid;
   gap: var(--space-3);
-  margin-bottom: var(--space-5);
+  margin: var(--space-5) 0;
   padding: var(--space-4);
 }
 
@@ -411,7 +475,6 @@
 }
 
 .proposal-workspace__changes h2 {
-  font-size: var(--font-size-subsection-title);
   margin: 0;
 }
 
@@ -503,38 +566,50 @@
 }
 
 .proposal-details {
-  display: grid;
-  gap: var(--space-2);
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  margin: 0 0 var(--space-5);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  margin: 0;
 }
 
 .proposal-details div {
-  border-bottom: 1px solid color-mix(in srgb, var(--color-ink) 10%, transparent);
-  padding-bottom: var(--space-2);
+  display: grid;
+  gap: 0.15rem;
 }
 
 .proposal-details dt {
-  color: var(--color-muted);
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
+  margin: 0;
 }
 
 .proposal-details dd {
   color: var(--color-ink-strong);
-  margin: 0.2rem 0 0;
+  font-size: 0.84rem;
+  margin: 0;
 }
 
-.proposal-details__actions {
+.proposal-workspace__terminal-actions {
   align-items: center;
-  border-top: 1px solid color-mix(in srgb, var(--color-ink) 12%, transparent);
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
-  justify-content: space-between;
-  margin-top: var(--space-5);
+  justify-content: flex-end;
+  margin-top: calc(var(--space-6) + var(--space-3));
   padding-top: var(--space-4);
+}
+
+.proposal-workspace__terminal-actions form {
+  flex: 0 0 11rem;
+  margin: 0;
+}
+
+.proposal-workspace__terminal-actions .primary-button,
+.proposal-workspace__terminal-actions .secondary-button {
+  align-items: center;
+  display: inline-flex;
+  height: 2.75rem;
+  justify-content: center;
+  margin: 0;
+  width: 100%;
 }
 
 .proposal-list.proposal-change-list {
@@ -1102,10 +1177,6 @@
 }
 
 @container curriculum-editor (max-width: 36rem) {
-  .proposal-workspace__overview {
-    grid-template-columns: 1fr;
-  }
-
   .proposal-workspace__header {
     align-items: flex-start;
     flex-direction: column;
