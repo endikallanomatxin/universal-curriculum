@@ -317,7 +317,8 @@ func TestCurriculumProposalContentPanelRendersUnitContentDiff(t *testing.T) {
 func TestCurriculumProposalRendersRebaseResolutionInUnifiedWorkspace(t *testing.T) {
 	templates := loadTestTemplates(t)
 	change := models.CurriculumProposalChange{
-		ID: 31, Kind: "rename_unit", UnitID: 7, UnitName: "Proposed energy",
+		ID: 31, Kind: "update_content", UnitID: 7, UnitName: "Energy",
+		UnitContent: "Proposed energy content.", PreviousUnitContent: "Original energy content.",
 	}
 	output := renderTemplate(t, templates, "admin-curriculum.html", map[string]any{
 		"CSRFToken": "csrf",
@@ -328,8 +329,9 @@ func TestCurriculumProposalRendersRebaseResolutionInUnifiedWorkspace(t *testing.
 		"ProposalRebase": &CurriculumProposalRebasePlan{
 			Status: ProposalRebaseNeedsReview,
 			Conflicts: []CurriculumProposalRebaseConflict{{
-				Change: change,
-				Units:  []models.Unit{{ID: 7, Name: "Energy"}},
+				Change:       change,
+				AcceptedUnit: &models.Unit{ID: 7, Name: "Energy", Content: "Accepted energy content."},
+				Units:        []models.Unit{{ID: 7, Name: "Energy"}},
 				AcceptedWork: []CurriculumProposalRebaseAcceptedWork{{
 					Proposal: models.CurriculumProposal{ID: 11, Title: "Update physics", Status: "accepted"},
 					Changes:  []models.CurriculumProposalChange{{ID: 30, Kind: "update_content", UnitID: 7, UnitName: "Energy"}},
@@ -342,7 +344,10 @@ func TestCurriculumProposalRendersRebaseResolutionInUnifiedWorkspace(t *testing.
 		`action="/curriculum-modification/proposals/12/rebase"`,
 		`name="resolution_31"`,
 		"Update physics",
-		"Keep this proposal's change",
+		"Accepted version",
+		"This proposal's version",
+		"Edit a resolved version",
+		`name="resolution_content_31"`,
 		`action="/curriculum-modification/proposals/12"`,
 	} {
 		if !strings.Contains(output, fragment) {

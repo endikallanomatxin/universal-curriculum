@@ -128,10 +128,27 @@
                             {{ end }}
                           </div>
                         {{ end }}
-                        <div class="proposal-rebase-conflict__choices">
-                          <label><input type="radio" name="resolution_{{ .Change.ID }}" value="keep" required> Keep this proposal's change</label>
-                          <label><input type="radio" name="resolution_{{ .Change.ID }}" value="drop" required> Use the accepted curriculum</label>
-                        </div>
+                        {{ if and (eq .Change.Kind "update_content") .AcceptedUnit }}
+                          <div class="proposal-rebase-content-versions">
+                            <div class="proposal-rebase-content-version">
+                              <label class="proposal-rebase-content-version__heading"><input type="radio" name="resolution_{{ .Change.ID }}" value="drop" required> Accepted version</label>
+                              <div class="unit-content proposal-rebase-content-version__preview">{{ renderUnitContent .AcceptedUnit.Content }}</div>
+                            </div>
+                            <div class="proposal-rebase-content-version">
+                              <label class="proposal-rebase-content-version__heading"><input type="radio" name="resolution_{{ .Change.ID }}" value="keep" required> This proposal's version</label>
+                              <div class="unit-content proposal-rebase-content-version__preview">{{ renderUnitContent .Change.UnitContent }}</div>
+                            </div>
+                          </div>
+                          <div class="proposal-rebase-content-edit">
+                            <label class="proposal-rebase-content-version__heading"><input type="radio" name="resolution_{{ .Change.ID }}" value="edit" required data-rebase-edit-choice> Edit a resolved version</label>
+                            <textarea name="resolution_content_{{ .Change.ID }}" rows="8" data-autoresize data-autoresize-unbounded data-rebase-content-editor>{{ .Change.UnitContent }}</textarea>
+                          </div>
+                        {{ else }}
+                          <div class="proposal-rebase-conflict__choices">
+                            <label><input type="radio" name="resolution_{{ .Change.ID }}" value="keep" required> Keep this proposal's change</label>
+                            <label><input type="radio" name="resolution_{{ .Change.ID }}" value="drop" required> Use the accepted curriculum</label>
+                          </div>
+                        {{ end }}
                       </fieldset>
                     {{ end }}
                   </div>

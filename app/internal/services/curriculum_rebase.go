@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"slices"
 	"sort"
+	"strings"
 
 	"universal-curriculum/internal/db"
 	"universal-curriculum/internal/models"
@@ -36,8 +37,14 @@ func (plan *CurriculumProposalRebasePlan) NeedsReview() bool {
 
 type CurriculumProposalRebaseConflict struct {
 	Change       models.CurriculumProposalChange
+	AcceptedUnit *models.Unit
 	Units        []models.Unit
 	AcceptedWork []CurriculumProposalRebaseAcceptedWork
+}
+
+type CurriculumProposalRebaseResolution struct {
+	Choice  string
+	Content string
 }
 
 type CurriculumProposalRebaseAcceptedWork struct {
@@ -178,7 +185,7 @@ func RebaseDraftCurriculumProposals(database *sql.DB) CurriculumProposalRebaseSu
 func ResolveCurriculumProposalRebase(
 	database *sql.DB,
 	authorID, proposalID int64,
-	resolutions map[int64]string,
+	resolutions map[int64]CurriculumProposalRebaseResolution,
 ) error {
 	tx, err := beginCurriculumProposal(database)
 	if err != nil {
@@ -215,7 +222,9 @@ func ResolveCurriculumProposalRebase(
 	conflictingChanges := make(map[int64]bool, len(plan.Conflicts))
 	for _, conflict := range plan.Conflicts {
 		conflictingChanges[conflict.Change.ID] = true
-		if resolution := resolutions[conflict.Change.ID]; resolution != "keep" && resolution != "drop" {
+		resolution := resolutions[conflict.Change.ID]
+		if resolution.Choice != "keep" && resolution.Choice != "drop" &&
+			(resolution.Choice != "edit" || conflict.Change.Kind != "update_content" || strings.TrimSpace(resolution.Content) == "") {
 			return ErrRebaseResolutionRequired
 		}
 	}
@@ -223,8 +232,14 @@ func ResolveCurriculumProposalRebase(
 	candidate.Changes = append([]models.CurriculumProposalChange(nil), proposal.Changes...)
 	retained := candidate.Changes[:0]
 	for _, change := range candidate.Changes {
-		if conflictingChanges[change.ID] && resolutions[change.ID] == "drop" {
-			continue
+		if conflictingChanges[change.ID] {
+			resolution := resolutions[change.ID]
+			if resolution.Choice == "drop" {
+				continue
+			}
+			if resolution.Choice == "edit" {
+				change.UnitContent = strings.TrimSpace(resolution.Content)
+			}
 		}
 		retained = append(retained, change)
 	}
@@ -253,7 +268,7 @@ func ResolveCurriculumProposalRebase(
 		}
 	}
 	for _, change := range candidate.Changes {
-		if err := db.UpdateDraftCurriculumProposalChangeSnapshot(tx, change); err != nil {
+		if err := db.UpdateDraftCurriculumProposalChangeForRebase(tx, change); err != nil {
 			return err
 		}
 	}
@@ -358,6 +373,12 @@ func planCurriculumProposalRebase(
 		}
 		sort.Slice(units, func(i, j int) bool { return units[i].ID < units[j].ID })
 		conflict := CurriculumProposalRebaseConflict{Change: change, Units: units}
+		if change.Kind == "update_content" {
+			if unit := curriculumUnitByID(currentGraph, change.UnitID); unit != nil {
+				acceptedUnit := *unit
+				conflict.AcceptedUnit = &acceptedUnit
+			}
+		}
 		for proposalIndex, acceptedProposal := range accepted {
 			if !proposalIndexes[proposalIndex] {
 				continue
@@ -387,9 +408,14 @@ func planCurriculumProposalRebase(
 		} else {
 			plan.ValidationReason = err.Error()
 			for _, change := range proposal.Changes {
-				plan.Conflicts = append(plan.Conflicts, CurriculumProposalRebaseConflict{
-					Change: change,
-				})
+				conflict := CurriculumProposalRebaseConflict{Change: change}
+				if change.Kind == "update_content" {
+					if unit := curriculumUnitByID(currentGraph, change.UnitID); unit != nil {
+						acceptedUnit := *unit
+						conflict.AcceptedUnit = &acceptedUnit
+					}
+				}
+				plan.Conflicts = append(plan.Conflicts, conflict)
 			}
 		}
 	}

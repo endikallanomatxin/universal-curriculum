@@ -159,6 +159,9 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if err := UpdateCurriculumUnit(database, authorID, conflictingProposal.ID, algebra.ID, "Competing algebra"); err != nil {
 		t.Fatal(err)
 	}
+	if err := UpdateCurriculumUnitContent(database, authorID, conflictingProposal.ID, algebra.ID, "Competing algebra content."); err != nil {
+		t.Fatal(err)
+	}
 	proposal, err = CreateCurriculumProposal(database, authorID, "Algebra path", "Connect and refine the new units.")
 	if err != nil {
 		t.Fatal(err)
@@ -231,26 +234,51 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 		t.Fatalf("disjoint proposal was not automatically rebased: proposal=%#v err=%v", automaticallyRebased, err)
 	}
 	rebasePlan, err := PlanCurriculumProposalRebase(database, conflictingProposal)
-	if err != nil || !rebasePlan.NeedsReview() || len(rebasePlan.Conflicts) != 1 {
+	if err != nil || !rebasePlan.NeedsReview() || len(rebasePlan.Conflicts) != 2 {
 		t.Fatalf("overlapping proposal rebase plan = %#v, err=%v", rebasePlan, err)
 	}
-	conflictingChangeID := rebasePlan.Conflicts[0].Change.ID
+	resolutions := make(map[int64]CurriculumProposalRebaseResolution)
+	var contentChangeID int64
+	for _, conflict := range rebasePlan.Conflicts {
+		switch conflict.Change.Kind {
+		case "rename_unit":
+			resolutions[conflict.Change.ID] = CurriculumProposalRebaseResolution{Choice: "keep"}
+		case "update_content":
+			contentChangeID = conflict.Change.ID
+			if conflict.AcceptedUnit == nil || conflict.AcceptedUnit.Content != "Work through variables, expressions, and equations." {
+				t.Fatalf("content conflict accepted version = %#v", conflict.AcceptedUnit)
+			}
+			resolutions[conflict.Change.ID] = CurriculumProposalRebaseResolution{
+				Choice: "edit", Content: "A reconciled algebra explanation.",
+			}
+		}
+	}
 	if err := ResolveCurriculumProposalRebase(
 		database, authorID, conflictingProposal.ID, nil,
 	); !errors.Is(err, ErrRebaseResolutionRequired) {
 		t.Fatalf("incomplete rebase resolution error = %v, want %v", err, ErrRebaseResolutionRequired)
 	}
 	if err := ResolveCurriculumProposalRebase(
-		database, authorID, conflictingProposal.ID, map[int64]string{conflictingChangeID: "keep"},
+		database, authorID, conflictingProposal.ID, resolutions,
 	); err != nil {
 		t.Fatalf("resolve curriculum proposal rebase: %v", err)
 	}
 	conflictingProposal, err = db.GetCurriculumProposal(database, conflictingProposal.ID)
 	if err != nil || conflictingProposal == nil || conflictingProposal.BaseProposalID == nil ||
 		*conflictingProposal.BaseProposalID != proposal.ID ||
-		len(conflictingProposal.Changes) != 1 ||
+		len(conflictingProposal.Changes) != 2 ||
 		conflictingProposal.Changes[0].PreviousUnitName != "Introductory algebra" {
 		t.Fatalf("manual rebase did not normalize the retained change: proposal=%#v err=%v", conflictingProposal, err)
+	}
+	var resolvedContent *models.CurriculumProposalChange
+	for index := range conflictingProposal.Changes {
+		if conflictingProposal.Changes[index].ID == contentChangeID {
+			resolvedContent = &conflictingProposal.Changes[index]
+		}
+	}
+	if resolvedContent == nil || resolvedContent.UnitContent != "A reconciled algebra explanation." ||
+		resolvedContent.PreviousUnitContent != "Work through variables, expressions, and equations." {
+		t.Fatalf("custom content rebase resolution = %#v", resolvedContent)
 	}
 	if err := DeleteCurriculumProposal(database, authorID, conflictingProposal.ID); err != nil {
 		t.Fatal(err)

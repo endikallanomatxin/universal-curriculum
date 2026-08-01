@@ -44,6 +44,11 @@
 
   document.addEventListener("input", function (event) {
     const field = event.target;
+    if (field.matches && field.matches("[data-rebase-content-editor]")) {
+      const resolution = field.closest(".proposal-rebase-content-edit");
+      const choice = resolution && resolution.querySelector("[data-rebase-edit-choice]");
+      if (choice) choice.checked = true;
+    }
     const form = field.closest && field.closest("[data-proposal-metadata]");
     if (!form) return;
     const proposalID = form.dataset.proposalMetadata;

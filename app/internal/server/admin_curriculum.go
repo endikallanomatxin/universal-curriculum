@@ -313,14 +313,17 @@ func (server *Server) rebaseCurriculumProposal(writer http.ResponseWriter, reque
 		http.Error(writer, "Invalid proposal ID", http.StatusBadRequest)
 		return
 	}
-	resolutions := make(map[int64]string)
+	resolutions := make(map[int64]services.CurriculumProposalRebaseResolution)
 	for key, values := range request.Form {
 		if !strings.HasPrefix(key, "resolution_") || len(values) == 0 {
 			continue
 		}
 		changeID, parseErr := parsePositiveID(strings.TrimPrefix(key, "resolution_"))
 		if parseErr == nil {
-			resolutions[changeID] = values[0]
+			resolutions[changeID] = services.CurriculumProposalRebaseResolution{
+				Choice:  values[0],
+				Content: request.FormValue(fmt.Sprintf("resolution_content_%d", changeID)),
+			}
 		}
 	}
 	authorID, _ := services.SessionUserID(request)
@@ -402,7 +405,7 @@ func curriculumErrorResponse(err error) (string, int) {
 	case errors.Is(err, services.ErrProposalRebaseRequired):
 		return "Review the proposal changes that overlap with newer accepted work before continuing.", http.StatusConflict
 	case errors.Is(err, services.ErrRebaseResolutionRequired):
-		return "Choose whether to keep or drop every conflicting change.", http.StatusBadRequest
+		return "Choose a valid resolution for every conflicting change.", http.StatusBadRequest
 	case errors.Is(err, services.ErrRecognitionRationaleRequired):
 		return "Explain why this knowledge can be recognized.", http.StatusBadRequest
 	case errors.Is(err, services.ErrRecognitionSourcesRequired):

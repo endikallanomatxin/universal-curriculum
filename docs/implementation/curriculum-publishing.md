@@ -58,12 +58,14 @@ later edit or publication as recovery from an interrupted maintenance pass.
 
 An overlapping draft remains unchanged on its historical base. Its workspace
 shows the accepted proposals responsible for each overlap and asks the author
-to keep or drop every conflicting draft change. Kept name, content and deletion
-changes receive snapshots from the new base; dependency changes that already
-have their desired result become no-ops. The normalized proposal is validated
-as a whole before its base moves. Until then ordinary curriculum edits and
-publication are blocked, while proposal metadata and draft deletion remain
-available.
+to resolve every conflicting draft change. Content conflicts show the complete
+accepted and proposed versions; either can be selected directly, or the author
+can edit a resolved version which replaces the draft change's desired content.
+Other changes can be kept or dropped. Kept name, content and deletion changes
+receive snapshots from the new base; dependency changes that already have their
+desired result become no-ops. The normalized proposal is validated as a whole
+before its base moves. Until then ordinary curriculum edits and publication are
+blocked, while proposal metadata and draft deletion remain available.
 
 The proposal workspace combines metadata, changes, publication and rebase
 resolution. Accepted proposals form a single publication line in the history

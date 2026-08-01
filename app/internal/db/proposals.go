@@ -218,7 +218,7 @@ func SetDraftCurriculumProposalBase(
 	return count == 1, err
 }
 
-func UpdateDraftCurriculumProposalChangeSnapshot(
+func UpdateDraftCurriculumProposalChangeForRebase(
 	q curriculumExecutor,
 	change models.CurriculumProposalChange,
 ) error {
@@ -238,13 +238,13 @@ func UpdateDraftCurriculumProposalChangeSnapshot(
 	case "update_content":
 		result, err = q.Exec(`
 			UPDATE curriculum_unit_content_updates content_update
-			SET previous_content = $2
+			SET content = $2, previous_content = $3
 			FROM curriculum_proposal_changes change, curriculum_proposals proposal
 			WHERE content_update.change_id = $1
 			  AND change.id = content_update.change_id
 			  AND proposal.id = change.proposal_id
 			  AND proposal.status = 'draft'
-		`, change.ID, change.PreviousUnitContent)
+		`, change.ID, change.UnitContent, change.PreviousUnitContent)
 	case "delete_unit":
 		result, err = q.Exec(`
 			UPDATE curriculum_unit_deletions deletion
@@ -259,7 +259,7 @@ func UpdateDraftCurriculumProposalChangeSnapshot(
 		return nil
 	}
 	if err != nil {
-		return fmt.Errorf("update draft curriculum proposal change snapshot: %w", err)
+		return fmt.Errorf("update draft curriculum proposal change for rebase: %w", err)
 	}
 	count, err := result.RowsAffected()
 	if err != nil {
