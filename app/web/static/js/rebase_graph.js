@@ -43,7 +43,7 @@
     function edgePath(source, target) {
       const sourceY = source.y + source.height / 2;
       const targetY = target.y - target.height / 2 - 5;
-      const easing = Math.max(12, (targetY - sourceY) * 0.35);
+      const easing = 28;
       return "M " + source.x + " " + sourceY +
         " C " + source.x + " " + (sourceY + easing) +
         " " + target.x + " " + (targetY - easing) +

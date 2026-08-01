@@ -120,10 +120,12 @@
           incomingHubs.set(unitID, Math.min(targetY, lastSourceY + branchInset));
         });
 
+        const verticalHandle = 28;
+
         function directBezierPath(source, target) {
           const sourceY = source.y + source.height / 2;
           const targetY = target.y - target.height / 2 - 5;
-          const easing = (targetY - sourceY) * 0.35;
+          const easing = verticalHandle;
           return "M " + source.x + " " + sourceY +
             " C " + source.x + " " + (sourceY + easing) +
             " " + target.x + " " + (targetY - easing) +
@@ -139,7 +141,7 @@
           if (hubSpan < branchInset) {
             return directBezierPath(source, target);
           }
-          const easing = hubSpan * 0.35;
+          const easing = verticalHandle;
           let path = "M " + source.x + " " + sourceY;
           if (sourceHubY > sourceY) {
             path += " V " + sourceHubY;
@@ -153,11 +155,13 @@
           return path;
         }
 
-        function straightEdgePath(source, target) {
+        function fallbackEdgePath(source, target) {
           const sourceY = source.y + source.height / 2;
           const targetY = target.y - target.height / 2 - 5;
           return "M " + source.x + " " + sourceY +
-            " L " + target.x + " " + targetY;
+            " V " + (sourceY + verticalHandle) +
+            " H " + target.x +
+            " V " + targetY;
         }
 
         function pathCrossesNode(path, edge) {
@@ -189,7 +193,7 @@
           }
           pathLayer.appendChild(path);
           if (pathCrossesNode(path, edge)) {
-            path.setAttribute("d", straightEdgePath(source, target));
+            path.setAttribute("d", fallbackEdgePath(source, target));
           }
           renderedPaths.push({ edge: edge, path: path });
         });
