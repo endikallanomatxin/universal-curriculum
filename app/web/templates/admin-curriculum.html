@@ -102,30 +102,41 @@
 
             {{ if and .ProposalRebase (eq .ProposalRebase.Status "needs_review") }}
               <section class="proposal-rebase" aria-labelledby="proposal-rebase-title">
-                <div class="proposal-rebase__heading">
-                  <div>
-                    <p class="label">New accepted work overlaps this draft</p>
-                    <h2 id="proposal-rebase-title">Review rebase conflicts</h2>
-                  </div>
-                </div>
-                <p>This proposal remains attached to its original curriculum. Resolve each overlapping change before continuing.</p>
-                {{ with .ProposalRebase.ValidationReason }}<p class="form-error" role="alert">{{ . }}</p>{{ end }}
                 <form action="/curriculum-modification/proposals/{{ .ActiveProposal.ID }}/rebase" method="post">
                   <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+                  <header class="proposal-rebase__header">
+                    <div class="proposal-rebase__intro">
+                      <h2 id="proposal-rebase-title">Review overlapping changes</h2>
+                      <p>The accepted curriculum changed after this draft began. Review the final result for each affected unit.</p>
+                    </div>
+                  </header>
+                  {{ with .ProposalRebase.ValidationReason }}<p class="form-error" role="alert">{{ . }}</p>{{ end }}
                   <div class="proposal-rebase__conflicts">
                     {{ range .ProposalRebase.Conflicts }}
-                      <fieldset class="proposal-rebase-conflict">
-                        <legend>{{ if .Change.UnitName }}{{ .Change.UnitName }}{{ else }}{{ .Change.Kind }} change #{{ .Change.ID }}{{ end }}</legend>
-                        {{ if .Units }}<p>Affected together: {{ range $index, $unit := .Units }}{{ if $index }}, {{ end }}{{ if $unit.Name }}{{ $unit.Name }}{{ else }}Unit #{{ $unit.ID }}{{ end }}{{ end }}.</p>{{ end }}
-                        {{ if .AcceptedWork }}
-                          <div class="proposal-rebase-conflict__upstream">
-                            <span>Accepted since this draft began</span>
-                            {{ range .AcceptedWork }}
-                              <strong>{{ .Proposal.Title }}</strong>
-                              <ul>
-                                {{ range .Changes }}<li>{{ if eq .Kind "rename_unit" }}Renamed{{ else if eq .Kind "update_content" }}Updated content of{{ else if eq .Kind "delete_unit" }}Deleted{{ else if eq .Kind "add_dependency" }}Added a dependency involving{{ else if eq .Kind "remove_dependency" }}Removed a dependency involving{{ else if eq .Kind "recognition" }}Changed recognition involving{{ else }}Changed{{ end }} {{ if .UnitName }}{{ .UnitName }}{{ else }}the affected unit{{ end }}</li>{{ end }}
-                              </ul>
+                      <section class="proposal-rebase-conflict {{ if eq .Change.Kind "rename_unit" }}proposal-rebase-conflict--rename{{ else if eq .Change.Kind "update_content" }}proposal-rebase-conflict--content{{ else if eq .Change.Kind "delete_unit" }}proposal-rebase-conflict--deletion{{ else if or (eq .Change.Kind "add_dependency") (eq .Change.Kind "remove_dependency") }}proposal-rebase-conflict--dependency{{ else if eq .Change.Kind "recognition" }}proposal-rebase-conflict--recognition{{ else }}proposal-rebase-conflict--neutral{{ end }}" aria-labelledby="proposal-rebase-conflict-{{ .Change.ID }}">
+                        <header class="proposal-rebase-conflict__header">
+                          <span class="proposal-change__badge">
+                            <span class="material-symbols-rounded" aria-hidden="true">{{ if eq .Change.Kind "rename_unit" }}edit{{ else if eq .Change.Kind "update_content" }}description{{ else if eq .Change.Kind "delete_unit" }}delete{{ else if eq .Change.Kind "add_dependency" }}arrow_downward{{ else if eq .Change.Kind "remove_dependency" }}link_off{{ else }}move_up{{ end }}</span>
+                            <span>{{ if eq .Change.Kind "rename_unit" }}Rename{{ else if eq .Change.Kind "update_content" }}Edit content{{ else if eq .Change.Kind "delete_unit" }}Delete unit{{ else if eq .Change.Kind "add_dependency" }}Add dependency{{ else if eq .Change.Kind "remove_dependency" }}Remove dependency{{ else if eq .Change.Kind "recognition" }}Recognition{{ else }}Proposed change{{ end }}</span>
+                          </span>
+                          <strong id="proposal-rebase-conflict-{{ .Change.ID }}">
+                            {{ if .Change.UnitName }}
+                              {{ .Change.UnitName }}
+                            {{ else if .Change.Recognition }}
+                              {{ range $index, $unit := .Change.Recognition.Sources }}{{ if $index }}, {{ end }}{{ $unit.Name }}{{ end }}
+                              →
+                              {{ range $index, $unit := .Change.Recognition.Targets }}{{ if $index }}, {{ end }}{{ $unit.Name }}{{ end }}
+                            {{ else if .Units }}
+                              {{ range $index, $unit := .Units }}{{ if $index }}, {{ end }}{{ if $unit.Name }}{{ $unit.Name }}{{ else }}Affected unit{{ end }}{{ end }}
+                            {{ else }}
+                              Affected curriculum
                             {{ end }}
+                          </strong>
+                        </header>
+                        <div class="proposal-rebase-conflict__body">
+                        {{ if gt (len .Units) 1 }}
+                          <div class="proposal-rebase-conflict__context">
+                            <p><span class="label">Affected together</span> {{ range $index, $unit := .Units }}{{ if $index }}, {{ end }}{{ if $unit.Name }}{{ $unit.Name }}{{ else }}Affected unit{{ end }}{{ end }}</p>
                           </div>
                         {{ end }}
                         {{ if and (eq .Change.Kind "update_content") .AcceptedUnit }}
@@ -141,29 +152,55 @@
                               <div class="proposal-rebase-merge-editor__fallback">
                                 <p>Preparing the comparison…</p>
                                 <noscript>
-                                  <section><span class="label">Accepted version</span><pre>{{ .AcceptedUnit.Content }}</pre></section>
-                                  <section><span class="label">Proposal version</span><pre>{{ .Change.UnitContent }}</pre></section>
+                                  <section><span class="label">Newly accepted curriculum</span><pre>{{ .AcceptedUnit.Content }}</pre></section>
+                                  <section><span class="label">Your proposal before rebasing</span><pre>{{ .Change.UnitContent }}</pre></section>
                                 </noscript>
                               </div>
                             </div>
                             <textarea class="proposal-rebase-merge-editor__result" name="resolution_content_{{ .Change.ID }}" aria-label="Resolved content" rows="12" required spellcheck="true" data-autoresize data-autoresize-unbounded data-merge-result role="tabpanel" data-view-switcher-panel="result" hidden>{{ .Change.UnitContent }}</textarea>
                           </div>
+                        {{ else if and (eq .Change.Kind "rename_unit") .AcceptedUnit }}
+                          <fieldset class="proposal-rebase-rename" aria-label="Resolved unit name">
+                            <legend>Choose the name this unit should keep after resolving the conflict.</legend>
+                            <label class="proposal-rebase-rename__option">
+                              <input type="radio" name="resolution_{{ .Change.ID }}" value="keep" required checked>
+                              <span class="label">Your proposal before rebasing</span>
+                              <strong>{{ .Change.UnitName }}</strong>
+                            </label>
+                            <label class="proposal-rebase-rename__option">
+                              <input type="radio" name="resolution_{{ .Change.ID }}" value="drop" required>
+                              <span class="label">Newly accepted curriculum</span>
+                              <strong>{{ .AcceptedUnit.Name }}</strong>
+                            </label>
+                          </fieldset>
                         {{ else }}
                           <div class="proposal-rebase-conflict__choices">
-                            <label><input type="radio" name="resolution_{{ .Change.ID }}" value="keep" required> Keep this proposal's change</label>
-                            <label><input type="radio" name="resolution_{{ .Change.ID }}" value="drop" required> Use the accepted curriculum</label>
+                            <label><input type="radio" name="resolution_{{ .Change.ID }}" value="keep" required>
+                              {{ if eq .Change.Kind "rename_unit" }}Keep the proposed name “{{ .Change.UnitName }}”{{ else if eq .Change.Kind "delete_unit" }}Delete this unit as proposed{{ else if eq .Change.Kind "add_dependency" }}Add this dependency as proposed{{ else if eq .Change.Kind "remove_dependency" }}Remove this dependency as proposed{{ else }}Keep this proposed change{{ end }}
+                            </label>
+                            <label><input type="radio" name="resolution_{{ .Change.ID }}" value="drop" required>
+                              {{ if eq .Change.Kind "rename_unit" }}Keep the currently accepted name{{ else if eq .Change.Kind "delete_unit" }}Keep the currently accepted unit{{ else if or (eq .Change.Kind "add_dependency") (eq .Change.Kind "remove_dependency") }}Keep the currently accepted dependencies{{ else }}Keep the accepted curriculum{{ end }}
+                            </label>
                           </div>
                         {{ end }}
-                      </fieldset>
+                        </div>
+                      </section>
                     {{ end }}
                   </div>
-                  <button class="primary-button" type="submit">Apply resolutions and rebase</button>
+                  <div class="proposal-rebase__actions">
+                    <button class="primary-button" type="submit">Apply resolutions</button>
+                  </div>
                 </form>
               </section>
             {{ end }}
 
-            <section class="proposal-workspace__changes" aria-labelledby="proposal-changes-title">
-              <h2 class="label" id="proposal-changes-title">Proposed changes</h2>
+            <section class="proposal-workspace__changes {{ if and .ProposalRebase (eq .ProposalRebase.Status "needs_review") }}proposal-workspace__changes--locked{{ end }}" aria-labelledby="proposal-changes-title">
+              <div class="proposal-workspace__changes-heading">
+                <h2 class="label" id="proposal-changes-title">Proposed changes</h2>
+                {{ if and .ProposalRebase (eq .ProposalRebase.Status "needs_review") }}
+                  <span class="proposal-workspace__changes-lock"><span class="material-symbols-rounded" aria-hidden="true">lock</span>Resolve the rebase to continue editing</span>
+                {{ end }}
+              </div>
               {{ if .ActiveProposal.Changes }}
                 <ol class="proposal-list proposal-change-list">
                   {{ range .ActiveProposal.Changes }}
@@ -240,7 +277,7 @@
               </form>
               <form action="/curriculum-modification/proposals/{{ .ActiveProposal.ID }}/publish" method="post" {{ with .PublishWarning }}onsubmit="return confirm('{{ . }}')"{{ end }}>
                 <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
-                <button class="primary-button" type="submit" {{ if not .CanEditProposal }}disabled{{ end }}>Publish proposal</button>
+                <button class="primary-button" type="submit" {{ if not .CanEditProposal }}disabled{{ if and .ProposalRebase (eq .ProposalRebase.Status "needs_review") }} title="Resolve the rebase before publishing"{{ end }}{{ end }}>Publish proposal</button>
               </form>
             </footer>
           </div>

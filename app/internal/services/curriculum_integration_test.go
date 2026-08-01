@@ -242,6 +242,9 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	for _, conflict := range rebasePlan.Conflicts {
 		switch conflict.Change.Kind {
 		case "rename_unit":
+			if conflict.AcceptedUnit == nil || conflict.AcceptedUnit.Name != "Introductory algebra" {
+				t.Fatalf("rename conflict accepted version = %#v", conflict.AcceptedUnit)
+			}
 			resolutions[conflict.Change.ID] = CurriculumProposalRebaseResolution{Choice: "keep"}
 		case "update_content":
 			contentChangeID = conflict.Change.ID

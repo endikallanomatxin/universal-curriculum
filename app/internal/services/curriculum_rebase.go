@@ -373,7 +373,7 @@ func planCurriculumProposalRebase(
 		}
 		sort.Slice(units, func(i, j int) bool { return units[i].ID < units[j].ID })
 		conflict := CurriculumProposalRebaseConflict{Change: change, Units: units}
-		if change.Kind == "update_content" {
+		if change.Kind == "update_content" || change.Kind == "rename_unit" {
 			if unit := curriculumUnitByID(currentGraph, change.UnitID); unit != nil {
 				acceptedUnit := *unit
 				conflict.AcceptedUnit = &acceptedUnit
@@ -409,7 +409,7 @@ func planCurriculumProposalRebase(
 			plan.ValidationReason = err.Error()
 			for _, change := range proposal.Changes {
 				conflict := CurriculumProposalRebaseConflict{Change: change}
-				if change.Kind == "update_content" {
+				if change.Kind == "update_content" || change.Kind == "rename_unit" {
 					if unit := curriculumUnitByID(currentGraph, change.UnitID); unit != nil {
 						acceptedUnit := *unit
 						conflict.AcceptedUnit = &acceptedUnit

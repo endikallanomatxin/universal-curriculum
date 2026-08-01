@@ -203,10 +203,10 @@
       section.append(
         heading,
         textarea(part.result, "", "Resolved content"),
-        alternative("Accepted version", part.accepted,
+        alternative("Newly accepted curriculum", part.accepted,
           "This passage is not part of the accepted curriculum.",
           "proposal-rebase-merge-part__alternative--accepted"),
-        alternative("Proposal version", part.proposal,
+        alternative("Your proposal before rebasing", part.proposal,
           "This passage is not part of the proposal.",
           "proposal-rebase-merge-part__alternative--proposal")
       );

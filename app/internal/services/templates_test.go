@@ -343,7 +343,6 @@ func TestCurriculumProposalRendersRebaseResolutionInUnifiedWorkspace(t *testing.
 	for _, fragment := range []string{
 		`action="/curriculum-modification/proposals/12/rebase"`,
 		`name="resolution_31"`,
-		"Update physics",
 		"Resolved source",
 		"Accepted energy content.",
 		"Proposed energy content.",
