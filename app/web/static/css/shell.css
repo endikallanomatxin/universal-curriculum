@@ -661,6 +661,10 @@ button.primary-menu__link {
   overflow: clip;
 }
 
+.pane-stack.is-panel-motion-active > [data-layout-panel] {
+  transition: flex-basis var(--panel-motion-duration) var(--panel-motion-easing);
+}
+
 .ui-pane {
   background: linear-gradient(90deg, var(--color-panel-start), var(--color-panel-end));
   flex: 0 0 var(--panel-width, min(100%, 42rem));

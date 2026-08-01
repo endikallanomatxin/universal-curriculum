@@ -2,6 +2,8 @@
   "use strict";
 
   const closeDuration = 280;
+  const closeLayoutDelay = 120;
+  const closeNavigationDelay = 140;
   const navigationByRequest = new WeakMap();
 
   function directChildContaining(group, element) {
@@ -271,6 +273,14 @@
 
         panel.classList.remove("is-opening");
         panel.classList.add("is-closing");
+        const group = panel.parentElement;
+        if (group) {
+          group.classList.add("is-panel-motion-active");
+          group.getBoundingClientRect();
+        }
+        panel.panelLayoutTimer = window.setTimeout(function () {
+          if (window.panelLayout) window.panelLayout.refresh();
+        }, closeLayoutDelay);
         let navigated = false;
         const navigate = function () {
           if (navigated) return;
@@ -279,7 +289,7 @@
           htmx.trigger(trigger, "panel-close");
         };
         panel.addEventListener("animationend", navigate, { once: true });
-        panel.panelNavigationTimer = window.setTimeout(navigate, closeDuration + 50);
+        panel.panelNavigationTimer = window.setTimeout(navigate, closeNavigationDelay);
       });
     });
   }
