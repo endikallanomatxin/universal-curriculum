@@ -46,7 +46,6 @@
 .app-shell.is-shell-navigation .primary-navigation,
 .app-shell.is-shell-navigation .primary-navigation__inner,
 .app-shell.is-shell-navigation .brand,
-.app-shell.is-shell-navigation .brand__mark,
 .app-shell.is-shell-navigation .brand span,
 .app-shell.is-shell-navigation .primary-navigation nav,
 .app-shell.is-shell-navigation .primary-menu__link,
@@ -183,25 +182,29 @@
   width: 100%;
 }
 
-.primary-navigation[data-panel-mode="icons"] .brand span {
-  max-width: 0;
-  opacity: 0;
-  overflow: hidden;
-  transform: translateX(-0.5rem);
-  white-space: nowrap;
-}
-
 .primary-navigation[data-panel-mode="icons"] .brand {
+  align-items: center;
   align-self: center;
   height: 2rem;
+  justify-content: center;
   padding: 0;
   position: relative;
   width: 2rem;
 }
 
-.primary-navigation[data-panel-mode="icons"] .brand__mark {
-  opacity: 1;
-  transform: translateX(-50%);
+.primary-navigation[data-panel-mode="icons"] .brand__name {
+  font-size: 1.35rem;
+  letter-spacing: -0.08em;
+  transform: translate(-0.34em, 0.475em);
+}
+
+.primary-navigation[data-panel-mode="icons"] .brand__word--curriculum {
+  transform: translate(0.68em, -100%);
+}
+
+.primary-navigation[data-panel-mode="icons"] .brand__expansion {
+  max-width: 0;
+  transform: translateX(-0.25rem);
 }
 
 .primary-navigation[data-panel-mode="icons"] .primary-menu > li {
@@ -258,25 +261,51 @@
   width: fit-content;
 }
 
-.brand__mark {
-  height: 2rem;
-  left: 50%;
-  opacity: 0;
-  position: absolute;
-  transform: translateX(0.5rem);
-  transition: opacity 160ms ease, transform 240ms var(--motion-easing);
-  width: 2rem;
+.brand__name {
+  display: block;
+  line-height: 0.95;
+  transform: translateX(0);
+  transition: transform var(--motion-duration) var(--motion-easing);
 }
 
-.brand span {
-  line-height: 0.95;
-  max-width: 15rem;
-  opacity: 1;
-  transition: max-width var(--motion-duration) var(--motion-easing), opacity 160ms ease, transform 240ms var(--motion-easing);
-  view-transition-name: brand;
+.brand__word {
+  align-items: baseline;
+  display: flex;
+  transition: transform var(--motion-duration) var(--motion-easing);
+  white-space: nowrap;
+}
+
+.brand__word:first-child .brand__initial {
+  view-transition-name: brand-u;
+}
+
+.brand__word--curriculum .brand__initial {
+  view-transition-name: brand-c;
+}
+
+.brand__word:first-child .brand__expansion {
+  view-transition-name: brand-universal;
+}
+
+.brand__word--curriculum .brand__expansion {
+  view-transition-name: brand-curriculum;
+}
+
+.primary-navigation[data-panel-mode="icons"] .brand__expansion {
+  view-transition-name: none;
+}
+
+.brand__expansion {
+  display: inline-block;
+  max-width: 6em;
+  overflow: hidden;
+  transform: translateX(0);
+  transition: max-width var(--motion-duration) var(--motion-easing), transform var(--motion-duration) var(--motion-easing);
+  white-space: nowrap;
 }
 
 .app-shell:not(.app-shell--home) .brand {
+  font-size: 1.3rem;
   padding: 0.5rem 0.75rem;
 }
 
@@ -802,7 +831,10 @@ button.primary-menu__link {
   }
 }
 
-::view-transition-group(brand),
+::view-transition-group(brand-u),
+::view-transition-group(brand-c),
+::view-transition-group(brand-universal),
+::view-transition-group(brand-curriculum),
 ::view-transition-group(primary-navigation-pane),
 ::view-transition-group(workspace-pane),
 ::view-transition-group(learning-paths-pane),
@@ -811,6 +843,17 @@ button.primary-menu__link {
 ::view-transition-group(*.persistent-shell-icon) {
   animation-duration: var(--motion-duration);
   animation-timing-function: var(--motion-easing);
+}
+
+::view-transition-old(brand-u),
+::view-transition-old(brand-c) {
+  animation: none;
+  opacity: 0;
+}
+
+::view-transition-new(brand-u),
+::view-transition-new(brand-c) {
+  animation: none;
 }
 
 ::view-transition-group(*.persistent-shell-icon) {

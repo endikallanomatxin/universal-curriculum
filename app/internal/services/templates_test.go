@@ -75,6 +75,20 @@ func TestApplicationNavigationRespectsAdminPermission(t *testing.T) {
 	if !strings.Contains(memberOutput, `href="/" hx-get="/" hx-target="#app-shell" hx-select="#app-shell"`) {
 		t.Fatal("home navigation does not replace the shell that owns personalized recommendations")
 	}
+	for _, fragment := range []string{
+		`class="brand__initial">u</span>`,
+		`class="brand__expansion">niversal`,
+		`class="brand__word brand__word--curriculum"`,
+		`class="brand__initial">c</span>`,
+		`class="brand__expansion">urriculum`,
+	} {
+		if !strings.Contains(memberOutput, fragment) {
+			t.Errorf("text brand does not contain %q", fragment)
+		}
+	}
+	if strings.Contains(memberOutput, "universal-curriculum-logo.svg") {
+		t.Fatal("navigation still renders the removed logo asset")
+	}
 
 	adminOutput := render(&models.User{FullName: "Admin", Email: "admin@example.com", IsAdmin: true})
 	if !strings.Contains(adminOutput, `href="/curriculum-modification"`) {
