@@ -36,15 +36,13 @@
                        data-panel-navigation="{{ if $.ActiveProposal }}replace{{ else }}open{{ end }}"
                        aria-label="Work on {{ .Title }}">
                       <span class="material-symbols-rounded active-proposal-card__icon" aria-hidden="true">rebase_edit</span>
-                      <span class="active-proposal-card__body">
-                        <strong data-proposal-title-preview="{{ .ID }}">{{ .Title }}</strong>
-                        <span data-proposal-rationale-preview="{{ .ID }}">{{ .Rationale }}</span>
+                      <strong class="active-proposal-card__title" data-proposal-title-preview="{{ .ID }}">{{ .Title }}</strong>
+                      <span class="active-proposal-card__rationale" data-proposal-rationale-preview="{{ .ID }}">{{ .Rationale }}</span>
+                      <span class="active-proposal-card__meta">
+                        <span>{{ .ChangeCount }} {{ if eq .ChangeCount 1 }}change{{ else }}changes{{ end }}</span>
+                        {{ if eq .RebaseStatus "needs_review" }}<span class="proposal-status proposal-status--warning">Needs review</span>{{ end }}
                       </span>
                     </a>
-                    <span class="active-proposal-card__meta">
-                      {{ .ChangeCount }} {{ if eq .ChangeCount 1 }}change{{ else }}changes{{ end }}
-                      {{ if eq .RebaseStatus "needs_review" }}<span class="proposal-status proposal-status--warning">Needs review</span>{{ end }}
-                    </span>
                   </article>
                 {{ end }}
               </div>
