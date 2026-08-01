@@ -25,26 +25,27 @@ type curriculumUnitView struct {
 
 type adminCurriculumPageData struct {
 	userPageData
-	Units              []curriculumUnitView
-	Dependencies       []models.UnitDependency
-	Graph              *models.CurriculumGraphLayout
-	GraphView          curriculumGraphView
-	GraphSearch        unitNavigationSearchView
-	FocusedUnit        *models.Unit
-	ContentUnit        *curriculumUnitView
-	DraftProposals     []curriculumDraftProposalView
-	Proposals          []models.CurriculumProposal
-	ActiveProposal     *models.CurriculumProposal
-	ProposalRebase     *services.CurriculumProposalRebasePlan
-	RebaseTimeline     *curriculumRebaseTimelineView
-	ReviewedProposal   *models.CurriculumProposal
-	ProposalHistory    []curriculumProposalHistoryView
-	RootDraftProposals []curriculumDraftProposalView
-	CanEditProposal    bool
-	RecognitionSources []models.Unit
-	RecognitionTargets []models.Unit
-	PublishWarning     string
-	Error              string
+	Units               []curriculumUnitView
+	Dependencies        []models.UnitDependency
+	Graph               *models.CurriculumGraphLayout
+	GraphView           curriculumGraphView
+	GraphSearch         unitNavigationSearchView
+	FocusedUnit         *models.Unit
+	ContentUnit         *curriculumUnitView
+	DraftProposals      []curriculumDraftProposalView
+	Proposals           []models.CurriculumProposal
+	ActiveProposal      *models.CurriculumProposal
+	ProposalRebase      *services.CurriculumProposalRebasePlan
+	RebaseTimeline      *curriculumRebaseTimelineView
+	ReviewedProposal    *models.CurriculumProposal
+	ProposalHistory     []curriculumProposalHistoryView
+	RootDraftProposals  []curriculumDraftProposalView
+	ShowProposalHistory bool
+	CanEditProposal     bool
+	RecognitionSources  []models.Unit
+	RecognitionTargets  []models.Unit
+	PublishWarning      string
+	Error               string
 }
 
 type curriculumRebaseTimelineView struct {
@@ -579,21 +580,22 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 		userPageData: userPageData{
 			User: user, CSRFToken: sessionCSRFToken(request), CurrentSection: "curriculum",
 		},
-		Dependencies:       proposalBaseGraph.Dependencies,
-		Graph:              layout,
-		FocusedUnit:        focusedUnit,
-		Proposals:          proposals,
-		DraftProposals:     draftViews,
-		ActiveProposal:     activeProposal,
-		ProposalRebase:     rebasePlan,
-		RebaseTimeline:     curriculumRebaseTimeline(rebasePlan, activeProposal),
-		ReviewedProposal:   reviewedProposal,
-		ProposalHistory:    history,
-		RootDraftProposals: rootDrafts,
-		CanEditProposal:    activeProposal != nil && (rebasePlan == nil || !rebasePlan.NeedsReview()),
-		RecognitionSources: proposalBaseGraph.Units,
-		RecognitionTargets: workingGraph.Units,
-		Error:              message,
+		Dependencies:        proposalBaseGraph.Dependencies,
+		Graph:               layout,
+		FocusedUnit:         focusedUnit,
+		Proposals:           proposals,
+		DraftProposals:      draftViews,
+		ActiveProposal:      activeProposal,
+		ProposalRebase:      rebasePlan,
+		RebaseTimeline:      curriculumRebaseTimeline(rebasePlan, activeProposal),
+		ReviewedProposal:    reviewedProposal,
+		ProposalHistory:     history,
+		RootDraftProposals:  rootDrafts,
+		ShowProposalHistory: request.URL.Query().Get("history") == "1",
+		CanEditProposal:     activeProposal != nil && (rebasePlan == nil || !rebasePlan.NeedsReview()),
+		RecognitionSources:  proposalBaseGraph.Units,
+		RecognitionTargets:  workingGraph.Units,
+		Error:               message,
 	}
 	data.PublishWarning = curriculumRecognitionPublishWarning(activeProposal)
 	data.Units = curriculumUnitViews(workingGraph, layout)

@@ -521,7 +521,6 @@
 
 .proposal-rebase-graph__edge {
   fill: none;
-  marker-end: url(#proposal-rebase-arrow);
   stroke: var(--color-muted);
   stroke-width: 1.5;
   vector-effect: non-scaling-stroke;
@@ -1366,87 +1365,18 @@ textarea.proposal-rebase-merge-part {
   margin-left: auto;
 }
 
-.proposal-history-tree a .proposal-status--warning {
+.proposal-history-graph .proposal-status--warning {
   color: var(--color-ink-strong);
 }
 
-.proposal-history-tree,
-.proposal-history-tree ol {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.proposal-history-tree {
-  display: grid;
-  padding-left: var(--space-2);
-}
-
-.proposal-history-tree__accepted {
-  padding-left: 1.35rem;
-  position: relative;
-}
-
-.proposal-history-tree__accepted::before {
-  background: color-mix(in srgb, var(--color-ink) 22%, transparent);
-  bottom: 0;
-  content: "";
-  left: 0.35rem;
-  position: absolute;
-  top: 0;
-  width: 2px;
-}
-
-.proposal-history-tree__commit {
-  align-items: center;
-  display: flex;
-  gap: var(--space-3);
-  min-height: 3.2rem;
-  padding: var(--space-2) 0;
-}
-
-.proposal-history-tree__commit > div,
-.proposal-history-tree a {
-  display: grid;
-}
-
-.proposal-history-tree__commit span,
-.proposal-history-tree a span {
+.proposal-history-graph__status {
   color: var(--color-muted);
   font-size: 0.7rem;
 }
 
-.proposal-history-tree__node {
+.proposal-history-graph__root-node {
   background: var(--color-surface);
-  border: 2px solid var(--color-muted);
-  border-radius: 50%;
-  height: 0.75rem;
-  left: -1.36rem;
-  position: relative;
-  width: 0.75rem;
-  z-index: 1;
-}
-
-.proposal-history-tree__accepted.is-head .proposal-history-tree__node {
-  background: var(--color-ink-strong);
-  border-color: var(--color-ink-strong);
-}
-
-.proposal-history-tree__branches {
-  display: grid;
-  gap: var(--space-2);
-  padding: 0 0 var(--space-3) var(--space-5) !important;
-}
-
-.proposal-history-tree__branches li,
-.proposal-history-tree__branch {
-  border-left: 2px solid var(--color-proposal-rename);
-  padding-left: var(--space-3);
-}
-
-.proposal-history-tree a {
-  color: inherit;
-  text-decoration: none;
+  border: 1.5px solid var(--color-muted);
 }
 
 .unit-list {
