@@ -483,6 +483,105 @@
   line-height: 1.5;
 }
 
+.proposal-rebase-graph {
+  margin: 0;
+  padding: var(--space-2) 0;
+}
+
+.proposal-rebase-graph__layout {
+  --proposal-rebase-graph-width: 4.5rem;
+  --proposal-rebase-lane-spacing: 1.55rem;
+
+  isolation: isolate;
+  margin-inline: auto;
+  max-width: 32rem;
+  position: relative;
+}
+
+.proposal-rebase-graph__svg {
+  height: 100%;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+  position: absolute;
+  width: 100%;
+  z-index: 2;
+}
+
+.proposal-rebase-graph__svg marker path {
+  fill: var(--color-muted);
+}
+
+.proposal-rebase-graph__edge {
+  fill: none;
+  marker-end: url(#proposal-rebase-arrow);
+  stroke: var(--color-muted);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.proposal-rebase-graph__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+}
+
+.proposal-rebase-graph__item {
+  display: grid;
+  grid-template-columns: var(--proposal-rebase-graph-width) minmax(0, 1fr);
+  min-height: 3.35rem;
+  position: relative;
+}
+
+.proposal-rebase-graph__item > div {
+  align-self: center;
+  display: grid;
+  gap: 0.1rem;
+  grid-column: 2;
+  min-width: 0;
+  padding: var(--space-1) 0;
+}
+
+.proposal-rebase-graph__item strong {
+  color: var(--color-ink-strong);
+  font-size: 0.72rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.proposal-rebase-graph__node {
+  align-self: center;
+  background: var(--color-ink-strong);
+  border: 0;
+  border-radius: 0.12rem;
+  grid-column: 1;
+  grid-row: 1;
+  height: 0.9rem;
+  justify-self: start;
+  margin-left: calc(0.45rem + var(--rebase-node-lane, 0) * var(--proposal-rebase-lane-spacing));
+  width: 0.9rem;
+  z-index: 3;
+}
+
+.proposal-rebase-graph__item[data-rebase-lane="1"] .proposal-rebase-graph__node {
+  --rebase-node-lane: 1;
+}
+
+.proposal-rebase-graph__item--draft .proposal-rebase-graph__node {
+  background: color-mix(in srgb, var(--color-ink) 48%, var(--color-surface));
+}
+
+.proposal-rebase-graph__item--ellipsis {
+  color: var(--color-muted);
+  display: block;
+  font-size: 0.75rem;
+  letter-spacing: 0.08rem;
+  min-height: 2rem;
+  padding-left: 0.32rem;
+  writing-mode: vertical-rl;
+}
+
 .proposal-rebase__conflicts {
   display: grid;
   gap: var(--space-3);

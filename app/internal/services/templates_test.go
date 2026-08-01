@@ -338,11 +338,19 @@ func TestCurriculumProposalRendersRebaseResolutionInUnifiedWorkspace(t *testing.
 				}},
 			}},
 		},
+		"RebaseTimeline": map[string]any{
+			"BaseTitle": "Original curriculum", "DraftTitle": "Improve energy",
+			"Items": []map[string]any{{"ID": int64(11), "Title": "Update physics", "Conflicting": true, "Current": true}},
+			"Edges": []map[string]any{{"Source": "base", "Target": "draft"}, {"Source": "base", "Target": "accepted-11"}},
+		},
 	})
 
 	for _, fragment := range []string{
 		`action="/curriculum-modification/proposals/12/rebase"`,
 		`name="resolution_31"`,
+		"proposal-rebase-graph",
+		"Original curriculum",
+		"Update physics",
 		"Resolved source",
 		"Accepted energy content.",
 		"Proposed energy content.",

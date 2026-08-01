@@ -111,6 +111,44 @@
                     </div>
                   </header>
                   {{ with .ProposalRebase.ValidationReason }}<p class="form-error" role="alert">{{ . }}</p>{{ end }}
+                  {{ with .RebaseTimeline }}
+                    <figure class="proposal-rebase-graph" data-rebase-graph>
+                      <div class="proposal-rebase-graph__layout">
+                        <svg class="proposal-rebase-graph__svg" aria-hidden="true">
+                          <defs>
+                            <marker id="proposal-rebase-arrow" viewBox="0 0 10 10" markerWidth="8" markerHeight="8" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+                              <path d="M0,0 L10,5 L0,10 z"></path>
+                            </marker>
+                          </defs>
+                          <g data-rebase-graph-paths data-arrow-marker="proposal-rebase-arrow"></g>
+                        </svg>
+                        <ol class="proposal-rebase-graph__list">
+                          <li class="proposal-rebase-graph__item" data-rebase-node="base" data-rebase-lane="0">
+                            <span class="proposal-rebase-graph__node" data-rebase-anchor aria-hidden="true"></span>
+                            <div><span class="label">Your proposal’s base</span><strong>{{ .BaseTitle }}</strong></div>
+                          </li>
+                          <li class="proposal-rebase-graph__item proposal-rebase-graph__item--draft" data-rebase-node="draft" data-rebase-lane="1">
+                            <span class="proposal-rebase-graph__node" data-rebase-anchor aria-hidden="true"></span>
+                            <div><span class="label">Your proposal</span><strong>{{ .DraftTitle }}</strong></div>
+                          </li>
+                          {{ range .Items }}
+                            {{ if .Ellipsis }}
+                              <li class="proposal-rebase-graph__item proposal-rebase-graph__item--ellipsis" aria-hidden="true"><span>•••</span></li>
+                            {{ else }}
+                              <li class="proposal-rebase-graph__item {{ if .Current }}proposal-rebase-graph__item--current{{ end }}" data-rebase-node="accepted-{{ .ID }}" data-rebase-lane="0">
+                                <span class="proposal-rebase-graph__node" data-rebase-anchor aria-hidden="true"></span>
+                                <div><span class="label">{{ if .Current }}Proposal to rebase to{{ else }}Accepted proposal{{ end }}</span><strong>{{ .Title }}</strong></div>
+                              </li>
+                            {{ end }}
+                          {{ end }}
+                        </ol>
+                        <div hidden>
+                          {{ range .Edges }}<span data-rebase-edge data-source="{{ .Source }}" data-target="{{ .Target }}"></span>{{ end }}
+                        </div>
+                      </div>
+                      <figcaption class="visually-hidden">The draft currently points to {{ .BaseTitle }} and will be rebased onto {{ range .Items }}{{ if .Current }}{{ .Title }}{{ end }}{{ end }}. Ellipses represent accepted proposals without overlapping changes.</figcaption>
+                    </figure>
+                  {{ end }}
                   <div class="proposal-rebase__conflicts">
                     {{ range .ProposalRebase.Conflicts }}
                       <section class="proposal-rebase-conflict {{ if eq .Change.Kind "rename_unit" }}proposal-rebase-conflict--rename{{ else if eq .Change.Kind "update_content" }}proposal-rebase-conflict--content{{ else if eq .Change.Kind "delete_unit" }}proposal-rebase-conflict--deletion{{ else if or (eq .Change.Kind "add_dependency") (eq .Change.Kind "remove_dependency") }}proposal-rebase-conflict--dependency{{ else if eq .Change.Kind "recognition" }}proposal-rebase-conflict--recognition{{ else }}proposal-rebase-conflict--neutral{{ end }}" aria-labelledby="proposal-rebase-conflict-{{ .Change.ID }}">

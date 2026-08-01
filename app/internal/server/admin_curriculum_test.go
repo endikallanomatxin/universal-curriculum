@@ -318,3 +318,36 @@ func TestCurriculumProposalHistoryShowsAcceptedLineAndDraftBranches(t *testing.T
 		t.Fatalf("root drafts = %#v", roots)
 	}
 }
+
+func TestCurriculumRebaseTimelineKeepsConflictsAndCompressesOtherAcceptedWork(t *testing.T) {
+	base := models.CurriculumProposal{ID: 1, Title: "Original base", Status: "accepted"}
+	draft := models.CurriculumProposal{ID: 9, Title: "Working draft", Status: "draft"}
+	plan := &services.CurriculumProposalRebasePlan{
+		Status:       services.ProposalRebaseNeedsReview,
+		BaseProposal: &base,
+		AcceptedProposals: []models.CurriculumProposal{
+			{ID: 2, Title: "Unrelated first"},
+			{ID: 3, Title: "Overlapping work"},
+			{ID: 4, Title: "Unrelated second"},
+			{ID: 5, Title: "Current head"},
+		},
+		Conflicts: []services.CurriculumProposalRebaseConflict{{
+			AcceptedWork: []services.CurriculumProposalRebaseAcceptedWork{{
+				Proposal: models.CurriculumProposal{ID: 3, Title: "Overlapping work"},
+			}},
+		}},
+	}
+
+	view := curriculumRebaseTimeline(plan, &draft)
+	if view == nil || view.BaseTitle != "Original base" || view.DraftTitle != "Working draft" {
+		t.Fatalf("rebase timeline identity = %#v", view)
+	}
+	if len(view.Items) != 2 || !view.Items[0].Ellipsis ||
+		view.Items[1].Title != "Current head" || !view.Items[1].Current {
+		t.Fatalf("rebase timeline items = %#v", view.Items)
+	}
+	if len(view.Edges) != 2 || view.Edges[0].Source != "base" || view.Edges[0].Target != "draft" ||
+		view.Edges[1].Target != "accepted-5" {
+		t.Fatalf("rebase timeline edges = %#v", view.Edges)
+	}
+}

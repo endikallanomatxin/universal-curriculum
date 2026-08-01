@@ -26,6 +26,7 @@ var (
 type CurriculumProposalRebasePlan struct {
 	Status            string
 	CurrentProposalID *int64
+	BaseProposal      *models.CurriculumProposal
 	AcceptedProposals []models.CurriculumProposal
 	Conflicts         []CurriculumProposalRebaseConflict
 	ValidationReason  string
@@ -344,6 +345,12 @@ func planCurriculumProposalRebase(
 		return nil, err
 	}
 	plan.AcceptedProposals = accepted
+	if proposal.BaseProposalID != nil {
+		plan.BaseProposal, err = db.GetCurriculumProposal(q, *proposal.BaseProposalID)
+		if err != nil {
+			return nil, err
+		}
+	}
 	upstreamTouches := make(map[int64][]int)
 	for proposalIndex, acceptedProposal := range accepted {
 		for _, change := range acceptedProposal.Changes {

@@ -36,6 +36,7 @@ type adminCurriculumPageData struct {
 	Proposals          []models.CurriculumProposal
 	ActiveProposal     *models.CurriculumProposal
 	ProposalRebase     *services.CurriculumProposalRebasePlan
+	RebaseTimeline     *curriculumRebaseTimelineView
 	ProposalHistory    []curriculumProposalHistoryView
 	RootDraftProposals []curriculumDraftProposalView
 	CanEditProposal    bool
@@ -43,6 +44,25 @@ type adminCurriculumPageData struct {
 	RecognitionTargets []models.Unit
 	PublishWarning     string
 	Error              string
+}
+
+type curriculumRebaseTimelineView struct {
+	BaseTitle  string
+	DraftTitle string
+	Items      []curriculumRebaseTimelineItemView
+	Edges      []curriculumRebaseTimelineEdgeView
+}
+
+type curriculumRebaseTimelineItemView struct {
+	ID       int64
+	Title    string
+	Ellipsis bool
+	Current  bool
+}
+
+type curriculumRebaseTimelineEdgeView struct {
+	Source string
+	Target string
 }
 
 type curriculumDraftProposalView struct {
@@ -542,6 +562,7 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 		DraftProposals:     draftViews,
 		ActiveProposal:     activeProposal,
 		ProposalRebase:     rebasePlan,
+		RebaseTimeline:     curriculumRebaseTimeline(rebasePlan, activeProposal),
 		ProposalHistory:    history,
 		RootDraftProposals: rootDrafts,
 		CanEditProposal:    activeProposal != nil && (rebasePlan == nil || !rebasePlan.NeedsReview()),
@@ -889,6 +910,40 @@ func curriculumProposalHistory(
 		})
 	}
 	return history, rootDrafts
+}
+
+func curriculumRebaseTimeline(
+	plan *services.CurriculumProposalRebasePlan,
+	draft *models.CurriculumProposal,
+) *curriculumRebaseTimelineView {
+	if plan == nil || draft == nil || !plan.NeedsReview() || len(plan.AcceptedProposals) == 0 {
+		return nil
+	}
+	view := &curriculumRebaseTimelineView{
+		BaseTitle:  "Previous accepted curriculum",
+		DraftTitle: draft.Title,
+	}
+	if plan.BaseProposal != nil && plan.BaseProposal.Title != "" {
+		view.BaseTitle = plan.BaseProposal.Title
+	}
+	if len(plan.AcceptedProposals) > 1 {
+		view.Items = append(view.Items, curriculumRebaseTimelineItemView{Ellipsis: true})
+	}
+	current := plan.AcceptedProposals[len(plan.AcceptedProposals)-1]
+	view.Items = append(view.Items, curriculumRebaseTimelineItemView{
+		ID: current.ID, Title: current.Title, Current: true,
+	})
+	view.Edges = append(view.Edges, curriculumRebaseTimelineEdgeView{Source: "base", Target: "draft"})
+	previous := "base"
+	for _, item := range view.Items {
+		if item.Ellipsis {
+			continue
+		}
+		target := "accepted-" + strconv.FormatInt(item.ID, 10)
+		view.Edges = append(view.Edges, curriculumRebaseTimelineEdgeView{Source: previous, Target: target})
+		previous = target
+	}
+	return view
 }
 
 func curriculumUnitViews(graph *models.CurriculumGraph, layout *models.CurriculumGraphLayout) []curriculumUnitView {
