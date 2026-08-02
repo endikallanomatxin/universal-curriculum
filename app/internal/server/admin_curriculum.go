@@ -527,7 +527,7 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 		}
 		focusID = &unitID
 	}
-	visibleGraph, focusedUnit, _, err := services.CurriculumNeighborhood(visualGraph, focusID)
+	visibleGraph, focusedUnit, boundaries, err := services.CurriculumProposalNeighborhood(visualGraph, activeProposal, focusID)
 	if errors.Is(err, services.ErrCurriculumUnitNotFound) {
 		http.Error(writer, "Curriculum unit not found", http.StatusNotFound)
 		return
@@ -537,8 +537,6 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 		http.Error(writer, "Unable to navigate curriculum", http.StatusInternalServerError)
 		return
 	}
-	includeCreatedProposalUnits(visibleGraph, visualGraph, activeProposal)
-	boundaries := services.CurriculumGraphBoundaries(visualGraph, visibleGraph)
 	layout, err := services.BuildCurriculumGraphLayoutWithHints(visibleGraph, curriculumLayoutHints(request))
 	if err != nil {
 		log.Printf("layout curriculum graph: %v", err)
@@ -734,56 +732,6 @@ func graphUnitByID(graph *models.CurriculumGraph, unitID int64) *models.Unit {
 		}
 	}
 	return nil
-}
-
-func includeCreatedProposalUnits(visible, working *models.CurriculumGraph, proposal *models.CurriculumProposal) {
-	if visible == nil || working == nil || proposal == nil {
-		return
-	}
-	visibleIDs := make(map[int64]bool, len(visible.Units))
-	for _, unit := range visible.Units {
-		visibleIDs[unit.ID] = true
-	}
-	workingUnits := make(map[int64]models.Unit, len(working.Units))
-	for _, unit := range working.Units {
-		workingUnits[unit.ID] = unit
-	}
-	for _, change := range proposal.Changes {
-		if change.Kind == "create_unit" && !visibleIDs[change.UnitID] {
-			if unit, exists := workingUnits[change.UnitID]; exists {
-				visible.Units = append(visible.Units, unit)
-				visibleIDs[change.UnitID] = true
-			}
-		}
-	}
-	createdIDs := make(map[int64]bool)
-	for _, change := range proposal.Changes {
-		if change.Kind == "create_unit" {
-			createdIDs[change.UnitID] = true
-		}
-	}
-	visibleDependencies := make(map[[2]int64]bool, len(visible.Dependencies))
-	for _, dependency := range visible.Dependencies {
-		visibleDependencies[[2]int64{dependency.PrerequisiteID, dependency.UnitID}] = true
-	}
-	for _, dependency := range working.Dependencies {
-		if !createdIDs[dependency.UnitID] && !createdIDs[dependency.PrerequisiteID] {
-			continue
-		}
-		for _, unitID := range []int64{dependency.PrerequisiteID, dependency.UnitID} {
-			if !visibleIDs[unitID] {
-				if unit, exists := workingUnits[unitID]; exists {
-					visible.Units = append(visible.Units, unit)
-					visibleIDs[unitID] = true
-				}
-			}
-		}
-		key := [2]int64{dependency.PrerequisiteID, dependency.UnitID}
-		if !visibleDependencies[key] {
-			visible.Dependencies = append(visible.Dependencies, dependency)
-			visibleDependencies[key] = true
-		}
-	}
 }
 
 func positionIsolatedCreatedUnits(layout *models.CurriculumGraphLayout, proposal *models.CurriculumProposal) {

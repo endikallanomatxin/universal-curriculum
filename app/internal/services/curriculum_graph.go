@@ -88,6 +88,91 @@ func CurriculumNeighborhood(graph *models.CurriculumGraph, focusID *int64) (*mod
 	return neighborhood, focus, CurriculumGraphBoundaries(graph, neighborhood), nil
 }
 
+// CurriculumProposalNeighborhood keeps a proposal's affected units visible as
+// stable context. Its overview adds their immediate graph neighbours; once a
+// unit is focused, only that unit contributes its navigable neighbourhood.
+func CurriculumProposalNeighborhood(
+	graph *models.CurriculumGraph,
+	proposal *models.CurriculumProposal,
+	focusID *int64,
+) (*models.CurriculumGraph, *models.Unit, []models.CurriculumGraphBoundary, error) {
+	if proposal == nil {
+		return CurriculumNeighborhood(graph, focusID)
+	}
+	if graph == nil {
+		return &models.CurriculumGraph{}, nil, nil, nil
+	}
+
+	included := proposalAffectedUnitIDs(proposal)
+	if len(included) == 0 {
+		return CurriculumNeighborhood(graph, focusID)
+	}
+	var focus *models.Unit
+	if focusID != nil {
+		neighborhood, focusedUnit, _, err := CurriculumNeighborhood(graph, focusID)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		focus = focusedUnit
+		for _, unit := range neighborhood.Units {
+			included[unit.ID] = true
+		}
+	} else {
+		affected := make(map[int64]bool, len(included))
+		for unitID := range included {
+			affected[unitID] = true
+		}
+		for _, dependency := range graph.Dependencies {
+			if affected[dependency.UnitID] || affected[dependency.PrerequisiteID] {
+				included[dependency.UnitID] = true
+				included[dependency.PrerequisiteID] = true
+			}
+		}
+	}
+
+	visible := curriculumSubgraph(graph, included)
+	return visible, focus, CurriculumGraphBoundaries(graph, visible), nil
+}
+
+func proposalAffectedUnitIDs(proposal *models.CurriculumProposal) map[int64]bool {
+	ids := make(map[int64]bool)
+	if proposal == nil {
+		return ids
+	}
+	for _, change := range proposal.Changes {
+		if change.UnitID > 0 {
+			ids[change.UnitID] = true
+		}
+		if change.PrerequisiteID != nil && *change.PrerequisiteID > 0 {
+			ids[*change.PrerequisiteID] = true
+		}
+		if change.Recognition != nil {
+			for _, unit := range change.Recognition.Sources {
+				ids[unit.ID] = true
+			}
+			for _, unit := range change.Recognition.Targets {
+				ids[unit.ID] = true
+			}
+		}
+	}
+	return ids
+}
+
+func curriculumSubgraph(graph *models.CurriculumGraph, included map[int64]bool) *models.CurriculumGraph {
+	visible := &models.CurriculumGraph{}
+	for _, unit := range graph.Units {
+		if included[unit.ID] {
+			visible.Units = append(visible.Units, unit)
+		}
+	}
+	for _, dependency := range graph.Dependencies {
+		if included[dependency.UnitID] && included[dependency.PrerequisiteID] {
+			visible.Dependencies = append(visible.Dependencies, dependency)
+		}
+	}
+	return visible
+}
+
 func CurriculumGraphBoundaries(
 	graph *models.CurriculumGraph,
 	visible *models.CurriculumGraph,

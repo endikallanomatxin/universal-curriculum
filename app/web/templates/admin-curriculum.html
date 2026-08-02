@@ -320,7 +320,22 @@
               {{ if .Graph.Nodes }}
                 <section class="curriculum-explorer" id="curriculum-explorer" aria-live="polite">
                   <nav class="learn-navigation" aria-label="Curriculum navigation">
-                    {{ if not .FocusedUnit }}
+                    {{ if and .ActiveProposal .ActiveProposal.Changes }}
+                      {{ if .FocusedUnit }}
+                        <p>Showing this unit’s neighbourhood alongside every unit affected by the proposal.</p>
+                        <button class="secondary-button" type="button"
+                                hx-get="/curriculum-modification?proposal={{ .ActiveProposal.ID }}"
+                                hx-target="#workspace"
+                                hx-select="#workspace"
+                                hx-swap="outerHTML transition:true"
+                                hx-push-url="true">
+                          <span class="material-symbols-rounded" aria-hidden="true">zoom_out_map</span>
+                          Proposal overview
+                        </button>
+                      {{ else }}
+                        <p>Showing every affected unit and its immediate context.</p>
+                      {{ end }}
+                    {{ else if not .FocusedUnit }}
                       <p>Choose a unit to navigate its neighbourhood and read its content.</p>
                     {{ end }}
                     {{ template "unit-navigation-search" .GraphSearch }}

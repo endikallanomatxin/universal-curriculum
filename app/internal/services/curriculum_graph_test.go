@@ -2,10 +2,105 @@ package services
 
 import (
 	"errors"
+	"slices"
 	"testing"
 
 	"universal-curriculum/internal/models"
 )
+
+func TestCurriculumProposalOverviewShowsAffectedUnitsAndImmediateContext(t *testing.T) {
+	graph := &models.CurriculumGraph{
+		Units: []models.Unit{
+			{ID: 1, Name: "Earlier"},
+			{ID: 2, Name: "Prerequisite"},
+			{ID: 3, Name: "Changed"},
+			{ID: 4, Name: "Dependent"},
+			{ID: 5, Name: "Later"},
+			{ID: 6, Name: "Other changed"},
+		},
+		Dependencies: []models.UnitDependency{
+			{PrerequisiteID: 1, UnitID: 2},
+			{PrerequisiteID: 2, UnitID: 3},
+			{PrerequisiteID: 3, UnitID: 4},
+			{PrerequisiteID: 4, UnitID: 5},
+		},
+	}
+	proposal := &models.CurriculumProposal{Changes: []models.CurriculumProposalChange{
+		{Kind: "update_content", UnitID: 3},
+		{Kind: "rename_unit", UnitID: 6},
+	}}
+
+	visible, focus, boundaries, err := CurriculumProposalNeighborhood(graph, proposal, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if focus != nil {
+		t.Fatalf("overview focus = %#v, want nil", focus)
+	}
+	assertCurriculumUnitIDs(t, visible, []int64{2, 3, 4, 6})
+	if len(boundaries) != 2 {
+		t.Fatalf("overview boundaries = %#v, want the earlier and later context", boundaries)
+	}
+}
+
+func TestFocusedProposalGraphKeepsAffectedUnitsWithoutTheirNeighbours(t *testing.T) {
+	graph := &models.CurriculumGraph{
+		Units: []models.Unit{
+			{ID: 1, Name: "Focus"},
+			{ID: 2, Name: "Focus dependent"},
+			{ID: 3, Name: "Affected prerequisite"},
+			{ID: 4, Name: "Affected"},
+			{ID: 5, Name: "Affected dependent"},
+		},
+		Dependencies: []models.UnitDependency{
+			{PrerequisiteID: 1, UnitID: 2},
+			{PrerequisiteID: 3, UnitID: 4},
+			{PrerequisiteID: 4, UnitID: 5},
+		},
+	}
+	proposal := &models.CurriculumProposal{Changes: []models.CurriculumProposalChange{{
+		Kind: "update_content", UnitID: 4,
+	}}}
+	focusID := int64(1)
+
+	visible, focus, _, err := CurriculumProposalNeighborhood(graph, proposal, &focusID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if focus == nil || focus.ID != focusID {
+		t.Fatalf("focused unit = %#v", focus)
+	}
+	assertCurriculumUnitIDs(t, visible, []int64{1, 2, 4})
+}
+
+func TestProposalAffectedUnitsIncludeDependencyAndRecognitionMembers(t *testing.T) {
+	prerequisiteID := int64(2)
+	proposal := &models.CurriculumProposal{Changes: []models.CurriculumProposalChange{
+		{Kind: "add_dependency", UnitID: 3, PrerequisiteID: &prerequisiteID},
+		{Kind: "recognition", Recognition: &models.Recognition{
+			Sources: []models.Unit{{ID: 4}, {ID: 5}},
+			Targets: []models.Unit{{ID: 6}, {ID: 7}},
+		}},
+	}}
+
+	ids := proposalAffectedUnitIDs(proposal)
+	for _, id := range []int64{2, 3, 4, 5, 6, 7} {
+		if !ids[id] {
+			t.Errorf("unit %d is not marked as affected", id)
+		}
+	}
+}
+
+func assertCurriculumUnitIDs(t *testing.T, graph *models.CurriculumGraph, want []int64) {
+	t.Helper()
+	got := make([]int64, 0, len(graph.Units))
+	for _, unit := range graph.Units {
+		got = append(got, unit.ID)
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("visible unit IDs = %v, want %v", got, want)
+	}
+}
 
 func TestBuildCurriculumGraphLayoutOrdersDependenciesFirst(t *testing.T) {
 	graph := &models.CurriculumGraph{

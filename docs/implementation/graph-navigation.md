@@ -65,7 +65,7 @@ the graph. Results are ordinary HTMX-enhanced links: selecting one updates the
 URL, focuses that unit and loads its local neighbourhood without opening its
 content.
 Search within a personal path is limited to units in that path; curriculum
-editing searches the complete published curriculum.
+editing searches the proposal's resulting curriculum.
 
 The current focused neighbourhood includes one prerequisite level and two
 dependent levels, with at most four neighbors selected at each traversal step.
@@ -75,3 +75,12 @@ the missing nodes.
 
 An unfocused full-curriculum view starts from graph entry points instead of
 rendering every unit at once.
+
+An open proposal instead starts in a proposal overview. Every unit touched by
+one of its changes is included, including both dependency endpoints and every
+recognition member, together with each affected unit's immediate prerequisites
+and dependents. After navigation, the selected unit contributes the normal
+neighbourhood while all affected units remain visible without bringing along
+their own neighbours. Returning to `Proposal overview` removes the focus from
+the URL and restores the initial context. A proposal without changes retains
+the entry-point view so its author can still navigate the curriculum.
