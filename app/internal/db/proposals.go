@@ -117,15 +117,13 @@ func DeleteDraftCurriculumProposal(q curriculumExecutor, proposalID, authorID in
 func AddDraftCurriculumProposalChange(q curriculumExecutor, proposalID, authorID int64, change *models.CurriculumProposalChange) error {
 	change.ProposalID = proposalID
 	err := q.QueryRow(`
-		INSERT INTO curriculum_proposal_changes (proposal_id, position, kind)
-		SELECT proposal.id,
-		       COALESCE((SELECT MAX(position) + 1 FROM curriculum_proposal_changes WHERE proposal_id = proposal.id), 1),
-		       $3
+		INSERT INTO curriculum_proposal_changes (proposal_id, kind)
+		SELECT proposal.id, $3
 		FROM curriculum_proposals proposal
 		WHERE proposal.id = $1 AND proposal.status = 'draft'
 		  AND EXISTS (SELECT 1 FROM curriculum_proposal_authors WHERE proposal_id = proposal.id AND user_id = $2)
-		RETURNING id, position
-	`, proposalID, authorID, change.Kind).Scan(&change.ID, &change.Position)
+		RETURNING id
+	`, proposalID, authorID, change.Kind).Scan(&change.ID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return sql.ErrNoRows
 	}
@@ -291,7 +289,19 @@ func RebuildCurriculumProjection(q curriculumExecutor, proposalID int64) error {
 		       change.prerequisite_id
 		FROM proposal_lineage lineage
 		JOIN curriculum_proposal_change_details change ON change.proposal_id = lineage.id
-		ORDER BY lineage.depth DESC, change.position
+		ORDER BY lineage.depth DESC,
+		         CASE change.kind
+		             WHEN 'create_unit' THEN 1
+		             WHEN 'rename_unit' THEN 2
+		             WHEN 'update_content' THEN 2
+		             WHEN 'remove_dependency' THEN 3
+		             WHEN 'add_dependency' THEN 4
+		             WHEN 'recognition' THEN 5
+		             WHEN 'delete_unit' THEN 6
+		         END,
+		         change.unit_id NULLS LAST,
+		         change.prerequisite_id NULLS LAST,
+		         change.id
 	`, proposalID)
 	if err != nil {
 		return fmt.Errorf("list accepted curriculum changes: %w", err)
@@ -529,12 +539,23 @@ func ListDraftCurriculumProposalsByAuthor(database *sql.DB, authorID int64) ([]m
 
 func listCurriculumProposalChanges(q curriculumExecutor, proposalID int64) ([]models.CurriculumProposalChange, error) {
 	rows, err := q.Query(`
-		SELECT id, proposal_id, position, kind, unit_id,
+		SELECT id, proposal_id, kind, unit_id,
 		       COALESCE(unit_name, ''), COALESCE(unit_content, ''),
 		       prerequisite_id
 		FROM curriculum_proposal_change_details
 		WHERE proposal_id = $1
-		ORDER BY position
+		ORDER BY CASE kind
+		             WHEN 'create_unit' THEN 1
+		             WHEN 'rename_unit' THEN 2
+		             WHEN 'update_content' THEN 2
+		             WHEN 'remove_dependency' THEN 3
+		             WHEN 'add_dependency' THEN 4
+		             WHEN 'recognition' THEN 5
+		             WHEN 'delete_unit' THEN 6
+		         END,
+		         unit_id NULLS LAST,
+		         prerequisite_id NULLS LAST,
+		         id
 	`, proposalID)
 	if err != nil {
 		return nil, fmt.Errorf("list curriculum proposal changes: %w", err)
@@ -545,7 +566,7 @@ func listCurriculumProposalChanges(q curriculumExecutor, proposalID int64) ([]mo
 		var change models.CurriculumProposalChange
 		var unitID, prerequisite sql.NullInt64
 		if err := rows.Scan(
-			&change.ID, &change.ProposalID, &change.Position, &change.Kind,
+			&change.ID, &change.ProposalID, &change.Kind,
 			&unitID, &change.UnitName, &change.UnitContent, &prerequisite,
 		); err != nil {
 			return nil, fmt.Errorf("scan curriculum proposal change: %w", err)

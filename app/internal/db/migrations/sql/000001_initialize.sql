@@ -107,7 +107,6 @@ CREATE INDEX curriculum_proposal_authors_user_id_idx
 CREATE TABLE curriculum_proposal_changes (
     id BIGSERIAL PRIMARY KEY,
     proposal_id BIGINT NOT NULL REFERENCES curriculum_proposals(id) ON DELETE CASCADE,
-    position INTEGER NOT NULL CHECK (position > 0),
     kind TEXT NOT NULL CHECK (
         kind IN (
             'create_unit',
@@ -118,8 +117,7 @@ CREATE TABLE curriculum_proposal_changes (
             'remove_dependency',
             'recognition'
         )
-    ),
-    UNIQUE (proposal_id, position)
+    )
 );
 
 CREATE TABLE curriculum_unit_creations (
@@ -184,44 +182,44 @@ CREATE INDEX curriculum_recognition_targets_unit_id_idx
     ON curriculum_recognition_targets (unit_id);
 
 CREATE VIEW curriculum_proposal_change_details AS
-SELECT change.id, change.proposal_id, change.position, change.kind,
+SELECT change.id, change.proposal_id, change.kind,
        creation.change_id AS unit_id, creation.name AS unit_name,
        creation.content AS unit_content,
        NULL::BIGINT AS prerequisite_id
 FROM curriculum_proposal_changes change
 JOIN curriculum_unit_creations creation ON creation.change_id = change.id
 UNION ALL
-SELECT change.id, change.proposal_id, change.position, change.kind,
+SELECT change.id, change.proposal_id, change.kind,
        rename.unit_id, rename.name,
        NULL::TEXT, NULL::BIGINT
 FROM curriculum_proposal_changes change
 JOIN curriculum_unit_renames rename ON rename.change_id = change.id
 UNION ALL
-SELECT change.id, change.proposal_id, change.position, change.kind,
+SELECT change.id, change.proposal_id, change.kind,
        content_update.unit_id, NULL::TEXT,
        content_update.content, NULL::BIGINT
 FROM curriculum_proposal_changes change
 JOIN curriculum_unit_content_updates content_update ON content_update.change_id = change.id
 UNION ALL
-SELECT change.id, change.proposal_id, change.position, change.kind,
+SELECT change.id, change.proposal_id, change.kind,
        deletion.unit_id, NULL::TEXT,
        NULL::TEXT, NULL::BIGINT
 FROM curriculum_proposal_changes change
 JOIN curriculum_unit_deletions deletion ON deletion.change_id = change.id
 UNION ALL
-SELECT change.id, change.proposal_id, change.position, change.kind,
+SELECT change.id, change.proposal_id, change.kind,
        addition.unit_id, NULL::TEXT,
        NULL::TEXT, addition.prerequisite_id
 FROM curriculum_proposal_changes change
 JOIN curriculum_dependency_additions addition ON addition.change_id = change.id
 UNION ALL
-SELECT change.id, change.proposal_id, change.position, change.kind,
+SELECT change.id, change.proposal_id, change.kind,
        removal.unit_id, NULL::TEXT,
        NULL::TEXT, removal.prerequisite_id
 FROM curriculum_proposal_changes change
 JOIN curriculum_dependency_removals removal ON removal.change_id = change.id
 UNION ALL
-SELECT change.id, change.proposal_id, change.position, change.kind,
+SELECT change.id, change.proposal_id, change.kind,
        NULL::BIGINT, NULL::TEXT,
        NULL::TEXT, NULL::BIGINT
 FROM curriculum_proposal_changes change

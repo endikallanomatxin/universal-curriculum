@@ -28,7 +28,6 @@ func (proposal CurriculumProposal) HasAuthor(userID int64) bool {
 type CurriculumProposalChange struct {
 	ID                  int64
 	ProposalID          int64
-	Position            int
 	Kind                string
 	UnitID              int64
 	UnitName            string

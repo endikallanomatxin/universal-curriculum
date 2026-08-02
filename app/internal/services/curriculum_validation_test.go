@@ -27,25 +27,25 @@ func TestPopulateCurriculumProposalPreviousStateReplaysBase(t *testing.T) {
 	}
 }
 
-func TestValidateCurriculumProposalAcceptsCoherentOrderedChanges(t *testing.T) {
+func TestValidateCurriculumProposalAcceptsCoherentUnorderedChanges(t *testing.T) {
 	base := validationTestGraph()
 	prerequisiteID := int64(1)
 	proposal := &models.CurriculumProposal{Changes: []models.CurriculumProposalChange{
 		{
-			ID: 10, Position: 1, Kind: "create_unit", UnitID: 10,
+			ID: 13, Kind: "add_dependency", UnitID: 10,
+			PrerequisiteID: &prerequisiteID,
+		},
+		{
+			ID: 10, Kind: "create_unit", UnitID: 10,
 			UnitName: "Geometry", UnitContent: "Learn shapes.",
 		},
 		{
-			ID: 11, Position: 2, Kind: "rename_unit", UnitID: 1,
+			ID: 11, Kind: "rename_unit", UnitID: 1,
 			PreviousUnitName: "Foundations", UnitName: "Mathematical foundations",
 		},
 		{
-			ID: 12, Position: 3, Kind: "update_content", UnitID: 2,
+			ID: 12, Kind: "update_content", UnitID: 2,
 			PreviousUnitContent: "Learn variables.", UnitContent: "Learn variables and equations.",
-		},
-		{
-			ID: 13, Position: 4, Kind: "add_dependency", UnitID: 10,
-			PrerequisiteID: &prerequisiteID,
 		},
 	}}
 
@@ -54,15 +54,15 @@ func TestValidateCurriculumProposalAcceptsCoherentOrderedChanges(t *testing.T) {
 	}
 }
 
-func TestValidateCurriculumProposalAcceptsExplicitPrerequisiteResolutionBeforeDeletion(t *testing.T) {
+func TestValidateCurriculumProposalOrdersPrerequisiteResolutionBeforeDeletion(t *testing.T) {
 	base := validationTestGraph()
 	prerequisiteID := int64(1)
 	proposal := &models.CurriculumProposal{Changes: []models.CurriculumProposalChange{
-		{ID: 10, Position: 1, Kind: "remove_dependency", UnitID: 2, PrerequisiteID: &prerequisiteID},
 		{
-			ID: 11, Position: 2, Kind: "delete_unit", UnitID: 1,
+			ID: 11, Kind: "delete_unit", UnitID: 1,
 			UnitName: "Foundations", UnitContent: "Learn the basics.",
 		},
+		{ID: 10, Kind: "remove_dependency", UnitID: 2, PrerequisiteID: &prerequisiteID},
 	}}
 
 	if err := validateCurriculumProposal(base, proposal); err != nil {
@@ -74,11 +74,11 @@ func TestValidateCurriculumProposalAcceptsRecognitionAcrossResultingState(t *tes
 	base := validationTestGraph()
 	proposal := &models.CurriculumProposal{Changes: []models.CurriculumProposalChange{
 		{
-			ID: 10, Position: 1, Kind: "create_unit", UnitID: 10,
+			ID: 10, Kind: "create_unit", UnitID: 10,
 			UnitName: "Modern geometry", UnitContent: "Learn modern geometry.",
 		},
 		{
-			ID: 11, Position: 2, Kind: "recognition",
+			ID: 11, Kind: "recognition",
 			Recognition: &models.Recognition{
 				Sources: []models.Unit{{ID: 1}, {ID: 3}},
 				Targets: []models.Unit{{ID: 10}},
@@ -99,16 +99,23 @@ func TestValidateCurriculumProposalRejectsIncoherentChanges(t *testing.T) {
 		changes []models.CurriculumProposalChange
 	}{
 		{
+			name: "duplicate change identity",
+			changes: []models.CurriculumProposalChange{
+				{ID: 10, Kind: "rename_unit", UnitID: 1, UnitName: "Core foundations"},
+				{ID: 10, Kind: "update_content", UnitID: 2, UnitContent: "Expanded variables."},
+			},
+		},
+		{
 			name: "missing unit",
 			changes: []models.CurriculumProposalChange{{
-				ID: 10, Position: 1, Kind: "rename_unit", UnitID: 99,
+				ID: 10, Kind: "rename_unit", UnitID: 99,
 				PreviousUnitName: "Missing", UnitName: "Still missing",
 			}},
 		},
 		{
 			name: "no effect",
 			changes: []models.CurriculumProposalChange{{
-				ID: 10, Position: 1, Kind: "update_content", UnitID: 1,
+				ID: 10, Kind: "update_content", UnitID: 1,
 				PreviousUnitContent: "Learn the basics.", UnitContent: "Learn the basics.",
 			}},
 		},
@@ -116,11 +123,11 @@ func TestValidateCurriculumProposalRejectsIncoherentChanges(t *testing.T) {
 			name: "created then deleted",
 			changes: []models.CurriculumProposalChange{
 				{
-					ID: 10, Position: 1, Kind: "create_unit", UnitID: 10,
+					ID: 10, Kind: "create_unit", UnitID: 10,
 					UnitName: "Temporary", UnitContent: "Temporary content.",
 				},
 				{
-					ID: 11, Position: 2, Kind: "delete_unit", UnitID: 10,
+					ID: 11, Kind: "delete_unit", UnitID: 10,
 					UnitName: "Temporary", UnitContent: "Temporary content.",
 				},
 			},
@@ -128,21 +135,21 @@ func TestValidateCurriculumProposalRejectsIncoherentChanges(t *testing.T) {
 		{
 			name: "dependency cycle",
 			changes: []models.CurriculumProposalChange{{
-				ID: 10, Position: 1, Kind: "add_dependency", UnitID: 1,
+				ID: 10, Kind: "add_dependency", UnitID: 1,
 				PrerequisiteID: &prerequisiteTwo,
 			}},
 		},
 		{
 			name: "dependency changed twice",
 			changes: []models.CurriculumProposalChange{
-				{ID: 10, Position: 1, Kind: "remove_dependency", UnitID: 2, PrerequisiteID: &prerequisiteOne},
-				{ID: 11, Position: 2, Kind: "add_dependency", UnitID: 2, PrerequisiteID: &prerequisiteOne},
+				{ID: 10, Kind: "remove_dependency", UnitID: 2, PrerequisiteID: &prerequisiteOne},
+				{ID: 11, Kind: "add_dependency", UnitID: 2, PrerequisiteID: &prerequisiteOne},
 			},
 		},
 		{
 			name: "delete prerequisite still in use",
 			changes: []models.CurriculumProposalChange{{
-				ID: 10, Position: 1, Kind: "delete_unit", UnitID: 1,
+				ID: 10, Kind: "delete_unit", UnitID: 1,
 				UnitName: "Foundations", UnitContent: "Learn the basics.",
 			}},
 		},
@@ -150,11 +157,11 @@ func TestValidateCurriculumProposalRejectsIncoherentChanges(t *testing.T) {
 			name: "change superseded by deletion",
 			changes: []models.CurriculumProposalChange{
 				{
-					ID: 10, Position: 1, Kind: "rename_unit", UnitID: 3,
+					ID: 10, Kind: "rename_unit", UnitID: 3,
 					PreviousUnitName: "Geometry", UnitName: "Euclidean geometry",
 				},
 				{
-					ID: 11, Position: 2, Kind: "delete_unit", UnitID: 3,
+					ID: 11, Kind: "delete_unit", UnitID: 3,
 					UnitName: "Euclidean geometry", UnitContent: "Learn shapes.",
 				},
 			},
@@ -163,11 +170,11 @@ func TestValidateCurriculumProposalRejectsIncoherentChanges(t *testing.T) {
 			name: "recognition source outside base",
 			changes: []models.CurriculumProposalChange{
 				{
-					ID: 10, Position: 1, Kind: "create_unit", UnitID: 10,
+					ID: 10, Kind: "create_unit", UnitID: 10,
 					UnitName: "New", UnitContent: "New content.",
 				},
 				{
-					ID: 11, Position: 2, Kind: "recognition",
+					ID: 11, Kind: "recognition",
 					Recognition: &models.Recognition{
 						Sources: []models.Unit{{ID: 10}},
 						Targets: []models.Unit{{ID: 1}},
@@ -178,7 +185,7 @@ func TestValidateCurriculumProposalRejectsIncoherentChanges(t *testing.T) {
 		{
 			name: "recognition target outside result",
 			changes: []models.CurriculumProposalChange{{
-				ID: 10, Position: 1, Kind: "recognition",
+				ID: 10, Kind: "recognition",
 				Recognition: &models.Recognition{
 					Sources: []models.Unit{{ID: 1}},
 					Targets: []models.Unit{{ID: 99}},
@@ -188,7 +195,7 @@ func TestValidateCurriculumProposalRejectsIncoherentChanges(t *testing.T) {
 		{
 			name: "recognition duplicate source",
 			changes: []models.CurriculumProposalChange{{
-				ID: 10, Position: 1, Kind: "recognition",
+				ID: 10, Kind: "recognition",
 				Recognition: &models.Recognition{
 					Sources: []models.Unit{{ID: 1}, {ID: 1}},
 					Targets: []models.Unit{{ID: 2}},

@@ -92,13 +92,13 @@ func validateCurriculumProposal(base *models.CurriculumGraph, proposal *models.C
 		state.dependencies[key] = struct{}{}
 	}
 
-	lastPosition := 0
+	seenChangeIDs := make(map[int64]bool, len(proposal.Changes))
 	var recognitions []models.CurriculumProposalChange
-	for _, change := range proposal.Changes {
-		if change.ID <= 0 || change.Position <= lastPosition {
-			return invalidChange(change, "changes are not uniquely ordered")
+	for _, change := range canonicalCurriculumProposalChanges(proposal.Changes) {
+		if change.ID <= 0 || seenChangeIDs[change.ID] {
+			return invalidChange(change, "change identities are not unique")
 		}
-		lastPosition = change.Position
+		seenChangeIDs[change.ID] = true
 		if change.Kind == "recognition" {
 			recognitions = append(recognitions, change)
 			continue
@@ -113,6 +113,64 @@ func validateCurriculumProposal(base *models.CurriculumGraph, proposal *models.C
 		}
 	}
 	return nil
+}
+
+func canonicalCurriculumProposalChanges(
+	changes []models.CurriculumProposalChange,
+) []models.CurriculumProposalChange {
+	ordered := make([]models.CurriculumProposalChange, 0, len(changes))
+	for _, index := range canonicalCurriculumProposalChangeIndexes(changes) {
+		ordered = append(ordered, changes[index])
+	}
+	return ordered
+}
+
+func canonicalCurriculumProposalChangeIndexes(changes []models.CurriculumProposalChange) []int {
+	indexes := make([]int, len(changes))
+	for index := range changes {
+		indexes[index] = index
+	}
+	sort.SliceStable(indexes, func(i, j int) bool {
+		left, right := changes[indexes[i]], changes[indexes[j]]
+		leftRank, rightRank := curriculumProposalChangeRank(left.Kind), curriculumProposalChangeRank(right.Kind)
+		if leftRank != rightRank {
+			return leftRank < rightRank
+		}
+		if left.UnitID != right.UnitID {
+			return left.UnitID < right.UnitID
+		}
+		leftPrerequisite, rightPrerequisite := int64(0), int64(0)
+		if left.PrerequisiteID != nil {
+			leftPrerequisite = *left.PrerequisiteID
+		}
+		if right.PrerequisiteID != nil {
+			rightPrerequisite = *right.PrerequisiteID
+		}
+		if leftPrerequisite != rightPrerequisite {
+			return leftPrerequisite < rightPrerequisite
+		}
+		return left.ID < right.ID
+	})
+	return indexes
+}
+
+func curriculumProposalChangeRank(kind string) int {
+	switch kind {
+	case "create_unit":
+		return 1
+	case "rename_unit", "update_content":
+		return 2
+	case "remove_dependency":
+		return 3
+	case "add_dependency":
+		return 4
+	case "recognition":
+		return 5
+	case "delete_unit":
+		return 6
+	default:
+		return 7
+	}
 }
 
 func (state *curriculumProposalValidationState) apply(change models.CurriculumProposalChange) error {

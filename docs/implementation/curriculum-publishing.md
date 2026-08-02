@@ -2,17 +2,17 @@
 
 ## Source of truth
 
-Accepted curriculum proposals and their ordered changes are the source of truth
+Accepted curriculum proposals and their declarative changes are the source of truth
 for published curriculum state. Each proposal points to the accepted proposal
 on which it was based, forming the canonical publication lineage without a
 separate version number. The `units` and `unit_dependencies` tables are a
 rebuildable projection used to serve the current graph efficiently.
 
-Proposal authorship is an ordered many-to-many relation. New drafts currently
+Proposal authorship is a many-to-many relation. New drafts currently
 start with their creator as their sole author, while the storage model allows
 later composition workflows to retain every contributing author.
 
-Every change has a common header that owns its proposal, position and kind. Its
+Every change has a common header that owns its proposal and kind. Its
 payload lives in a type-specific table for unit creation, rename, content
 update, deletion or dependency mutation. Database constraints require exactly
 one payload of the declared kind.
@@ -39,11 +39,15 @@ PostgreSQL also enforces that proposal bases are accepted, that publication
 extends the locked projection head, and that the projection advances to that
 direct successor before commit. These constraints keep the canonical history
 linear even if persistence is called outside the normal service workflow.
-Before acceptance, the ordered changes are strictly replayed over that base.
-Every operation must affect the state it declares, all referenced units must be
-active at that point, and the resulting graph must satisfy the product
-invariants. Previous values and deleted-unit snapshots are derived by replaying
-the proposal over its frozen base rather than duplicated in change storage.
+Before acceptance, changes are applied in a canonical order independent of how
+the author entered them: unit creations; name and content edits; dependency
+removals; dependency additions; recognitions; and unit deletions. Unit and
+prerequisite IDs, followed by the change ID, provide deterministic tie-breaks
+within a phase. Every operation must affect the state it declares, all
+referenced units must be valid for its phase, and the resulting graph must
+satisfy the product invariants. Previous values and deleted-unit snapshots are
+derived by applying the same canonical order over the proposal's frozen base
+rather than duplicated in change storage.
 
 Draft editing keeps the proposal as a normalized diff from its base. Reversing a
 dependency change removes that change instead of recording the opposite change.

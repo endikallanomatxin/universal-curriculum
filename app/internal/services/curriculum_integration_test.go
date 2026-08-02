@@ -390,12 +390,12 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	normalizedRetirement, err := db.GetCurriculumProposal(database, retirement.ID)
 	if err != nil || normalizedRetirement == nil ||
 		len(normalizedRetirement.Changes) != 3 ||
-		normalizedRetirement.Changes[1].Kind != "delete_unit" ||
-		normalizedRetirement.Changes[2].Kind != "recognition" ||
-		len(normalizedRetirement.Changes[2].Recognition.Sources) != 1 ||
-		normalizedRetirement.Changes[2].Recognition.Sources[0].ID != algebra.ID ||
-		len(normalizedRetirement.Changes[2].Recognition.Targets) != 1 ||
-		normalizedRetirement.Changes[2].Recognition.Targets[0].ID != replacement.ID {
+		normalizedRetirement.Changes[1].Kind != "recognition" ||
+		normalizedRetirement.Changes[2].Kind != "delete_unit" ||
+		len(normalizedRetirement.Changes[1].Recognition.Sources) != 1 ||
+		normalizedRetirement.Changes[1].Recognition.Sources[0].ID != algebra.ID ||
+		len(normalizedRetirement.Changes[1].Recognition.Targets) != 1 ||
+		normalizedRetirement.Changes[1].Recognition.Targets[0].ID != replacement.ID {
 		t.Fatalf("unit deletion did not remove superseded changes: proposal=%#v err=%v", normalizedRetirement, err)
 	}
 	if err := UpdateCurriculumUnit(database, authorID, retirement.ID, algebra.ID, "Renamed after deletion"); err != ErrUnitNotFound {
@@ -404,7 +404,7 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if _, err := PublishCurriculumProposal(database, authorID, retirement.ID); err != nil {
 		t.Fatal(err)
 	}
-	recognitionChangeID := normalizedRetirement.Changes[2].ID
+	recognitionChangeID := normalizedRetirement.Changes[1].ID
 	if _, err := database.Exec(`
 		DELETE FROM curriculum_recognition_targets WHERE recognition_change_id = $1
 	`, recognitionChangeID); err == nil {

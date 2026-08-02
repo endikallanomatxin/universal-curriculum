@@ -555,7 +555,7 @@ func CurriculumGraphWithProposal(graph *models.CurriculumGraph, proposal *models
 	for index := range preview.Units {
 		unitIndexes[preview.Units[index].ID] = index
 	}
-	for _, change := range proposal.Changes {
+	for _, change := range canonicalCurriculumProposalChanges(proposal.Changes) {
 		switch change.Kind {
 		case "create_unit":
 			if _, exists := unitIndexes[change.UnitID]; !exists {
@@ -787,7 +787,7 @@ func PopulateCurriculumProposalPreviousState(
 	for _, unit := range base.Units {
 		units[unit.ID] = unit
 	}
-	for index := range proposal.Changes {
+	for _, index := range canonicalCurriculumProposalChangeIndexes(proposal.Changes) {
 		change := &proposal.Changes[index]
 		unit, exists := units[change.UnitID]
 		switch change.Kind {
