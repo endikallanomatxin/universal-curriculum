@@ -334,7 +334,7 @@ func (server *Server) createLearningPath(writer http.ResponseWriter, request *ht
 	}
 	userID, _ := services.SessionUserID(request)
 	path, err := services.CreateLearningPath(
-		server.Database, userID, request.FormValue("name"), request.FormValue("description"),
+		server.Database, userID, request.FormValue("name"),
 		parseLearningPathUnitIDs(request.Form["unit_ids"]),
 	)
 	if err != nil {
@@ -355,7 +355,7 @@ func (server *Server) updateLearningPath(writer http.ResponseWriter, request *ht
 	}
 	userID, _ := services.SessionUserID(request)
 	err = services.UpdateLearningPath(
-		server.Database, userID, pathID, request.FormValue("name"), request.FormValue("description"),
+		server.Database, userID, pathID, request.FormValue("name"),
 		parseLearningPathUnitIDs(request.Form["unit_ids"]),
 	)
 	if err != nil {

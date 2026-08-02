@@ -127,7 +127,7 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 		t.Fatal(err)
 	}
 	learningPath, err := CreateLearningPath(
-		database, authorID, "Algebra goal", "Keep a personal target while the curriculum evolves.", []int64{algebra.ID},
+		database, authorID, "Algebra goal", []int64{algebra.ID},
 	)
 	if err != nil {
 		t.Fatal(err)

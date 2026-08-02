@@ -16,8 +16,8 @@ var (
 	ErrLearningPathUnitsRequired = errors.New("learning path requires at least one target unit")
 )
 
-func CreateLearningPath(database *sql.DB, userID int64, name, description string, unitIDs []int64) (*models.LearningPath, error) {
-	path, unitIDs, err := validatedLearningPath(database, userID, 0, name, description, unitIDs)
+func CreateLearningPath(database *sql.DB, userID int64, name string, unitIDs []int64) (*models.LearningPath, error) {
+	path, unitIDs, err := validatedLearningPath(database, userID, 0, name, unitIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -38,8 +38,8 @@ func CreateLearningPath(database *sql.DB, userID int64, name, description string
 	return path, nil
 }
 
-func UpdateLearningPath(database *sql.DB, userID, pathID int64, name, description string, unitIDs []int64) error {
-	path, unitIDs, err := validatedLearningPath(database, userID, pathID, name, description, unitIDs)
+func UpdateLearningPath(database *sql.DB, userID, pathID int64, name string, unitIDs []int64) error {
+	path, unitIDs, err := validatedLearningPath(database, userID, pathID, name, unitIDs)
 	if err != nil {
 		return err
 	}
@@ -67,10 +67,10 @@ func UpdateLearningPath(database *sql.DB, userID, pathID int64, name, descriptio
 func validatedLearningPath(
 	database *sql.DB,
 	userID, pathID int64,
-	name, description string,
+	name string,
 	unitIDs []int64,
 ) (*models.LearningPath, []int64, error) {
-	name, description = strings.TrimSpace(name), strings.TrimSpace(description)
+	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, nil, ErrLearningPathNameRequired
 	}
@@ -93,9 +93,7 @@ func validatedLearningPath(
 	if len(validated) == 0 {
 		return nil, nil, ErrLearningPathUnitsRequired
 	}
-	return &models.LearningPath{
-		ID: pathID, UserID: userID, Name: name, Description: description,
-	}, validated, nil
+	return &models.LearningPath{ID: pathID, UserID: userID, Name: name}, validated, nil
 }
 
 func CurriculumPathSubgraph(graph *models.CurriculumGraph, targetIDs []int64) *models.CurriculumGraph {

@@ -81,7 +81,6 @@
               <div>
                 <p class="label">Learning path</p>
                 <h1 id="learn-graph-title">{{ if .SelectedPath }}{{ .SelectedPath.Name }}{{ else if .CombinePaths }}All my paths{{ else }}Full curriculum{{ end }}</h1>
-                {{ with .SelectedPath }}{{ if .Description }}<p>{{ .Description }}</p>{{ end }}{{ end }}
               </div>
               <a class="icon-button ui-pane__close"
                  href="/learn"
@@ -169,7 +168,7 @@
                   data-unit-picker-required-message="Select at least one target unit."
                   {{ if .EditingPath }}
                   hx-post="/learn/paths/{{ .EditingPath.ID }}"
-                  hx-trigger="input changed delay:600ms from:#learning-path-name, input changed delay:600ms from:#learning-path-description, unit-picker:change from:[data-unit-picker]"
+                  hx-trigger="input changed delay:600ms from:#learning-path-name, unit-picker:change from:[data-unit-picker]"
                   hx-target="#learning-path-save-status"
                   hx-swap="outerHTML"
                   {{ end }}>
@@ -179,8 +178,6 @@
                 <input id="learning-path-name" name="name" value="{{ with .EditingPath }}{{ .Name }}{{ end }}" required maxlength="200">
               </div>
               <div class="editor-form__field">
-                <label for="learning-path-description">Description</label>
-                <textarea id="learning-path-description" name="description" rows="3" maxlength="1000" data-autoresize>{{ with .EditingPath }}{{ .Description }}{{ end }}</textarea>
               </div>
               <div class="learning-path-form__targets">
                 <section class="selection-editor learning-path-targets" aria-labelledby="learning-path-targets-title">

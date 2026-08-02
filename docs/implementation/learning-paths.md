@@ -1,7 +1,7 @@
 # Learning paths
 
 Authenticated users can maintain several personal learning paths. A path stores
-a name, an optional description and an ordered set of target unit IDs.
+a name and a set of target unit IDs.
 
 The default graph for a path is the induced subgraph containing its targets and
 every published prerequisite that can lead to them. Focusing a unit applies the

@@ -10,7 +10,7 @@ import (
 
 func ListLearningPaths(database *sql.DB, userID int64) ([]models.LearningPath, error) {
 	rows, err := database.Query(`
-		SELECT path.id, path.user_id, path.name, path.description,
+		SELECT path.id, path.user_id, path.name,
 		       path.created_at, path.updated_at,
 		       path_unit.unit_id, COALESCE(unit.name, creation.name),
 		       unit.id IS NULL
@@ -19,7 +19,8 @@ func ListLearningPaths(database *sql.DB, userID int64) ([]models.LearningPath, e
 		LEFT JOIN units unit ON unit.id = path_unit.unit_id
 		LEFT JOIN curriculum_unit_creations creation ON creation.change_id = path_unit.unit_id
 		WHERE path.user_id = $1
-		ORDER BY path.updated_at DESC, lower(path.name), path.id, path_unit.position
+		ORDER BY path.updated_at DESC, lower(path.name), path.id,
+		         lower(COALESCE(unit.name, creation.name)), path_unit.unit_id
 	`, userID)
 	if err != nil {
 		return nil, fmt.Errorf("list learning paths: %w", err)
@@ -33,7 +34,7 @@ func ListLearningPaths(database *sql.DB, userID int64) ([]models.LearningPath, e
 		var unitName sql.NullString
 		var unitRetired sql.NullBool
 		if err := rows.Scan(
-			&path.ID, &path.UserID, &path.Name, &path.Description,
+			&path.ID, &path.UserID, &path.Name,
 			&path.CreatedAt, &path.UpdatedAt,
 			&unitID, &unitName, &unitRetired,
 		); err != nil {
@@ -60,11 +61,11 @@ func ListLearningPaths(database *sql.DB, userID int64) ([]models.LearningPath, e
 func GetLearningPath(q curriculumExecutor, userID, pathID int64) (*models.LearningPath, error) {
 	var path models.LearningPath
 	err := q.QueryRow(`
-		SELECT id, user_id, name, description, created_at, updated_at
+		SELECT id, user_id, name, created_at, updated_at
 		FROM learning_paths
 		WHERE id = $1 AND user_id = $2
 	`, pathID, userID).Scan(
-		&path.ID, &path.UserID, &path.Name, &path.Description, &path.CreatedAt, &path.UpdatedAt,
+		&path.ID, &path.UserID, &path.Name, &path.CreatedAt, &path.UpdatedAt,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
@@ -85,7 +86,7 @@ func GetLearningPath(q curriculumExecutor, userID, pathID int64) (*models.Learni
 		JOIN curriculum_proposals proposal ON proposal.id = change.proposal_id
 		LEFT JOIN units unit ON unit.id = path_unit.unit_id
 		WHERE path_unit.path_id = $1
-		ORDER BY path_unit.position
+		ORDER BY lower(COALESCE(unit.name, creation.name)), path_unit.unit_id
 	`, path.ID)
 	if err != nil {
 		return nil, fmt.Errorf("list learning path units: %w", err)
@@ -108,18 +109,18 @@ func GetLearningPath(q curriculumExecutor, userID, pathID int64) (*models.Learni
 
 func InsertLearningPath(q curriculumExecutor, path *models.LearningPath) error {
 	return q.QueryRow(`
-		INSERT INTO learning_paths (user_id, name, description)
-		VALUES ($1, $2, $3)
+		INSERT INTO learning_paths (user_id, name)
+		VALUES ($1, $2)
 		RETURNING id, created_at, updated_at
-	`, path.UserID, path.Name, path.Description).Scan(&path.ID, &path.CreatedAt, &path.UpdatedAt)
+	`, path.UserID, path.Name).Scan(&path.ID, &path.CreatedAt, &path.UpdatedAt)
 }
 
 func UpdateLearningPath(q curriculumExecutor, path *models.LearningPath) (bool, error) {
 	result, err := q.Exec(`
 		UPDATE learning_paths
-		SET name = $3, description = $4, updated_at = NOW()
+		SET name = $3, updated_at = NOW()
 		WHERE id = $1 AND user_id = $2
-	`, path.ID, path.UserID, path.Name, path.Description)
+	`, path.ID, path.UserID, path.Name)
 	if err != nil {
 		return false, fmt.Errorf("update learning path: %w", err)
 	}
@@ -131,11 +132,11 @@ func ReplaceLearningPathUnits(q curriculumExecutor, pathID int64, unitIDs []int6
 	if _, err := q.Exec(`DELETE FROM learning_path_units WHERE path_id = $1`, pathID); err != nil {
 		return fmt.Errorf("clear learning path units: %w", err)
 	}
-	for index, unitID := range unitIDs {
+	for _, unitID := range unitIDs {
 		if _, err := q.Exec(`
-			INSERT INTO learning_path_units (path_id, unit_id, position)
-			VALUES ($1, $2, $3)
-		`, pathID, unitID, index+1); err != nil {
+			INSERT INTO learning_path_units (path_id, unit_id)
+			VALUES ($1, $2)
+		`, pathID, unitID); err != nil {
 			return fmt.Errorf("add learning path unit: %w", err)
 		}
 	}
