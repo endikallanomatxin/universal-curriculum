@@ -155,26 +155,62 @@
           return path;
         }
 
-        function fallbackEdgePath(source, target) {
+        function detourBezierPath(source, target, detourX) {
           const sourceY = source.y + source.height / 2;
           const targetY = target.y - target.height / 2 - 5;
+          const middleY = (sourceY + targetY) / 2;
+          const easing = Math.min(verticalHandle, Math.max(6, (targetY - sourceY) * 0.22));
           return "M " + source.x + " " + sourceY +
-            " V " + (sourceY + verticalHandle) +
-            " H " + target.x +
-            " V " + targetY;
+            " C " + source.x + " " + (sourceY + easing) +
+            " " + detourX + " " + (middleY - easing) +
+            " " + detourX + " " + middleY +
+            " C " + detourX + " " + (middleY + easing) +
+            " " + target.x + " " + (targetY - easing) +
+            " " + target.x + " " + targetY;
         }
 
-        function pathCrossesNode(path, edge) {
+        function pathNodeCollisionCount(path, edge) {
           const length = path.getTotalLength();
+          let collisions = 0;
           for (const [unitID, point] of nodePoints) {
             if (!point || unitID === edge.prerequisiteID || unitID === edge.dependentID) continue;
             const radius = point.width / 2 + 2;
             for (let distance = 0; distance <= length; distance += 2) {
               const sample = path.getPointAtLength(distance);
-              if (Math.hypot(sample.x - point.x, sample.y - point.y) <= radius) return true;
+              if (Math.hypot(sample.x - point.x, sample.y - point.y) <= radius) {
+                collisions += 1;
+                break;
+              }
             }
           }
-          return false;
+          return collisions;
+        }
+
+        function avoidNodeCollisions(path, edge, source, target) {
+          const initialPath = path.getAttribute("d");
+          let bestPath = initialPath;
+          let bestCollisions = pathNodeCollisionCount(path, edge);
+          if (bestCollisions === 0) return;
+
+          const leftX = Math.max(4, Math.min(source.x, target.x) - laneSpacing);
+          const rightX = Math.min(graphWidth - 4, Math.max(source.x, target.x) + laneSpacing);
+          const candidates = [
+            directBezierPath(source, target),
+            detourBezierPath(source, target, leftX),
+            detourBezierPath(source, target, rightX),
+            detourBezierPath(source, target, 4),
+            detourBezierPath(source, target, graphWidth - 4)
+          ];
+          for (const candidate of candidates) {
+            path.setAttribute("d", candidate);
+            const collisions = pathNodeCollisionCount(path, edge);
+            if (collisions < bestCollisions) {
+              bestPath = candidate;
+              bestCollisions = collisions;
+            }
+            if (collisions === 0) break;
+          }
+          path.setAttribute("d", bestPath);
         }
 
         edges.forEach(function (edge) {
@@ -192,9 +228,7 @@
             path.classList.add("curriculum-graph__edge--proposed", "is-proposal-" + edge.proposalState);
           }
           pathLayer.appendChild(path);
-          if (pathCrossesNode(path, edge)) {
-            path.setAttribute("d", fallbackEdgePath(source, target));
-          }
+          avoidNodeCollisions(path, edge, source, target);
           renderedPaths.push({ edge: edge, path: path });
         });
         boundaries.forEach(function (boundary) {

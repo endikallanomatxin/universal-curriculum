@@ -35,8 +35,9 @@ keeps dense converging branches from becoming a compact braid.
 The browser groups dependencies with a shared source or target into short
 common trunks and joins their branch points with monotone cubic Bézier curves.
 Each edge remains an independent SVG path so relation highlighting can still
-isolate it. A candidate curve is sampled against the measured node circles and
-falls back to its straight segment if bundling would introduce a node collision.
+isolate it. Candidate curves are sampled against the measured node circles. If
+the bundled route introduces a collision, the renderer compares a direct curve
+and curved side detours, retaining the route that intersects the fewest nodes.
 
 Learn and Curriculum Modification render the same `curriculum-graph` and
 `unit-navigation-search` templates. Server view models prepare consumer-specific
