@@ -1127,7 +1127,8 @@ textarea.proposal-rebase-merge-part {
   overflow-wrap: anywhere;
 }
 
-.proposal-list li > div span {
+.proposal-list li > div span,
+.proposal-change__description span {
   color: var(--color-muted);
   font-size: 0.7rem;
 }
@@ -1141,6 +1142,17 @@ textarea.proposal-rebase-merge-part {
   grid-template-columns: 7.25rem minmax(0, 1fr) 4rem;
   min-height: 0;
   padding: 0.3rem 0.2rem;
+}
+
+.proposal-change__unit-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.proposal-change__unit-link:hover,
+.proposal-change__unit-link:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 0.16em;
 }
 
 .proposal-change + .proposal-change {
@@ -1288,7 +1300,7 @@ textarea.proposal-rebase-merge-part {
   background: color-mix(in srgb, var(--color-proposal-created) 22%, transparent);
 }
 
-.proposal-list li > div .proposal-change__previous {
+.proposal-change__description .proposal-change__previous {
   align-self: center;
   overflow: hidden;
   text-overflow: ellipsis;

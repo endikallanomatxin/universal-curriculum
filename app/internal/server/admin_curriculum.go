@@ -21,6 +21,7 @@ type curriculumUnitView struct {
 	Lane            float64
 	HasContentDiff  bool
 	PreviousContent string
+	Historical      bool
 }
 
 type adminCurriculumPageData struct {
@@ -613,8 +614,12 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 			}
 		}
 		if data.ContentUnit == nil {
-			http.Error(writer, "Curriculum unit not found", http.StatusNotFound)
-			return
+			if historical := graphUnitByID(proposalBaseGraph, contentID); historical != nil {
+				data.ContentUnit = &curriculumUnitView{Unit: *historical, Historical: true}
+			} else {
+				http.Error(writer, "Curriculum unit not found", http.StatusNotFound)
+				return
+			}
 		}
 		applyUnitContentDiff(data.ContentUnit, activeProposal)
 	}
@@ -673,9 +678,28 @@ func curriculumGraphWithRemovedDependencies(working, published *models.Curriculu
 		Dependencies: append([]models.UnitDependency(nil), working.Dependencies...),
 	}
 	publishedDependencies := make(map[[2]int64]models.UnitDependency)
+	publishedUnits := make(map[int64]models.Unit)
 	if published != nil {
+		for _, unit := range published.Units {
+			publishedUnits[unit.ID] = unit
+		}
 		for _, dependency := range published.Dependencies {
 			publishedDependencies[[2]int64{dependency.PrerequisiteID, dependency.UnitID}] = dependency
+		}
+	}
+	deletedIDs := make(map[int64]bool)
+	for _, change := range proposal.Changes {
+		if change.Kind != "delete_unit" {
+			continue
+		}
+		deletedIDs[change.UnitID] = true
+		if unit, exists := publishedUnits[change.UnitID]; exists && graphUnitByID(visual, change.UnitID) == nil {
+			visual.Units = append(visual.Units, unit)
+		}
+	}
+	for key, dependency := range publishedDependencies {
+		if (deletedIDs[key[0]] || deletedIDs[key[1]]) && !graphHasDependency(visual, key[1], key[0]) {
+			visual.Dependencies = append(visual.Dependencies, dependency)
 		}
 	}
 	for _, change := range proposal.Changes {
@@ -701,6 +725,18 @@ func graphHasDependency(graph *models.CurriculumGraph, unitID, prerequisiteID in
 		}
 	}
 	return false
+}
+
+func graphUnitByID(graph *models.CurriculumGraph, unitID int64) *models.Unit {
+	if graph == nil {
+		return nil
+	}
+	for index := range graph.Units {
+		if graph.Units[index].ID == unitID {
+			return &graph.Units[index]
+		}
+	}
+	return nil
 }
 
 func includeCreatedProposalUnits(visible, working *models.CurriculumGraph, proposal *models.CurriculumProposal) {
@@ -830,6 +866,9 @@ func applyProposalGraphStates(view *curriculumGraphView, proposal *models.Curric
 	for index := range view.Edges {
 		edge := &view.Edges[index]
 		edge.ProposalState = proposedDependencies[[2]int64{edge.PrerequisiteID, edge.DependentID}]
+		if states[edge.PrerequisiteID] == "deleted" || states[edge.DependentID] == "deleted" {
+			edge.ProposalState = "deleted"
+		}
 	}
 }
 

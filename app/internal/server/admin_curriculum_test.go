@@ -88,6 +88,26 @@ func TestCurriculumGraphWithProposalIncludesAndPreviewsChangedUnits(t *testing.T
 	}
 }
 
+func TestDeletedProposalUnitsRemainVisibleForInspection(t *testing.T) {
+	published := &models.CurriculumGraph{
+		Units: []models.Unit{
+			{ID: 1, Name: "Foundations", Content: "Original foundations."},
+			{ID: 2, Name: "Algebra", Content: "Original algebra."},
+		},
+		Dependencies: []models.UnitDependency{{UnitID: 2, PrerequisiteID: 1}},
+	}
+	proposal := &models.CurriculumProposal{Changes: []models.CurriculumProposalChange{{
+		Kind: "delete_unit", UnitID: 2,
+	}}}
+	working := curriculumGraphWithProposal(published, proposal)
+
+	visual := curriculumGraphWithRemovedDependencies(working, published, proposal)
+
+	if graphUnitByID(visual, 2) == nil || len(visual.Dependencies) != 1 {
+		t.Fatalf("deleted unit context is missing from proposal graph: %#v", visual)
+	}
+}
+
 func TestCurriculumGraphWithProposalRemovesDeletedUnitsAndDependencies(t *testing.T) {
 	graph := &models.CurriculumGraph{
 		Units: []models.Unit{
@@ -262,8 +282,8 @@ func TestProposalGraphStatesUseStructuralChangePrecedence(t *testing.T) {
 	if view.Nodes[0].ProposalState != "rename" || view.Nodes[1].ProposalState != "deleted" {
 		t.Fatalf("proposal states = %q, %q", view.Nodes[0].ProposalState, view.Nodes[1].ProposalState)
 	}
-	if view.Edges[0].ProposalState != "created" {
-		t.Fatal("added dependency edge is not marked as proposed")
+	if view.Edges[0].ProposalState != "deleted" {
+		t.Fatal("edge connected to deleted unit is not marked as deleted")
 	}
 }
 

@@ -274,10 +274,35 @@ func TestCurriculumProposalRendersRecognitionWorkflowAndPublishWarning(t *testin
 		`name="target_unit_ids"`,
 		"Recognition",
 		"Equivalent coverage.",
+		`href="/curriculum-modification?proposal=12&amp;unit=2&amp;content=2"`,
+		`data-panel-navigation="open-or-replace"`,
 		"Publish anyway?",
 	} {
 		if !strings.Contains(output, fragment) {
 			t.Errorf("rendered recognition workflow does not contain %q", fragment)
+		}
+	}
+}
+
+func TestProposalDependencyChangeLinksBothUnitsIndependently(t *testing.T) {
+	templates := loadTestTemplates(t)
+	prerequisiteID := int64(1)
+	output := renderTemplate(t, templates, "admin-curriculum.html", map[string]any{
+		"ActiveProposal": &models.CurriculumProposal{
+			ID: 12, Title: "Connect algebra", Status: "draft",
+			Changes: []models.CurriculumProposalChange{{
+				ID: 13, Kind: "add_dependency", UnitID: 2, UnitName: "Algebra",
+				PrerequisiteID: &prerequisiteID, PrerequisiteName: "Foundations",
+			}},
+		},
+	})
+
+	for _, fragment := range []string{
+		`href="/curriculum-modification?proposal=12&amp;unit=1&amp;content=1"`,
+		`href="/curriculum-modification?proposal=12&amp;unit=2&amp;content=2"`,
+	} {
+		if !strings.Contains(output, fragment) {
+			t.Errorf("dependency change does not contain %q", fragment)
 		}
 	}
 }

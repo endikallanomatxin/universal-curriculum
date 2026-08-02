@@ -272,16 +272,20 @@
                       <div class="proposal-change__description">
                         {{ if .Recognition }}
                           <strong class="proposal-change__subject">
-                            {{ range $index, $unit := .Recognition.Sources }}{{ if $index }}, {{ end }}{{ $unit.Name }}{{ end }}
+                            {{ range $index, $unit := .Recognition.Sources }}{{ if $index }}, {{ end }}<a class="proposal-change__unit-link" href="/curriculum-modification?proposal={{ $.ActiveProposal.ID }}&amp;unit={{ $unit.ID }}&amp;content={{ $unit.ID }}" hx-get="/curriculum-modification?proposal={{ $.ActiveProposal.ID }}&amp;unit={{ $unit.ID }}&amp;content={{ $unit.ID }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true" data-panel-navigation="open-or-replace">{{ $unit.Name }}</a>{{ end }}
                             →
-                            {{ range $index, $unit := .Recognition.Targets }}{{ if $index }}, {{ end }}{{ $unit.Name }}{{ end }}
+                            {{ range $index, $unit := .Recognition.Targets }}{{ if $index }}, {{ end }}<a class="proposal-change__unit-link" href="/curriculum-modification?proposal={{ $.ActiveProposal.ID }}&amp;unit={{ $unit.ID }}&amp;content={{ $unit.ID }}" hx-get="/curriculum-modification?proposal={{ $.ActiveProposal.ID }}&amp;unit={{ $unit.ID }}&amp;content={{ $unit.ID }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true" data-panel-navigation="open-or-replace">{{ $unit.Name }}</a>{{ end }}
                           </strong>
                           <span class="proposal-change__previous">{{ .Recognition.Rationale }}</span>
                         {{ else }}
                           {{ if or (eq .Kind "add_dependency") (eq .Kind "remove_dependency") }}
-                            {{ template "proposal-dependency-change" . }}
+                            <strong class="proposal-change__subject proposal-change__dependency">
+                              <a class="proposal-change__unit-link" href="/curriculum-modification?proposal={{ $.ActiveProposal.ID }}&amp;unit={{ .PrerequisiteID }}&amp;content={{ .PrerequisiteID }}" hx-get="/curriculum-modification?proposal={{ $.ActiveProposal.ID }}&amp;unit={{ .PrerequisiteID }}&amp;content={{ .PrerequisiteID }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true" data-panel-navigation="open-or-replace">{{ if .PrerequisiteName }}{{ .PrerequisiteName }}{{ else }}Prerequisite unit{{ end }}</a>
+                              <span class="proposal-change__dependency-direction" aria-label="{{ if eq .Kind "remove_dependency" }}no longer required by{{ else }}required by{{ end }}"><span class="material-symbols-rounded" aria-hidden="true">trending_flat</span>{{ if eq .Kind "remove_dependency" }}<span class="material-symbols-rounded proposal-change__dependency-remove" aria-hidden="true">close</span>{{ end }}</span>
+                              <a class="proposal-change__unit-link" href="/curriculum-modification?proposal={{ $.ActiveProposal.ID }}&amp;unit={{ .UnitID }}&amp;content={{ .UnitID }}" hx-get="/curriculum-modification?proposal={{ $.ActiveProposal.ID }}&amp;unit={{ .UnitID }}&amp;content={{ .UnitID }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true" data-panel-navigation="open-or-replace">{{ if .UnitName }}{{ .UnitName }}{{ else }}Dependent unit{{ end }}</a>
+                            </strong>
                           {{ else }}
-                            <strong class="proposal-change__subject">{{ if .UnitName }}{{ .UnitName }}{{ else }}Unit #{{ .UnitID }}{{ end }}</strong>
+                            <strong class="proposal-change__subject"><a class="proposal-change__unit-link" href="/curriculum-modification?proposal={{ $.ActiveProposal.ID }}&amp;unit={{ .UnitID }}&amp;content={{ .UnitID }}" hx-get="/curriculum-modification?proposal={{ $.ActiveProposal.ID }}&amp;unit={{ .UnitID }}&amp;content={{ .UnitID }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true" data-panel-navigation="open-or-replace">{{ if .UnitName }}{{ .UnitName }}{{ else }}Unit #{{ .UnitID }}{{ end }}</a></strong>
                           {{ end }}
                           {{ if and (eq .Kind "rename_unit") .PreviousUnitName }}<span class="proposal-change__previous">Previously {{ .PreviousUnitName }}</span>{{ end }}
                         {{ end }}
@@ -413,9 +417,9 @@
           <article class="ui-pane__inner unit-content" data-pane-content-width="reading" data-inline-editing>
             <header class="nested-panel__header">
               <div>
-                <p class="label">Published unit content</p>
+                <p class="label">{{ if .Historical }}Proposal base unit content{{ else }}Published unit content{{ end }}</p>
                 <h1 id="admin-unit-content-title" data-inline-editor-display="inline-rename-unit">{{ .Name }}</h1>
-                {{ if $.CanEditProposal }}
+                {{ if and $.CanEditProposal (not .Historical) }}
                   <form class="editor-form unit-content__inline-editor unit-content__inline-editor--rename" id="inline-rename-unit" action="/curriculum-modification/units/{{ .ID }}" method="post" data-inline-editor hidden>
                     <input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}">
                     <input type="hidden" name="proposal_id" value="{{ $.ActiveProposal.ID }}">
@@ -439,7 +443,7 @@
                 <span class="material-symbols-rounded" aria-hidden="true">close</span>
               </a>
             </header>
-            {{ if $.CanEditProposal }}
+            {{ if and $.CanEditProposal (not .Historical) }}
               <div class="unit-content__admin-actions">
                 <button class="secondary-button secondary-button--compact" type="button" data-inline-editor-trigger="inline-rename-unit" aria-controls="inline-rename-unit" aria-expanded="false"><span class="material-symbols-rounded" aria-hidden="true">edit</span>Rename</button>
                 <button class="secondary-button secondary-button--compact" type="button" data-inline-editor-trigger="inline-edit-unit-content" aria-controls="inline-edit-unit-content" aria-expanded="false"><span class="material-symbols-rounded" aria-hidden="true">article</span>Edit content</button>
