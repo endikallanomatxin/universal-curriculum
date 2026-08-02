@@ -333,6 +333,13 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if err != nil || completedUnitIDs[foundations.ID] {
 		t.Fatalf("unit remained completed after returning it to pending: ids=%v err=%v", completedUnitIDs, err)
 	}
+	var completionEventCount int
+	if err := database.QueryRow(`
+		SELECT count(*) FROM unit_completion_events
+		WHERE user_id = $1 AND unit_id = $2
+	`, authorID, foundations.ID).Scan(&completionEventCount); err != nil || completionEventCount != 2 {
+		t.Fatalf("completion history count = %d err=%v, want completion and pending events", completionEventCount, err)
+	}
 
 	if err := db.SetUnitCompleted(database, authorID, algebra.ID, true); err != nil {
 		t.Fatal(err)
@@ -341,8 +348,11 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if err := database.QueryRow(`
 		SELECT creation.change_id, completion.curriculum_proposal_id
 		FROM curriculum_unit_creations creation
-		JOIN completed_units completion ON completion.unit_id = creation.change_id
+		JOIN unit_completion_events completion ON completion.unit_id = creation.change_id
 		WHERE creation.change_id = $1 AND completion.user_id = $2
+		  AND completion.is_completed = TRUE
+		ORDER BY completion.id DESC
+		LIMIT 1
 	`, algebra.ID, authorID).Scan(&creationChangeID, &completionProposalID); err != nil {
 		t.Fatal(err)
 	}

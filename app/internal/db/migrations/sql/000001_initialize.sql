@@ -715,18 +715,47 @@ CREATE TABLE learning_path_units (
     UNIQUE (path_id, position)
 );
 
-CREATE TABLE completed_units (
+CREATE TABLE unit_completion_events (
+    id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     unit_id BIGINT NOT NULL REFERENCES curriculum_unit_creations(change_id) ON DELETE RESTRICT,
     curriculum_proposal_id BIGINT NOT NULL REFERENCES curriculum_proposals(id) ON DELETE RESTRICT,
-    completed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (user_id, unit_id)
+    is_completed BOOLEAN NOT NULL,
+    occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX completed_units_unit_id_idx ON completed_units (unit_id);
+CREATE INDEX unit_completion_events_current_idx
+    ON unit_completion_events (user_id, unit_id, id DESC);
+CREATE INDEX unit_completion_events_unit_id_idx
+    ON unit_completion_events (unit_id);
+CREATE INDEX unit_completion_events_proposal_id_idx
+    ON unit_completion_events (curriculum_proposal_id);
+
+-- +goose StatementBegin
+CREATE FUNCTION validate_unit_completion_event() RETURNS TRIGGER
+LANGUAGE plpgsql AS $$
+BEGIN
+    IF TG_OP = 'UPDATE' THEN
+        RAISE EXCEPTION 'unit completion events are immutable';
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM curriculum_proposals
+        WHERE id = NEW.curriculum_proposal_id AND status = 'accepted'
+    ) THEN
+        RAISE EXCEPTION 'unit completion event must reference an accepted curriculum state';
+    END IF;
+    RETURN NEW;
+END;
+$$;
+-- +goose StatementEnd
+
+CREATE TRIGGER unit_completion_events_valid
+BEFORE INSERT OR UPDATE ON unit_completion_events
+FOR EACH ROW EXECUTE FUNCTION validate_unit_completion_event();
 
 -- +goose Down
-DROP TABLE completed_units;
+DROP TABLE unit_completion_events;
+DROP FUNCTION validate_unit_completion_event();
 DROP TABLE learning_path_units;
 DROP TABLE learning_paths;
 DROP TABLE curriculum_projection_state;

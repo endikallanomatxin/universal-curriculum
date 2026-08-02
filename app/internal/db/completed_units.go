@@ -22,9 +22,13 @@ func CompletedUnitIDs(q curriculumExecutor, userID int64) (map[int64]bool, error
 
 func UnitCompletionStatuses(q curriculumExecutor, userID int64) (map[int64]models.UnitCompletionStatus, error) {
 	rows, err := q.Query(`
-		SELECT unit_id
-		FROM completed_units
-		WHERE user_id = $1
+		SELECT unit_id, is_completed
+		FROM (
+			SELECT DISTINCT ON (unit_id) unit_id, is_completed
+			FROM unit_completion_events
+			WHERE user_id = $1
+			ORDER BY unit_id, id DESC
+		) current_completion
 		ORDER BY unit_id
 	`, userID)
 	if err != nil {
@@ -35,10 +39,13 @@ func UnitCompletionStatuses(q curriculumExecutor, userID int64) (map[int64]model
 	statuses := make(map[int64]models.UnitCompletionStatus)
 	for rows.Next() {
 		var unitID int64
-		if err := rows.Scan(&unitID); err != nil {
+		var completed bool
+		if err := rows.Scan(&unitID, &completed); err != nil {
 			return nil, fmt.Errorf("scan completed unit id: %w", err)
 		}
-		statuses[unitID] = models.UnitCompletionStatus{Direct: true}
+		if completed {
+			statuses[unitID] = models.UnitCompletionStatus{Direct: true}
+		}
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("iterate completed unit ids: %w", err)
@@ -85,23 +92,24 @@ func applyRecognitions(
 }
 
 func SetUnitCompleted(q curriculumExecutor, userID, unitID int64, completed bool) error {
-	if completed {
-		if _, err := q.Exec(`
-			INSERT INTO completed_units (user_id, unit_id, curriculum_proposal_id)
-			SELECT $1, $2, proposal_id
-			FROM curriculum_projection_state
-			WHERE singleton = TRUE AND proposal_id IS NOT NULL
-			ON CONFLICT (user_id, unit_id) DO NOTHING
-		`, userID, unitID); err != nil {
-			return fmt.Errorf("complete unit: %w", err)
-		}
-		return nil
-	}
 	if _, err := q.Exec(`
-		DELETE FROM completed_units
-		WHERE user_id = $1 AND unit_id = $2
-	`, userID, unitID); err != nil {
-		return fmt.Errorf("uncomplete unit: %w", err)
+		INSERT INTO unit_completion_events (
+			user_id, unit_id, curriculum_proposal_id, is_completed
+		)
+		SELECT $1, $2, state.proposal_id, $3
+		FROM curriculum_projection_state state
+		JOIN units unit ON unit.id = $2
+		WHERE state.singleton = TRUE
+		  AND state.proposal_id IS NOT NULL
+		  AND COALESCE((
+			SELECT event.is_completed
+			FROM unit_completion_events event
+			WHERE event.user_id = $1 AND event.unit_id = $2
+			ORDER BY event.id DESC
+			LIMIT 1
+		  ), FALSE) IS DISTINCT FROM $3
+	`, userID, unitID, completed); err != nil {
+		return fmt.Errorf("set unit completion: %w", err)
 	}
 	return nil
 }

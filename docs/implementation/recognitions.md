@@ -14,11 +14,13 @@ and many-to-one merges without percentages or partial-credit semantics.
 
 ## Progress
 
-`completed_units` stores only direct user completions and the accepted proposal
-that was current when each completion was recorded. Accepted recognitions are
-followed transitively when reading progress. Derived recognition is never
-inserted into `completed_units`, so it cannot overwrite or obscure the
-historical evidence from which it came.
+`unit_completion_events` is an append-oriented history of direct completion and
+return-to-pending actions. Every event records the accepted proposal that was
+current at that moment. The latest event supplies the user's current direct
+state, while earlier positive events remain available as historical evidence
+for convalidation and certification. Accepted recognitions are followed
+transitively when reading current progress. Derived recognition is never
+persisted, so it cannot overwrite or obscure the evidence from which it came.
 
 The learning interface distinguishes a direct completion from recognition
 derived from previous learning. A recognized unit cannot be independently
