@@ -12,25 +12,31 @@ their old and new positions.
 
 ## Layout optimization
 
-The server first produces a deterministic topological order and then searches
-a bounded set of other valid orders reachable through adjacent independent
-units. Candidates are compared lexicographically:
+The server produces two deterministic topological seeds: one follows the
+previous visible order and one ignores it in favour of graph structure. A
+single shared budget explores at most 512 states in total, reachable through
+adjacent independent units, so multi-start continuity does not multiply the
+request cost.
 
-1. fewer interleaving dependency intervals;
-2. shorter total dependency span; and
-3. less movement from the previous visible order.
+Candidates first establish the minimum crossing count and edge span. Orders
+with that crossing count and an edge span within a small deterministic quality
+band remain eligible; continuity chooses among them. This means:
+
+1. avoidable crossings are never preserved for continuity;
+2. a clearly shorter graph wins over historical positioning; and
+3. nearly equivalent arrangements minimize movement from the previous view.
 
 Structural clarity therefore wins over preserving a poor historical layout,
-while equivalent arrangements retain continuity. The search explores and
-retains at most 512 candidates, which is intentionally sized for the small
-neighbourhoods rendered by the application rather than the complete
-curriculum.
+while equivalent arrangements retain continuity. The fixed budget is
+intentionally sized for the small neighbourhoods rendered by the application
+rather than the complete curriculum.
 
-The optimized order is then handed to the established lane allocator. Ordering
-and routing deliberately remain separate: the bounded search improves the
-topology without subsequently packing or shifting lanes according to indirect
-geometric metrics. This preserves the allocator's existing breathing room and
-keeps dense converging branches from becoming a compact braid.
+The optimized order is then handed to the established lane allocator twice:
+once from a fresh state and once seeded by previous lanes. These are the only
+two lane candidates. Minimum width is mandatory, bend distance has a small
+quality band, and movement breaks the remaining tie. Ordering and routing
+deliberately remain separate, preserving breathing room without allowing stale
+lane hints to dictate the result.
 
 The browser groups sufficiently long dependencies with a shared source or
 target into short common trunks and joins their branch points with continuous

@@ -252,6 +252,17 @@ func BuildCurriculumGraphLayout(graph *models.CurriculumGraph) (*models.Curricul
 	return BuildCurriculumGraphLayoutWithHints(graph, CurriculumGraphLayoutHints{})
 }
 
+func cloneCurriculumGraphLayout(layout *models.CurriculumGraphLayout) *models.CurriculumGraphLayout {
+	if layout == nil {
+		return &models.CurriculumGraphLayout{}
+	}
+	clone := *layout
+	clone.Nodes = append([]models.CurriculumGraphNode(nil), layout.Nodes...)
+	clone.Edges = append([]models.CurriculumGraphEdge(nil), layout.Edges...)
+	clone.Boundaries = append([]models.CurriculumGraphBoundary(nil), layout.Boundaries...)
+	return &clone
+}
+
 func BuildCurriculumGraphLayoutWithHints(graph *models.CurriculumGraph, hints CurriculumGraphLayoutHints) (*models.CurriculumGraphLayout, error) {
 	layout := &models.CurriculumGraphLayout{}
 	if graph == nil {
@@ -266,10 +277,14 @@ func BuildCurriculumGraphLayoutWithHints(graph *models.CurriculumGraph, hints Cu
 			DependentID:    dependency.UnitID,
 		})
 	}
+	canonical := cloneCurriculumGraphLayout(layout)
+	if err := topologicallyOrderCurriculum(canonical, nil); err != nil {
+		return nil, err
+	}
 	if err := topologicallyOrderCurriculum(layout, hints.Order); err != nil {
 		return nil, err
 	}
-	improveCurriculumNodeOrder(layout, hints.Order)
+	improveCurriculumNodeOrder(layout, hints.Order, canonical.Nodes)
 	assignCurriculumGraphLanes(layout, hints.Lanes)
 	return layout, nil
 }
@@ -280,7 +295,17 @@ type curriculumOrderScore struct {
 	Movement  int
 }
 
-func improveCurriculumNodeOrder(graph *models.CurriculumGraphLayout, previousOrder map[int64]int) {
+type curriculumOrderCandidate struct {
+	nodes []models.CurriculumGraphNode
+	score curriculumOrderScore
+	key   string
+}
+
+func improveCurriculumNodeOrder(
+	graph *models.CurriculumGraphLayout,
+	previousOrder map[int64]int,
+	additionalSeeds ...[]models.CurriculumGraphNode,
+) {
 	if graph == nil || len(graph.Nodes) < 2 || len(graph.Edges) == 0 {
 		return
 	}
@@ -288,20 +313,26 @@ func improveCurriculumNodeOrder(graph *models.CurriculumGraphLayout, previousOrd
 	for _, edge := range graph.Edges {
 		directDependencies[[2]int64{edge.PrerequisiteID, edge.DependentID}] = true
 	}
-	type orderCandidate struct {
-		nodes []models.CurriculumGraphNode
-		score curriculumOrderScore
-		key   string
+	pending := make([]curriculumOrderCandidate, 0, 1+len(additionalSeeds))
+	seen := make(map[string]bool)
+	addSeed := func(nodes []models.CurriculumGraphNode) {
+		nodes = append([]models.CurriculumGraphNode(nil), nodes...)
+		key := curriculumNodeOrderKey(nodes)
+		if seen[key] {
+			return
+		}
+		seen[key] = true
+		pending = append(pending, curriculumOrderCandidate{
+			nodes: nodes,
+			score: scoreCurriculumNodes(nodes, graph.Edges, previousOrder),
+			key:   key,
+		})
 	}
-	initialNodes := append([]models.CurriculumGraphNode(nil), graph.Nodes...)
-	initial := orderCandidate{
-		nodes: initialNodes,
-		score: scoreCurriculumNodes(initialNodes, graph.Edges, previousOrder),
-		key:   curriculumNodeOrderKey(initialNodes),
+	addSeed(graph.Nodes)
+	for _, seed := range additionalSeeds {
+		addSeed(seed)
 	}
-	best := initial
-	pending := []orderCandidate{initial}
-	seen := map[string]bool{initial.key: true}
+	exploredCandidates := make([]curriculumOrderCandidate, 0, curriculumOrderSearchLimit)
 	sortCandidates := func() {
 		sort.SliceStable(pending, func(i, j int) bool {
 			if pending[i].score != pending[j].score {
@@ -314,9 +345,7 @@ func improveCurriculumNodeOrder(graph *models.CurriculumGraphLayout, previousOrd
 		sortCandidates()
 		current := pending[0]
 		pending = pending[1:]
-		if current.score.betterThan(best.score) {
-			best = current
-		}
+		exploredCandidates = append(exploredCandidates, current)
 		for index := 0; index+1 < len(current.nodes); index++ {
 			left, right := current.nodes[index].ID, current.nodes[index+1].ID
 			if directDependencies[[2]int64{left, right}] {
@@ -329,7 +358,7 @@ func improveCurriculumNodeOrder(graph *models.CurriculumGraphLayout, previousOrd
 				continue
 			}
 			seen[key] = true
-			pending = append(pending, orderCandidate{
+			pending = append(pending, curriculumOrderCandidate{
 				nodes: nodes,
 				score: scoreCurriculumNodes(nodes, graph.Edges, previousOrder),
 				key:   key,
@@ -340,7 +369,35 @@ func improveCurriculumNodeOrder(graph *models.CurriculumGraphLayout, previousOrd
 			pending = pending[:curriculumOrderSearchLimit]
 		}
 	}
-	graph.Nodes = best.nodes
+	graph.Nodes = preferredCurriculumOrder(exploredCandidates, len(graph.Edges)).nodes
+}
+
+func preferredCurriculumOrder(candidates []curriculumOrderCandidate, edgeCount int) curriculumOrderCandidate {
+	bestCrossings := candidates[0].score.Crossings
+	bestSpan := candidates[0].score.EdgeSpan
+	for _, candidate := range candidates[1:] {
+		if candidate.score.Crossings < bestCrossings {
+			bestCrossings = candidate.score.Crossings
+			bestSpan = candidate.score.EdgeSpan
+		} else if candidate.score.Crossings == bestCrossings && candidate.score.EdgeSpan < bestSpan {
+			bestSpan = candidate.score.EdgeSpan
+		}
+	}
+	spanTolerance := max(1, edgeCount/8)
+	best := candidates[0]
+	found := false
+	for _, candidate := range candidates {
+		if candidate.score.Crossings != bestCrossings || candidate.score.EdgeSpan > bestSpan+spanTolerance {
+			continue
+		}
+		if !found || candidate.score.Movement < best.score.Movement ||
+			candidate.score.Movement == best.score.Movement && candidate.score.EdgeSpan < best.score.EdgeSpan ||
+			candidate.score.Movement == best.score.Movement && candidate.score.EdgeSpan == best.score.EdgeSpan && candidate.key < best.key {
+			best = candidate
+			found = true
+		}
+	}
+	return best
 }
 
 func scoreCurriculumNodeOrder(graph *models.CurriculumGraphLayout, previousOrder map[int64]int) curriculumOrderScore {
@@ -411,6 +468,13 @@ func intervalsInterleave(leftStart, leftEnd, rightStart, rightEnd int) bool {
 }
 
 func absoluteInt(value int) int {
+	if value < 0 {
+		return -value
+	}
+	return value
+}
+
+func absoluteFloat(value float64) float64 {
 	if value < 0 {
 		return -value
 	}
@@ -538,6 +602,23 @@ func sortCurriculumNodes(nodes []models.CurriculumGraphNode) {
 }
 
 func assignCurriculumGraphLanes(graph *models.CurriculumGraphLayout, previousLanes map[int64]float64) {
+	if graph == nil {
+		return
+	}
+	fresh := cloneCurriculumGraphLayout(graph)
+	assignCurriculumGraphLaneCandidate(fresh, nil)
+	if len(previousLanes) == 0 {
+		*graph = *fresh
+		return
+	}
+	continuous := cloneCurriculumGraphLayout(graph)
+	assignCurriculumGraphLaneCandidate(continuous, previousLanes)
+	*graph = *preferredCurriculumLaneLayout(
+		[]*models.CurriculumGraphLayout{fresh, continuous}, previousLanes,
+	)
+}
+
+func assignCurriculumGraphLaneCandidate(graph *models.CurriculumGraphLayout, previousLanes map[int64]float64) {
 	if graph == nil || len(graph.Edges) == 0 {
 		return
 	}
@@ -589,6 +670,61 @@ func assignCurriculumGraphLanes(graph *models.CurriculumGraphLayout, previousLan
 		avoidCurriculumNodeLaneCollisions(graph, nodeIndexes)
 	}
 	compactCurriculumGraphLanes(graph)
+}
+
+type curriculumLaneScore struct {
+	Width    int
+	Bends    float64
+	Movement float64
+}
+
+func preferredCurriculumLaneLayout(
+	candidates []*models.CurriculumGraphLayout,
+	previousLanes map[int64]float64,
+) *models.CurriculumGraphLayout {
+	scores := make([]curriculumLaneScore, len(candidates))
+	bestWidth := 0
+	bestBends := 0.0
+	for index, candidate := range candidates {
+		scores[index] = scoreCurriculumLanes(candidate, previousLanes)
+		if index == 0 || scores[index].Width < bestWidth {
+			bestWidth = scores[index].Width
+			bestBends = scores[index].Bends
+		} else if scores[index].Width == bestWidth && scores[index].Bends < bestBends {
+			bestBends = scores[index].Bends
+		}
+	}
+	bendTolerance := float64(max(1, len(candidates[0].Edges)/8))
+	bestIndex := -1
+	for index, score := range scores {
+		if score.Width != bestWidth || score.Bends > bestBends+bendTolerance {
+			continue
+		}
+		if bestIndex == -1 || score.Movement < scores[bestIndex].Movement ||
+			score.Movement == scores[bestIndex].Movement && score.Bends < scores[bestIndex].Bends {
+			bestIndex = index
+		}
+	}
+	return candidates[bestIndex]
+}
+
+func scoreCurriculumLanes(
+	graph *models.CurriculumGraphLayout,
+	previousLanes map[int64]float64,
+) curriculumLaneScore {
+	score := curriculumLaneScore{Width: graph.LaneCount}
+	nodeLanes := make(map[int64]float64, len(graph.Nodes))
+	for _, node := range graph.Nodes {
+		nodeLanes[node.ID] = node.Lane
+		if previous, exists := previousLanes[node.ID]; exists {
+			score.Movement += absoluteFloat(node.Lane - previous)
+		}
+	}
+	for _, edge := range graph.Edges {
+		score.Bends += absoluteFloat(nodeLanes[edge.PrerequisiteID]-edge.Lane) +
+			absoluteFloat(nodeLanes[edge.DependentID]-edge.Lane)
+	}
+	return score
 }
 
 func assignCurriculumNodeLanes(graph *models.CurriculumGraphLayout, nodeIndexes map[int64]int) {

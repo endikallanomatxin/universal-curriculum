@@ -192,6 +192,57 @@ func TestBuildCurriculumGraphLayoutUsesPreviousOrderAsAStartingPoint(t *testing.
 	}
 }
 
+func TestPreferredCurriculumOrderPreservesContinuityWithinQualityBand(t *testing.T) {
+	nodes := []models.CurriculumGraphNode{{Unit: models.Unit{ID: 1}}}
+	candidates := []curriculumOrderCandidate{
+		{nodes: nodes, score: curriculumOrderScore{Crossings: 0, EdgeSpan: 10, Movement: 20}, key: "structural"},
+		{nodes: nodes, score: curriculumOrderScore{Crossings: 0, EdgeSpan: 11, Movement: 2}, key: "continuous"},
+		{nodes: nodes, score: curriculumOrderScore{Crossings: 1, EdgeSpan: 5, Movement: 0}, key: "crossing"},
+	}
+
+	preferred := preferredCurriculumOrder(candidates, 8)
+
+	if preferred.key != "continuous" {
+		t.Fatalf("preferred order = %q, want continuity inside the structural tolerance", preferred.key)
+	}
+}
+
+func TestPreferredCurriculumOrderRejectsMovementOutsideQualityBand(t *testing.T) {
+	nodes := []models.CurriculumGraphNode{{Unit: models.Unit{ID: 1}}}
+	candidates := []curriculumOrderCandidate{
+		{nodes: nodes, score: curriculumOrderScore{Crossings: 0, EdgeSpan: 10, Movement: 20}, key: "structural"},
+		{nodes: nodes, score: curriculumOrderScore{Crossings: 0, EdgeSpan: 12, Movement: 0}, key: "continuous"},
+	}
+
+	preferred := preferredCurriculumOrder(candidates, 8)
+
+	if preferred.key != "structural" {
+		t.Fatalf("preferred order = %q, want the structurally better order", preferred.key)
+	}
+}
+
+func TestPreferredCurriculumLanesRejectWiderContinuousLayout(t *testing.T) {
+	fresh := &models.CurriculumGraphLayout{
+		LaneCount: 2,
+		Nodes: []models.CurriculumGraphNode{
+			{Unit: models.Unit{ID: 1}, Lane: 0},
+			{Unit: models.Unit{ID: 2}, Lane: 1},
+		},
+	}
+	continuous := cloneCurriculumGraphLayout(fresh)
+	continuous.LaneCount = 3
+	continuous.Nodes[0].Lane = 2
+	previous := map[int64]float64{1: 2, 2: 1}
+
+	preferred := preferredCurriculumLaneLayout(
+		[]*models.CurriculumGraphLayout{fresh, continuous}, previous,
+	)
+
+	if preferred != fresh {
+		t.Fatal("wider continuous lane layout was preferred over the fresh layout")
+	}
+}
+
 func TestBuildCurriculumGraphLayoutImprovesCrossingPreviousOrder(t *testing.T) {
 	graph := &models.CurriculumGraph{
 		Units: []models.Unit{
