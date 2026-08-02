@@ -235,11 +235,61 @@ func TestPreferredCurriculumLanesRejectWiderContinuousLayout(t *testing.T) {
 	previous := map[int64]float64{1: 2, 2: 1}
 
 	preferred := preferredCurriculumLaneLayout(
-		[]*models.CurriculumGraphLayout{fresh, continuous}, previous,
+		[]*models.CurriculumGraphLayout{fresh, continuous}, previous, nil,
 	)
 
 	if preferred != fresh {
 		t.Fatal("wider continuous lane layout was preferred over the fresh layout")
+	}
+}
+
+func TestPreferredCurriculumLanesKeepTheFocusedUnitStable(t *testing.T) {
+	anchorMoved := &models.CurriculumGraphLayout{
+		LaneCount: 2,
+		Nodes: []models.CurriculumGraphNode{
+			{Unit: models.Unit{ID: 1}, Lane: 1},
+			{Unit: models.Unit{ID: 2}, Lane: 0},
+		},
+	}
+	otherMoved := &models.CurriculumGraphLayout{
+		LaneCount: 2,
+		Nodes: []models.CurriculumGraphNode{
+			{Unit: models.Unit{ID: 1}, Lane: 0},
+			{Unit: models.Unit{ID: 2}, Lane: 1},
+		},
+	}
+	previous := map[int64]float64{1: 0, 2: 0}
+
+	preferred := preferredCurriculumLaneLayout(
+		[]*models.CurriculumGraphLayout{anchorMoved, otherMoved},
+		previous,
+		map[int64]int{1: 4},
+	)
+
+	if preferred != otherMoved {
+		t.Fatal("equivalent lane layout moved the focused unit instead of another unit")
+	}
+}
+
+func TestCurriculumGraphMovementWeightsIncludeImmediateNeighbors(t *testing.T) {
+	anchorID := int64(2)
+	graph := &models.CurriculumGraphLayout{
+		Nodes: []models.CurriculumGraphNode{
+			{Unit: models.Unit{ID: 1}},
+			{Unit: models.Unit{ID: 2}},
+			{Unit: models.Unit{ID: 3}},
+			{Unit: models.Unit{ID: 4}},
+		},
+		Edges: []models.CurriculumGraphEdge{
+			{PrerequisiteID: 1, DependentID: 2},
+			{PrerequisiteID: 2, DependentID: 3},
+		},
+	}
+
+	weights := curriculumGraphMovementWeights(graph, &anchorID)
+
+	if weights[2] != 4 || weights[1] != 2 || weights[3] != 2 || curriculumMovementWeight(4, weights) != 1 {
+		t.Fatalf("movement weights = %#v, want anchor 4, neighbors 2 and other units 1", weights)
 	}
 }
 

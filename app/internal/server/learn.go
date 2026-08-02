@@ -193,7 +193,9 @@ func (server *Server) learn(writer http.ResponseWriter, request *http.Request) {
 			return
 		}
 	}
-	data.Graph, err = services.BuildCurriculumGraphLayoutWithHints(visibleGraph, curriculumLayoutHints(request))
+	layoutHints := curriculumLayoutHints(request)
+	layoutHints.AnchorID = focusID
+	data.Graph, err = services.BuildCurriculumGraphLayoutWithHints(visibleGraph, layoutHints)
 	if err != nil {
 		log.Printf("lay out learn curriculum: %v", err)
 		http.Error(writer, "Unable to lay out curriculum", http.StatusInternalServerError)

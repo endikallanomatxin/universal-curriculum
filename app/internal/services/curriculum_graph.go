@@ -19,8 +19,9 @@ const (
 )
 
 type CurriculumGraphLayoutHints struct {
-	Order map[int64]int
-	Lanes map[int64]float64
+	Order    map[int64]int
+	Lanes    map[int64]float64
+	AnchorID *int64
 }
 
 func CurriculumNeighborhood(graph *models.CurriculumGraph, focusID *int64) (*models.CurriculumGraph, *models.Unit, []models.CurriculumGraphBoundary, error) {
@@ -284,9 +285,26 @@ func BuildCurriculumGraphLayoutWithHints(graph *models.CurriculumGraph, hints Cu
 	if err := topologicallyOrderCurriculum(layout, hints.Order); err != nil {
 		return nil, err
 	}
-	improveCurriculumNodeOrder(layout, hints.Order, canonical.Nodes)
-	assignCurriculumGraphLanes(layout, hints.Lanes)
+	movementWeights := curriculumGraphMovementWeights(layout, hints.AnchorID)
+	improveCurriculumNodeOrder(layout, hints.Order, movementWeights, canonical.Nodes)
+	assignCurriculumGraphLanes(layout, hints.Lanes, movementWeights)
 	return layout, nil
+}
+
+func curriculumGraphMovementWeights(graph *models.CurriculumGraphLayout, anchorID *int64) map[int64]int {
+	if graph == nil || anchorID == nil {
+		return nil
+	}
+	weights := map[int64]int{*anchorID: 4}
+	for _, edge := range graph.Edges {
+		if edge.PrerequisiteID == *anchorID {
+			weights[edge.DependentID] = 2
+		}
+		if edge.DependentID == *anchorID {
+			weights[edge.PrerequisiteID] = 2
+		}
+	}
+	return weights
 }
 
 type curriculumOrderScore struct {
@@ -304,6 +322,7 @@ type curriculumOrderCandidate struct {
 func improveCurriculumNodeOrder(
 	graph *models.CurriculumGraphLayout,
 	previousOrder map[int64]int,
+	movementWeights map[int64]int,
 	additionalSeeds ...[]models.CurriculumGraphNode,
 ) {
 	if graph == nil || len(graph.Nodes) < 2 || len(graph.Edges) == 0 {
@@ -324,7 +343,7 @@ func improveCurriculumNodeOrder(
 		seen[key] = true
 		pending = append(pending, curriculumOrderCandidate{
 			nodes: nodes,
-			score: scoreCurriculumNodes(nodes, graph.Edges, previousOrder),
+			score: scoreCurriculumNodes(nodes, graph.Edges, previousOrder, movementWeights),
 			key:   key,
 		})
 	}
@@ -360,7 +379,7 @@ func improveCurriculumNodeOrder(
 			seen[key] = true
 			pending = append(pending, curriculumOrderCandidate{
 				nodes: nodes,
-				score: scoreCurriculumNodes(nodes, graph.Edges, previousOrder),
+				score: scoreCurriculumNodes(nodes, graph.Edges, previousOrder, movementWeights),
 				key:   key,
 			})
 		}
@@ -404,20 +423,21 @@ func scoreCurriculumNodeOrder(graph *models.CurriculumGraphLayout, previousOrder
 	if graph == nil {
 		return curriculumOrderScore{}
 	}
-	return scoreCurriculumNodes(graph.Nodes, graph.Edges, previousOrder)
+	return scoreCurriculumNodes(graph.Nodes, graph.Edges, previousOrder, nil)
 }
 
 func scoreCurriculumNodes(
 	nodes []models.CurriculumGraphNode,
 	edges []models.CurriculumGraphEdge,
 	previousOrder map[int64]int,
+	movementWeights map[int64]int,
 ) curriculumOrderScore {
 	score := curriculumOrderScore{}
 	positions := make(map[int64]int, len(nodes))
 	for index, node := range nodes {
 		positions[node.ID] = index
 		if previous, exists := previousOrder[node.ID]; exists {
-			score.Movement += absoluteInt(index - previous)
+			score.Movement += absoluteInt(index-previous) * curriculumMovementWeight(node.ID, movementWeights)
 		}
 	}
 	for index, edge := range edges {
@@ -439,6 +459,13 @@ func scoreCurriculumNodes(
 		}
 	}
 	return score
+}
+
+func curriculumMovementWeight(id int64, weights map[int64]int) int {
+	if weight := weights[id]; weight > 0 {
+		return weight
+	}
+	return 1
 }
 
 func curriculumNodeOrderKey(nodes []models.CurriculumGraphNode) string {
@@ -601,7 +628,11 @@ func sortCurriculumNodes(nodes []models.CurriculumGraphNode) {
 	})
 }
 
-func assignCurriculumGraphLanes(graph *models.CurriculumGraphLayout, previousLanes map[int64]float64) {
+func assignCurriculumGraphLanes(
+	graph *models.CurriculumGraphLayout,
+	previousLanes map[int64]float64,
+	movementWeights map[int64]int,
+) {
 	if graph == nil {
 		return
 	}
@@ -616,7 +647,7 @@ func assignCurriculumGraphLanes(graph *models.CurriculumGraphLayout, previousLan
 	hybrid := cloneCurriculumGraphLayout(fresh)
 	stabilizeCurriculumNodeLanes(hybrid, previousLanes)
 	*graph = *preferredCurriculumLaneLayout(
-		[]*models.CurriculumGraphLayout{fresh, continuous, hybrid}, previousLanes,
+		[]*models.CurriculumGraphLayout{fresh, continuous, hybrid}, previousLanes, movementWeights,
 	)
 }
 
@@ -734,12 +765,13 @@ type curriculumLaneScore struct {
 func preferredCurriculumLaneLayout(
 	candidates []*models.CurriculumGraphLayout,
 	previousLanes map[int64]float64,
+	movementWeights map[int64]int,
 ) *models.CurriculumGraphLayout {
 	scores := make([]curriculumLaneScore, len(candidates))
 	bestWidth := 0
 	bestBends := 0.0
 	for index, candidate := range candidates {
-		scores[index] = scoreCurriculumLanes(candidate, previousLanes)
+		scores[index] = scoreCurriculumLanes(candidate, previousLanes, movementWeights)
 		if index == 0 || scores[index].Width < bestWidth {
 			bestWidth = scores[index].Width
 			bestBends = scores[index].Bends
@@ -764,13 +796,14 @@ func preferredCurriculumLaneLayout(
 func scoreCurriculumLanes(
 	graph *models.CurriculumGraphLayout,
 	previousLanes map[int64]float64,
+	movementWeights map[int64]int,
 ) curriculumLaneScore {
 	score := curriculumLaneScore{Width: graph.LaneCount}
 	nodeLanes := make(map[int64]float64, len(graph.Nodes))
 	for _, node := range graph.Nodes {
 		nodeLanes[node.ID] = node.Lane
 		if previous, exists := previousLanes[node.ID]; exists {
-			score.Movement += absoluteFloat(node.Lane - previous)
+			score.Movement += absoluteFloat(node.Lane-previous) * float64(curriculumMovementWeight(node.ID, movementWeights))
 		}
 	}
 	for _, edge := range graph.Edges {

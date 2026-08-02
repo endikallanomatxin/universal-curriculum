@@ -31,6 +31,13 @@ while equivalent arrangements retain continuity. The fixed budget is
 intentionally sized for the small neighbourhoods rendered by the application
 rather than the complete curriculum.
 
+When navigation has a focused unit, continuity is anchored around it. Movement
+of that unit has weight four, movement of its immediate prerequisites and
+dependents has weight two, and every other persistent unit has weight one.
+Newly visible units have no previous position to preserve. These weights only
+break ties inside the existing structural quality bands, so an anchor cannot
+justify extra crossings, width or excessive bends.
+
 The optimized order is then handed to the lane allocator to produce three
 cheap candidates: one from a fresh state, one seeded by previous lanes and a
 hybrid that keeps the fresh routing while moving persistent nodes towards a

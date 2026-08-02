@@ -537,7 +537,9 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 		http.Error(writer, "Unable to navigate curriculum", http.StatusInternalServerError)
 		return
 	}
-	layout, err := services.BuildCurriculumGraphLayoutWithHints(visibleGraph, curriculumLayoutHints(request))
+	layoutHints := curriculumLayoutHints(request)
+	layoutHints.AnchorID = focusID
+	layout, err := services.BuildCurriculumGraphLayoutWithHints(visibleGraph, layoutHints)
 	if err != nil {
 		log.Printf("layout curriculum graph: %v", err)
 		http.Error(writer, "Unable to lay out curriculum", http.StatusInternalServerError)
