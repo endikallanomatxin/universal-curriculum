@@ -80,9 +80,8 @@ func TestValidateCurriculumProposalAcceptsRecognitionAcrossResultingState(t *tes
 		{
 			ID: 11, Position: 2, Kind: "recognition",
 			Recognition: &models.Recognition{
-				Rationale: "The former units jointly cover the new material.",
-				Sources:   []models.Unit{{ID: 1}, {ID: 3}},
-				Targets:   []models.Unit{{ID: 10}},
+				Sources: []models.Unit{{ID: 1}, {ID: 3}},
+				Targets: []models.Unit{{ID: 10}},
 			},
 		},
 	}}
@@ -170,9 +169,8 @@ func TestValidateCurriculumProposalRejectsIncoherentChanges(t *testing.T) {
 				{
 					ID: 11, Position: 2, Kind: "recognition",
 					Recognition: &models.Recognition{
-						Rationale: "Invalid hypothetical source.",
-						Sources:   []models.Unit{{ID: 10}},
-						Targets:   []models.Unit{{ID: 1}},
+						Sources: []models.Unit{{ID: 10}},
+						Targets: []models.Unit{{ID: 1}},
 					},
 				},
 			},
@@ -182,9 +180,8 @@ func TestValidateCurriculumProposalRejectsIncoherentChanges(t *testing.T) {
 			changes: []models.CurriculumProposalChange{{
 				ID: 10, Position: 1, Kind: "recognition",
 				Recognition: &models.Recognition{
-					Rationale: "Invalid missing target.",
-					Sources:   []models.Unit{{ID: 1}},
-					Targets:   []models.Unit{{ID: 99}},
+					Sources: []models.Unit{{ID: 1}},
+					Targets: []models.Unit{{ID: 99}},
 				},
 			}},
 		},
@@ -193,9 +190,8 @@ func TestValidateCurriculumProposalRejectsIncoherentChanges(t *testing.T) {
 			changes: []models.CurriculumProposalChange{{
 				ID: 10, Position: 1, Kind: "recognition",
 				Recognition: &models.Recognition{
-					Rationale: "Duplicate source.",
-					Sources:   []models.Unit{{ID: 1}, {ID: 1}},
-					Targets:   []models.Unit{{ID: 2}},
+					Sources: []models.Unit{{ID: 1}, {ID: 1}},
+					Targets: []models.Unit{{ID: 2}},
 				},
 			}},
 		},

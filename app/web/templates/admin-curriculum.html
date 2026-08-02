@@ -276,7 +276,6 @@
                             →
                             {{ range $index, $unit := .Recognition.Targets }}{{ if $index }}, {{ end }}<a class="proposal-change__unit-link" href="/curriculum-modification?proposal={{ $.ActiveProposal.ID }}&amp;unit={{ $unit.ID }}&amp;content={{ $unit.ID }}" hx-get="/curriculum-modification?proposal={{ $.ActiveProposal.ID }}&amp;unit={{ $unit.ID }}&amp;content={{ $unit.ID }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true" data-panel-navigation="open-or-replace">{{ $unit.Name }}</a>{{ end }}
                           </strong>
-                          <span class="proposal-change__previous">{{ .Recognition.Rationale }}</span>
                         {{ else }}
                           {{ if or (eq .Kind "add_dependency") (eq .Kind "remove_dependency") }}
                             <strong class="proposal-change__subject proposal-change__dependency">
@@ -391,7 +390,6 @@
                       <div class="proposal-change__description">
                         {{ if .Recognition }}
                           <strong class="proposal-change__subject">{{ range $index, $unit := .Recognition.Sources }}{{ if $index }}, {{ end }}{{ $unit.Name }}{{ end }} → {{ range $index, $unit := .Recognition.Targets }}{{ if $index }}, {{ end }}{{ $unit.Name }}{{ end }}</strong>
-                          <span class="proposal-change__previous">{{ .Recognition.Rationale }}</span>
                         {{ else }}
                           {{ if or (eq .Kind "add_dependency") (eq .Kind "remove_dependency") }}
                             {{ template "proposal-dependency-change" . }}
@@ -724,8 +722,6 @@
               </div>
             </div>
 
-            <label for="recognition-rationale">Reason</label>
-            <textarea id="recognition-rationale" name="rationale" required rows="4" maxlength="1000" data-autoresize placeholder="Explain why mastering all sources covers every target."></textarea>
             <button class="primary-button" type="submit" {{ if not .ActiveProposal }}disabled{{ end }}>Add recognition</button>
           </form>
         </div>

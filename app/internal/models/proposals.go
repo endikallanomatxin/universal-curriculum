@@ -41,7 +41,6 @@ type CurriculumProposalChange struct {
 }
 
 type Recognition struct {
-	Rationale string
-	Sources   []Unit
-	Targets   []Unit
+	Sources []Unit
+	Targets []Unit
 }

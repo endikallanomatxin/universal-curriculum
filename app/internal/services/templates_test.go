@@ -257,9 +257,8 @@ func TestCurriculumProposalRendersRecognitionWorkflowAndPublishWarning(t *testin
 			Changes: []models.CurriculumProposalChange{{
 				ID: 13, Kind: "recognition",
 				Recognition: &models.Recognition{
-					Rationale: "Equivalent coverage.",
-					Sources:   []models.Unit{{ID: 1, Name: "Old foundations"}},
-					Targets:   []models.Unit{{ID: 2, Name: "New foundations"}},
+					Sources: []models.Unit{{ID: 1, Name: "Old foundations"}},
+					Targets: []models.Unit{{ID: 2, Name: "New foundations"}},
 				},
 			}},
 		},
@@ -273,7 +272,6 @@ func TestCurriculumProposalRendersRecognitionWorkflowAndPublishWarning(t *testin
 		`name="source_unit_ids"`,
 		`name="target_unit_ids"`,
 		"Recognition",
-		"Equivalent coverage.",
 		`href="/curriculum-modification?proposal=12&amp;unit=2&amp;content=2"`,
 		`data-panel-navigation="open-or-replace"`,
 		"Publish anyway?",
@@ -281,6 +279,9 @@ func TestCurriculumProposalRendersRecognitionWorkflowAndPublishWarning(t *testin
 		if !strings.Contains(output, fragment) {
 			t.Errorf("rendered recognition workflow does not contain %q", fragment)
 		}
+	}
+	if strings.Contains(output, `id="recognition-rationale"`) {
+		t.Error("recognition workflow unexpectedly asks for a per-change rationale")
 	}
 }
 

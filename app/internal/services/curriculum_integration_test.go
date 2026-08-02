@@ -384,7 +384,6 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 		retirement.ID,
 		[]int64{algebra.ID},
 		[]int64{replacement.ID},
-		"Mastering the former algebra unit covers the applied replacement.",
 	); err != nil {
 		t.Fatal(err)
 	}
@@ -477,7 +476,6 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 		discarded.ID,
 		[]int64{foundations.ID},
 		[]int64{hypothetical.ID},
-		"Test cleanup of a recognition to a discarded hypothetical unit.",
 	); err != nil {
 		t.Fatal(err)
 	}

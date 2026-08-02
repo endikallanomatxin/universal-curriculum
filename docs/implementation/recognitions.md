@@ -2,9 +2,11 @@
 
 ## Proposal representation
 
-A `recognition` proposal change contains one or more source unit IDs, one
-or more target unit IDs and a non-empty rationale. All sources belong to the
-proposal's base curriculum and all targets belong to its resulting curriculum.
+A `recognition` proposal change contains one or more source unit IDs and one
+or more target unit IDs. All sources belong to the proposal's base curriculum
+and all targets belong to its resulting curriculum. The containing proposal's
+rationale explains why the mapping belongs in the curriculum history; the
+recognition itself records only the structured mapping.
 The change is evaluated against those two complete states rather than applied as
 an ordered graph mutation.
 

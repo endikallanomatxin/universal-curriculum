@@ -11,20 +11,19 @@ import (
 )
 
 var (
-	ErrUnitNotFound                 = errors.New("curriculum unit not found")
-	ErrUnitNameRequired             = errors.New("unit name is required")
-	ErrUnitContentRequired          = errors.New("unit content is required")
-	ErrDependencyExists             = errors.New("unit dependency already exists")
-	ErrDependencyNotFound           = errors.New("unit dependency not found")
-	ErrDependencyCycle              = errors.New("unit dependency creates a cycle")
-	ErrProposalNotFound             = errors.New("draft curriculum proposal not found")
-	ErrProposalTitleRequired        = errors.New("proposal title is required")
-	ErrProposalRationaleRequired    = errors.New("proposal rationale is required")
-	ErrProposalEmpty                = errors.New("curriculum proposal has no changes")
-	ErrProposalOutdated             = errors.New("curriculum proposal is not based on the current curriculum")
-	ErrRecognitionRationaleRequired = errors.New("recognition rationale is required")
-	ErrRecognitionSourcesRequired   = errors.New("recognition requires at least one source")
-	ErrRecognitionTargetsRequired   = errors.New("recognition requires at least one target")
+	ErrUnitNotFound               = errors.New("curriculum unit not found")
+	ErrUnitNameRequired           = errors.New("unit name is required")
+	ErrUnitContentRequired        = errors.New("unit content is required")
+	ErrDependencyExists           = errors.New("unit dependency already exists")
+	ErrDependencyNotFound         = errors.New("unit dependency not found")
+	ErrDependencyCycle            = errors.New("unit dependency creates a cycle")
+	ErrProposalNotFound           = errors.New("draft curriculum proposal not found")
+	ErrProposalTitleRequired      = errors.New("proposal title is required")
+	ErrProposalRationaleRequired  = errors.New("proposal rationale is required")
+	ErrProposalEmpty              = errors.New("curriculum proposal has no changes")
+	ErrProposalOutdated           = errors.New("curriculum proposal is not based on the current curriculum")
+	ErrRecognitionSourcesRequired = errors.New("recognition requires at least one source")
+	ErrRecognitionTargetsRequired = errors.New("recognition requires at least one target")
 )
 
 type UnitIsPrerequisiteError struct{ DependentNames []string }
@@ -370,12 +369,7 @@ func AddCurriculumRecognition(
 	database *sql.DB,
 	authorID, proposalID int64,
 	sourceUnitIDs, targetUnitIDs []int64,
-	rationale string,
 ) error {
-	rationale = strings.TrimSpace(rationale)
-	if rationale == "" {
-		return ErrRecognitionRationaleRequired
-	}
 	sourceUnitIDs = uniquePositiveIDs(sourceUnitIDs)
 	targetUnitIDs = uniquePositiveIDs(targetUnitIDs)
 	if len(sourceUnitIDs) == 0 {
@@ -401,7 +395,7 @@ func AddCurriculumRecognition(
 		return err
 	}
 	result := CurriculumGraphWithProposal(base, proposal)
-	recognition := &models.Recognition{Rationale: rationale}
+	recognition := &models.Recognition{}
 	for _, unitID := range sourceUnitIDs {
 		unit := curriculumUnitByID(base, unitID)
 		if unit == nil {

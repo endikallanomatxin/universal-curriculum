@@ -531,7 +531,7 @@ func listCurriculumProposalChanges(q curriculumExecutor, proposalID int64) ([]mo
 	rows, err := q.Query(`
 		SELECT id, proposal_id, position, kind, unit_id,
 		       COALESCE(unit_name, ''), COALESCE(unit_content, ''),
-		       prerequisite_id, COALESCE(recognition_rationale, '')
+		       prerequisite_id
 		FROM curriculum_proposal_change_details
 		WHERE proposal_id = $1
 		ORDER BY position
@@ -544,11 +544,9 @@ func listCurriculumProposalChanges(q curriculumExecutor, proposalID int64) ([]mo
 	for rows.Next() {
 		var change models.CurriculumProposalChange
 		var unitID, prerequisite sql.NullInt64
-		var recognitionRationale string
 		if err := rows.Scan(
 			&change.ID, &change.ProposalID, &change.Position, &change.Kind,
 			&unitID, &change.UnitName, &change.UnitContent, &prerequisite,
-			&recognitionRationale,
 		); err != nil {
 			return nil, fmt.Errorf("scan curriculum proposal change: %w", err)
 		}
@@ -559,7 +557,7 @@ func listCurriculumProposalChanges(q curriculumExecutor, proposalID int64) ([]mo
 			change.PrerequisiteID = &prerequisite.Int64
 		}
 		if change.Kind == "recognition" {
-			change.Recognition = &models.Recognition{Rationale: recognitionRationale}
+			change.Recognition = &models.Recognition{}
 		}
 		changes = append(changes, change)
 	}
@@ -618,9 +616,9 @@ func insertCurriculumProposalChangeDetail(q curriculumExecutor, change *models.C
 			return fmt.Errorf("create curriculum recognition detail: missing recognition")
 		}
 		_, err = q.Exec(`
-			INSERT INTO curriculum_recognitions (change_id, rationale)
-			VALUES ($1, $2)
-		`, change.ID, change.Recognition.Rationale)
+			INSERT INTO curriculum_recognitions (change_id)
+			VALUES ($1)
+		`, change.ID)
 		if err == nil {
 			for _, source := range change.Recognition.Sources {
 				if _, err = q.Exec(`

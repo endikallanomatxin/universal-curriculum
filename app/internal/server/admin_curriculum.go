@@ -244,7 +244,6 @@ func (server *Server) createCurriculumRecognition(writer http.ResponseWriter, re
 		proposalID,
 		parseLearningPathUnitIDs(request.Form["source_unit_ids"]),
 		parseLearningPathUnitIDs(request.Form["target_unit_ids"]),
-		request.FormValue("rationale"),
 	)
 	if err != nil {
 		server.renderCurriculumMutationError(writer, request, err)
@@ -432,8 +431,6 @@ func curriculumErrorResponse(err error) (string, int) {
 		return "Review the proposal changes that overlap with newer accepted work before continuing.", http.StatusConflict
 	case errors.Is(err, services.ErrRebaseResolutionRequired):
 		return "Choose a valid resolution for every conflicting change.", http.StatusBadRequest
-	case errors.Is(err, services.ErrRecognitionRationaleRequired):
-		return "Explain why this knowledge can be recognized.", http.StatusBadRequest
 	case errors.Is(err, services.ErrRecognitionSourcesRequired):
 		return "Select at least one source unit.", http.StatusBadRequest
 	case errors.Is(err, services.ErrRecognitionTargetsRequired):

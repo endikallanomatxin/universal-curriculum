@@ -141,9 +141,6 @@ func (state *curriculumProposalValidationState) validateRecognition(
 	if recognition == nil {
 		return invalidChange(change, "the recognition detail is missing")
 	}
-	if !validCurriculumText(recognition.Rationale) {
-		return invalidChange(change, "the recognition rationale is empty or not normalized")
-	}
 	if len(recognition.Sources) == 0 {
 		return invalidChange(change, "the recognition has no source units")
 	}
