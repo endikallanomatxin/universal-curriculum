@@ -106,76 +106,54 @@ CREATE TABLE curriculum_proposal_changes (
             'recognition'
         )
     ),
-    UNIQUE (proposal_id, position),
-    UNIQUE (id, kind)
+    UNIQUE (proposal_id, position)
 );
 
 CREATE TABLE curriculum_unit_creations (
-    change_id BIGINT PRIMARY KEY,
-    change_kind TEXT NOT NULL DEFAULT 'create_unit' CHECK (change_kind = 'create_unit'),
+    change_id BIGINT PRIMARY KEY REFERENCES curriculum_proposal_changes(id) ON DELETE CASCADE,
     name TEXT NOT NULL CHECK (name <> '' AND name = btrim(name)),
-    content TEXT NOT NULL CHECK (content <> '' AND content = btrim(content)),
-    FOREIGN KEY (change_id, change_kind)
-        REFERENCES curriculum_proposal_changes(id, kind) ON DELETE CASCADE
+    content TEXT NOT NULL CHECK (content <> '' AND content = btrim(content))
 );
 
 CREATE TABLE curriculum_unit_renames (
-    change_id BIGINT PRIMARY KEY,
-    change_kind TEXT NOT NULL DEFAULT 'rename_unit' CHECK (change_kind = 'rename_unit'),
+    change_id BIGINT PRIMARY KEY REFERENCES curriculum_proposal_changes(id) ON DELETE CASCADE,
     unit_id BIGINT NOT NULL REFERENCES curriculum_unit_creations(change_id) ON DELETE RESTRICT,
     name TEXT NOT NULL CHECK (name <> '' AND name = btrim(name)),
-    previous_name TEXT NOT NULL CHECK (previous_name <> '' AND previous_name = btrim(previous_name)),
-    FOREIGN KEY (change_id, change_kind)
-        REFERENCES curriculum_proposal_changes(id, kind) ON DELETE CASCADE
+    previous_name TEXT NOT NULL CHECK (previous_name <> '' AND previous_name = btrim(previous_name))
 );
 
 CREATE TABLE curriculum_unit_content_updates (
-    change_id BIGINT PRIMARY KEY,
-    change_kind TEXT NOT NULL DEFAULT 'update_content' CHECK (change_kind = 'update_content'),
+    change_id BIGINT PRIMARY KEY REFERENCES curriculum_proposal_changes(id) ON DELETE CASCADE,
     unit_id BIGINT NOT NULL REFERENCES curriculum_unit_creations(change_id) ON DELETE RESTRICT,
     content TEXT NOT NULL CHECK (content <> '' AND content = btrim(content)),
     previous_content TEXT NOT NULL
-        CHECK (previous_content <> '' AND previous_content = btrim(previous_content)),
-    FOREIGN KEY (change_id, change_kind)
-        REFERENCES curriculum_proposal_changes(id, kind) ON DELETE CASCADE
+        CHECK (previous_content <> '' AND previous_content = btrim(previous_content))
 );
 
 CREATE TABLE curriculum_unit_deletions (
-    change_id BIGINT PRIMARY KEY,
-    change_kind TEXT NOT NULL DEFAULT 'delete_unit' CHECK (change_kind = 'delete_unit'),
+    change_id BIGINT PRIMARY KEY REFERENCES curriculum_proposal_changes(id) ON DELETE CASCADE,
     unit_id BIGINT NOT NULL REFERENCES curriculum_unit_creations(change_id) ON DELETE RESTRICT,
     name TEXT NOT NULL CHECK (name <> '' AND name = btrim(name)),
-    content TEXT NOT NULL CHECK (content <> '' AND content = btrim(content)),
-    FOREIGN KEY (change_id, change_kind)
-        REFERENCES curriculum_proposal_changes(id, kind) ON DELETE CASCADE
+    content TEXT NOT NULL CHECK (content <> '' AND content = btrim(content))
 );
 
 CREATE TABLE curriculum_dependency_additions (
-    change_id BIGINT PRIMARY KEY,
-    change_kind TEXT NOT NULL DEFAULT 'add_dependency' CHECK (change_kind = 'add_dependency'),
+    change_id BIGINT PRIMARY KEY REFERENCES curriculum_proposal_changes(id) ON DELETE CASCADE,
     unit_id BIGINT NOT NULL REFERENCES curriculum_unit_creations(change_id) ON DELETE RESTRICT,
     prerequisite_id BIGINT NOT NULL REFERENCES curriculum_unit_creations(change_id) ON DELETE RESTRICT,
-    CHECK (unit_id <> prerequisite_id),
-    FOREIGN KEY (change_id, change_kind)
-        REFERENCES curriculum_proposal_changes(id, kind) ON DELETE CASCADE
+    CHECK (unit_id <> prerequisite_id)
 );
 
 CREATE TABLE curriculum_dependency_removals (
-    change_id BIGINT PRIMARY KEY,
-    change_kind TEXT NOT NULL DEFAULT 'remove_dependency' CHECK (change_kind = 'remove_dependency'),
+    change_id BIGINT PRIMARY KEY REFERENCES curriculum_proposal_changes(id) ON DELETE CASCADE,
     unit_id BIGINT NOT NULL REFERENCES curriculum_unit_creations(change_id) ON DELETE RESTRICT,
     prerequisite_id BIGINT NOT NULL REFERENCES curriculum_unit_creations(change_id) ON DELETE RESTRICT,
-    CHECK (unit_id <> prerequisite_id),
-    FOREIGN KEY (change_id, change_kind)
-        REFERENCES curriculum_proposal_changes(id, kind) ON DELETE CASCADE
+    CHECK (unit_id <> prerequisite_id)
 );
 
 CREATE TABLE curriculum_recognitions (
-    change_id BIGINT PRIMARY KEY,
-    change_kind TEXT NOT NULL DEFAULT 'recognition' CHECK (change_kind = 'recognition'),
-    rationale TEXT NOT NULL CHECK (rationale <> '' AND rationale = btrim(rationale)),
-    FOREIGN KEY (change_id, change_kind)
-        REFERENCES curriculum_proposal_changes(id, kind) ON DELETE CASCADE
+    change_id BIGINT PRIMARY KEY REFERENCES curriculum_proposal_changes(id) ON DELETE CASCADE,
+    rationale TEXT NOT NULL CHECK (rationale <> '' AND rationale = btrim(rationale))
 );
 
 CREATE TABLE curriculum_recognition_sources (
@@ -415,6 +393,7 @@ CREATE FUNCTION validate_curriculum_proposal_change_detail() RETURNS TRIGGER
 LANGUAGE plpgsql AS $$
 DECLARE
     detail_count INTEGER;
+    matching_detail_count INTEGER;
 BEGIN
     SELECT
         (SELECT count(*) FROM curriculum_unit_creations WHERE change_id = NEW.id)
@@ -425,8 +404,18 @@ BEGIN
         + (SELECT count(*) FROM curriculum_dependency_removals WHERE change_id = NEW.id)
         + (SELECT count(*) FROM curriculum_recognitions WHERE change_id = NEW.id)
     INTO detail_count;
-    IF detail_count <> 1 THEN
-        RAISE EXCEPTION 'curriculum proposal change % must have exactly one detail row', NEW.id;
+    SELECT CASE NEW.kind
+        WHEN 'create_unit' THEN (SELECT count(*) FROM curriculum_unit_creations WHERE change_id = NEW.id)
+        WHEN 'rename_unit' THEN (SELECT count(*) FROM curriculum_unit_renames WHERE change_id = NEW.id)
+        WHEN 'update_content' THEN (SELECT count(*) FROM curriculum_unit_content_updates WHERE change_id = NEW.id)
+        WHEN 'delete_unit' THEN (SELECT count(*) FROM curriculum_unit_deletions WHERE change_id = NEW.id)
+        WHEN 'add_dependency' THEN (SELECT count(*) FROM curriculum_dependency_additions WHERE change_id = NEW.id)
+        WHEN 'remove_dependency' THEN (SELECT count(*) FROM curriculum_dependency_removals WHERE change_id = NEW.id)
+        WHEN 'recognition' THEN (SELECT count(*) FROM curriculum_recognitions WHERE change_id = NEW.id)
+        ELSE 0
+    END INTO matching_detail_count;
+    IF detail_count <> 1 OR matching_detail_count <> 1 THEN
+        RAISE EXCEPTION 'curriculum proposal change % must have exactly one detail row matching kind %', NEW.id, NEW.kind;
     END IF;
     RETURN NULL;
 END;
