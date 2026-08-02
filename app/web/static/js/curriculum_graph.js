@@ -9,8 +9,9 @@
 
     const layout = root.querySelector(".curriculum-graph__layout");
     const svg = root.querySelector(".curriculum-graph__svg");
+    const definitions = svg && svg.querySelector("defs");
     const pathLayer = root.querySelector("[data-curriculum-graph-paths]");
-    if (!layout || !svg || !pathLayer) return;
+    if (!layout || !svg || !definitions || !pathLayer) return;
 
     const nodes = new Map();
     root.querySelectorAll("[data-curriculum-node]").forEach(function (item) {
@@ -71,6 +72,9 @@
         svg.setAttribute("width", layoutBox.width);
         svg.setAttribute("height", layoutBox.height);
         pathLayer.replaceChildren();
+        definitions.querySelectorAll("[data-curriculum-edge-mask]").forEach(function (mask) {
+          mask.remove();
+        });
         renderedPaths = [];
 
         function anchorPoint(item) {
@@ -94,126 +98,323 @@
           ? orderedPoints[1].y - orderedPoints[0].y
           : 48;
         const branchInset = rowSpacing * 0.35;
+        const edgeKey = function (edge) {
+          return edge.prerequisiteID + ":" + edge.dependentID;
+        };
+        function hasUsefulSharedSpan(edge) {
+          const source = nodePoints.get(edge.prerequisiteID);
+          const target = nodePoints.get(edge.dependentID);
+          if (!source || !target) return false;
+          let unitsBetween = 0;
+          for (const point of orderedPoints) {
+            if (point.y > source.y && point.y < target.y) unitsBetween += 1;
+          }
+          return unitsBetween > 2;
+        }
         const sourceYs = new Map();
         const targetYs = new Map();
         nodePoints.forEach(function (point, unitID) {
           if (!point) return;
-          sourceYs.set(unitID, point.y + point.height / 2);
+          sourceYs.set(unitID, point.y);
           targetYs.set(unitID, point.y - point.height / 2 - 5);
         });
         const outgoingHubs = new Map();
+        const groupedOutgoingEdges = new Set();
         outgoing.forEach(function (sourceEdges, unitID) {
-          if (sourceEdges.length < 2) return;
+          const groupedEdges = sourceEdges.filter(hasUsefulSharedSpan);
+          if (groupedEdges.length < 2) return;
           const sourceY = sourceYs.get(unitID);
-          const firstTargetY = Math.min(...sourceEdges.map(function (edge) {
+          const firstTargetY = Math.min(...groupedEdges.map(function (edge) {
             return targetYs.get(edge.dependentID);
           }));
-          outgoingHubs.set(unitID, Math.max(sourceY, firstTargetY - branchInset));
+          const targetXTotal = groupedEdges.reduce(function (total, edge) {
+            return total + nodePoints.get(edge.dependentID).x;
+          }, 0);
+          outgoingHubs.set(unitID, {
+            x: targetXTotal / groupedEdges.length,
+            y: Math.max(sourceY, firstTargetY - branchInset)
+          });
+          groupedEdges.forEach(function (edge) {
+            groupedOutgoingEdges.add(edgeKey(edge));
+          });
         });
         const incomingHubs = new Map();
+        const groupedIncomingEdges = new Set();
         incoming.forEach(function (targetEdges, unitID) {
-          if (targetEdges.length < 2) return;
+          const groupedEdges = targetEdges.filter(hasUsefulSharedSpan);
+          if (groupedEdges.length < 2) return;
           const targetY = targetYs.get(unitID);
-          const lastSourceY = Math.max(...targetEdges.map(function (edge) {
+          const lastSourceY = Math.max(...groupedEdges.map(function (edge) {
             return sourceYs.get(edge.prerequisiteID);
           }));
           incomingHubs.set(unitID, Math.min(targetY, lastSourceY + branchInset));
+          groupedEdges.forEach(function (edge) {
+            groupedIncomingEdges.add(edgeKey(edge));
+          });
         });
 
         const verticalHandle = 28;
 
-        function directBezierPath(source, target) {
-          const sourceY = source.y + source.height / 2;
+        function directQuadraticPath(source, target) {
+          const sourceY = source.y;
           const targetY = target.y - target.height / 2 - 5;
-          const easing = verticalHandle;
           return "M " + source.x + " " + sourceY +
-            " C " + source.x + " " + (sourceY + easing) +
-            " " + target.x + " " + (targetY - easing) +
+            " Q " + target.x + " " + (targetY - verticalHandle) +
             " " + target.x + " " + targetY;
         }
 
+        function verticalEndpointCubic(sourceX, sourceY, targetX, targetY, handle) {
+          return " C " + sourceX + " " + (sourceY + handle) +
+            " " + targetX + " " + (targetY - handle) +
+            " " + targetX + " " + targetY;
+        }
+
         function edgePath(edge, source, target) {
-          const sourceY = source.y + source.height / 2;
+          const sourceY = source.y;
           const targetY = target.y - target.height / 2 - 5;
-          const sourceHubY = outgoingHubs.get(edge.prerequisiteID) || sourceY;
-          const targetHubY = incomingHubs.get(edge.dependentID) || targetY;
-          const hubSpan = targetHubY - sourceHubY;
+          const key = edgeKey(edge);
+          const groupedAtSource = groupedOutgoingEdges.has(key);
+          const groupedAtTarget = groupedIncomingEdges.has(key);
+          const sourceHub = groupedAtSource
+            ? outgoingHubs.get(edge.prerequisiteID)
+            : { x: source.x, y: sourceY };
+          const targetHubY = groupedAtTarget ? incomingHubs.get(edge.dependentID) : targetY;
+          const hubSpan = targetHubY - sourceHub.y;
           if (hubSpan < branchInset) {
-            return directBezierPath(source, target);
+            return directQuadraticPath(source, target);
           }
-          const easing = verticalHandle;
           let path = "M " + source.x + " " + sourceY;
-          if (sourceHubY > sourceY) {
-            path += " V " + sourceHubY;
+          if (groupedAtSource) {
+            path += " Q " + sourceHub.x + " " + (sourceHub.y - verticalHandle) +
+              " " + sourceHub.x + " " + sourceHub.y;
           }
-          path += " C " + source.x + " " + (sourceHubY + easing) +
-            " " + target.x + " " + (targetHubY - easing) +
-            " " + target.x + " " + targetHubY;
+          if (groupedAtSource) {
+            path += verticalEndpointCubic(
+              sourceHub.x, sourceHub.y, target.x, targetHubY, verticalHandle
+            );
+          } else {
+            path += " Q " + target.x + " " + (targetHubY - verticalHandle) +
+              " " + target.x + " " + targetHubY;
+          }
           if (targetY > targetHubY) {
             path += " V " + targetY;
           }
           return path;
         }
 
-        function detourBezierPath(source, target, detourX) {
-          const sourceY = source.y + source.height / 2;
-          const targetY = target.y - target.height / 2 - 5;
-          const middleY = (sourceY + targetY) / 2;
-          const easing = Math.min(verticalHandle, Math.max(6, (targetY - sourceY) * 0.22));
-          return "M " + source.x + " " + sourceY +
-            " C " + source.x + " " + (sourceY + easing) +
-            " " + detourX + " " + (middleY - easing) +
-            " " + detourX + " " + middleY +
-            " C " + detourX + " " + (middleY + easing) +
-            " " + target.x + " " + (targetY - easing) +
-            " " + target.x + " " + targetY;
+        function normalizedVector(x, y) {
+          const length = Math.hypot(x, y);
+          if (length === 0) return { x: 0, y: 1 };
+          return { x: x / length, y: y / length };
         }
 
-        function pathNodeCollisionCount(path, edge) {
+        function obstacleSplinePath(source, target, waypoints) {
+          const targetPoint = {
+            x: target.x,
+            y: target.y - target.height / 2 - 5
+          };
+          const points = [{ x: source.x, y: source.y }]
+            .concat(waypoints.slice().sort(function (left, right) { return left.y - right.y; }))
+            .concat([targetPoint]);
+          if (points.length === 2) return directQuadraticPath(source, target);
+
+          const tangents = new Array(points.length);
+          for (let index = 1; index < points.length - 1; index += 1) {
+            tangents[index] = points[index].tangent || normalizedVector(
+              points[index + 1].x - points[index - 1].x,
+              Math.max(1, points[index + 1].y - points[index - 1].y)
+            );
+          }
+          tangents[points.length - 1] = { x: 0, y: 1 };
+
+          const firstTarget = points[1];
+          const firstTangent = tangents[1];
+          const firstSpan = Math.hypot(
+            firstTarget.x - points[0].x,
+            firstTarget.y - points[0].y
+          );
+          const firstHandle = Math.min(verticalHandle, firstSpan / 3);
+          let path = "M " + points[0].x + " " + points[0].y +
+            " Q " + (firstTarget.x - firstTangent.x * firstHandle) + " " +
+            (firstTarget.y - firstTangent.y * firstHandle) + " " +
+            firstTarget.x + " " + firstTarget.y;
+
+          for (let index = 1; index < points.length - 1; index += 1) {
+            const start = points[index];
+            const end = points[index + 1];
+            const span = Math.hypot(end.x - start.x, end.y - start.y);
+            const handle = Math.min(verticalHandle, span / 3);
+            const startTangent = tangents[index];
+            const endTangent = tangents[index + 1];
+            path += " C " + (start.x + startTangent.x * handle) + " " +
+              (start.y + startTangent.y * handle) + " " +
+              (end.x - endTangent.x * handle) + " " +
+              (end.y - endTangent.y * handle) + " " + end.x + " " + end.y;
+          }
+          return path;
+        }
+
+        function pathNodeCollisions(path, edge) {
           const length = path.getTotalLength();
-          let collisions = 0;
+          const collisions = [];
           for (const [unitID, point] of nodePoints) {
             if (!point || unitID === edge.prerequisiteID || unitID === edge.dependentID) continue;
             const radius = point.width / 2 + 2;
+            let closest = null;
             for (let distance = 0; distance <= length; distance += 2) {
               const sample = path.getPointAtLength(distance);
-              if (Math.hypot(sample.x - point.x, sample.y - point.y) <= radius) {
-                collisions += 1;
-                break;
+              const separation = Math.hypot(sample.x - point.x, sample.y - point.y);
+              if (!closest || separation < closest.separation) {
+                closest = { distance: distance, point: sample, separation: separation };
               }
+            }
+            if (closest && closest.separation <= radius) {
+              collisions.push({
+                unitID: unitID,
+                obstacle: point,
+                radius: radius,
+                closest: closest,
+                penetration: radius - closest.separation
+              });
             }
           }
           return collisions;
         }
 
-        function avoidNodeCollisions(path, edge, source, target) {
-          const initialPath = path.getAttribute("d");
-          let bestPath = initialPath;
-          let bestCollisions = pathNodeCollisionCount(path, edge);
-          if (bestCollisions === 0) return;
-
-          const leftX = Math.max(4, Math.min(source.x, target.x) - laneSpacing);
-          const rightX = Math.min(graphWidth - 4, Math.max(source.x, target.x) + laneSpacing);
-          const candidates = [
-            directBezierPath(source, target),
-            detourBezierPath(source, target, leftX),
-            detourBezierPath(source, target, rightX),
-            detourBezierPath(source, target, 4),
-            detourBezierPath(source, target, graphWidth - 4)
-          ];
-          for (const candidate of candidates) {
-            path.setAttribute("d", candidate);
-            const collisions = pathNodeCollisionCount(path, edge);
-            if (collisions < bestCollisions) {
-              bestPath = candidate;
-              bestCollisions = collisions;
-            }
-            if (collisions === 0) break;
-          }
-          path.setAttribute("d", bestPath);
+        function collisionScore(collisions) {
+          return {
+            count: collisions.length,
+            penetration: collisions.reduce(function (total, collision) {
+              return total + collision.penetration;
+            }, 0)
+          };
         }
 
-        edges.forEach(function (edge) {
+        function improvesCollisionScore(candidate, current) {
+          return candidate.count < current.count ||
+            (candidate.count === current.count && candidate.penetration < current.penetration - 0.25);
+        }
+
+        function collisionWaypointCandidates(path, collision, source, target) {
+          const length = path.getTotalLength();
+          const distance = collision.closest.distance;
+          const before = path.getPointAtLength(Math.max(0, distance - 3));
+          const after = path.getPointAtLength(Math.min(length, distance + 3));
+          const tangent = normalizedVector(after.x - before.x, after.y - before.y);
+          const normal = { x: -tangent.y, y: tangent.x };
+          const offset = {
+            x: collision.closest.point.x - collision.obstacle.x,
+            y: collision.closest.point.y - collision.obstacle.y
+          };
+          const projection = offset.x * normal.x + offset.y * normal.y;
+          const perpendicularSquared = Math.max(
+            0,
+            offset.x * offset.x + offset.y * offset.y - projection * projection
+          );
+          const clearance = 4;
+          const radiusAlongNormal = Math.sqrt(Math.max(
+            0,
+            Math.pow(collision.radius + clearance, 2) - perpendicularSquared
+          ));
+          const targetY = target.y - target.height / 2 - 5;
+          return [-1, 1].map(function (direction) {
+            const displacement = -projection + direction * radiusAlongNormal;
+            const waypoint = {
+              x: Math.max(4, Math.min(graphWidth - 4,
+                collision.closest.point.x + normal.x * displacement)),
+              y: Math.max(source.y + 2, Math.min(targetY - 2,
+                collision.closest.point.y + normal.y * displacement))
+            };
+            const radius = normalizedVector(
+              waypoint.x - collision.obstacle.x,
+              waypoint.y - collision.obstacle.y
+            );
+            let waypointTangent = { x: -radius.y, y: radius.x };
+            if (waypointTangent.x * tangent.x + waypointTangent.y * tangent.y < 0) {
+              waypointTangent = { x: -waypointTangent.x, y: -waypointTangent.y };
+            }
+            waypoint.tangent = waypointTangent;
+            return waypoint;
+          });
+        }
+
+        function avoidNodeCollisions(path, edge, source, target) {
+          let collisions = pathNodeCollisions(path, edge);
+          if (collisions.length === 0) return;
+          let score = collisionScore(collisions);
+          let waypoints = [];
+
+          for (let iteration = 0; iteration < 6 && collisions.length > 0; iteration += 1) {
+            const currentPath = path.getAttribute("d");
+            let best = null;
+            for (const collision of collisions) {
+              path.setAttribute("d", currentPath);
+              const candidates = collisionWaypointCandidates(path, collision, source, target);
+              for (const waypoint of candidates) {
+                const candidateWaypoints = waypoints.concat([waypoint]);
+                const candidatePath = obstacleSplinePath(source, target, candidateWaypoints);
+                path.setAttribute("d", candidatePath);
+                const candidateCollisions = pathNodeCollisions(path, edge);
+                const candidateScore = collisionScore(candidateCollisions);
+                const movement = Math.hypot(
+                  waypoint.x - collision.closest.point.x,
+                  waypoint.y - collision.closest.point.y
+                );
+                if (!improvesCollisionScore(candidateScore, score)) continue;
+                if (!best || improvesCollisionScore(candidateScore, best.score) ||
+                    candidateScore.count === best.score.count &&
+                    Math.abs(candidateScore.penetration - best.score.penetration) <= 0.25 &&
+                    movement < best.movement) {
+                  best = {
+                    path: candidatePath,
+                    waypoints: candidateWaypoints,
+                    collisions: candidateCollisions,
+                    score: candidateScore,
+                    movement: movement
+                  };
+                }
+              }
+            }
+            if (!best) {
+              path.setAttribute("d", currentPath);
+              break;
+            }
+            path.setAttribute("d", best.path);
+            waypoints = best.waypoints;
+            collisions = best.collisions;
+            score = best.score;
+          }
+        }
+
+        function maskEdgeSource(path, source, index) {
+          const maskID = pathLayer.dataset.arrowMarker + "-source-mask-" + index;
+          const mask = document.createElementNS(svgNamespace, "mask");
+          mask.id = maskID;
+          mask.dataset.curriculumEdgeMask = "";
+          mask.setAttribute("maskUnits", "userSpaceOnUse");
+          mask.setAttribute("x", "0");
+          mask.setAttribute("y", "0");
+          mask.setAttribute("width", layoutBox.width);
+          mask.setAttribute("height", layoutBox.height);
+
+          const visibleArea = document.createElementNS(svgNamespace, "rect");
+          visibleArea.setAttribute("width", layoutBox.width);
+          visibleArea.setAttribute("height", layoutBox.height);
+          visibleArea.setAttribute("fill", "white");
+          mask.appendChild(visibleArea);
+
+          const sourceCutout = document.createElementNS(svgNamespace, "circle");
+          sourceCutout.setAttribute("cx", source.x);
+          sourceCutout.setAttribute("cy", source.y);
+          sourceCutout.setAttribute("r", source.width / 2 + 1);
+          sourceCutout.setAttribute("fill", "black");
+          mask.appendChild(sourceCutout);
+
+          definitions.appendChild(mask);
+          path.setAttribute("mask", "url(#" + maskID + ")");
+        }
+
+        edges.forEach(function (edge, edgeIndex) {
           const source = nodePoints.get(edge.prerequisiteID);
           const target = nodePoints.get(edge.dependentID);
           if (!source || !target) return;
@@ -229,6 +430,7 @@
           }
           pathLayer.appendChild(path);
           avoidNodeCollisions(path, edge, source, target);
+          maskEdgeSource(path, source, edgeIndex);
           renderedPaths.push({ edge: edge, path: path });
         });
         boundaries.forEach(function (boundary) {

@@ -391,7 +391,7 @@ a.learning-path-card {
   pointer-events: none;
   position: absolute;
   width: 100%;
-  z-index: 3;
+  z-index: 5;
 }
 
 .curriculum-graph__arrow {

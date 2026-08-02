@@ -32,12 +32,46 @@ topology without subsequently packing or shifting lanes according to indirect
 geometric metrics. This preserves the allocator's existing breathing room and
 keeps dense converging branches from becoming a compact braid.
 
-The browser groups dependencies with a shared source or target into short
-common trunks and joins their branch points with monotone cubic Bézier curves.
+The browser groups sufficiently long dependencies with a shared source or
+target into short common trunks and joins their branch points with continuous
+Bézier curves.
 Each edge remains an independent SVG path so relation highlighting can still
-isolate it. Candidate curves are sampled against the measured node circles. If
-the bundled route introduces a collision, the renderer compares a direct curve
-and curved side detours, retaining the route that intersects the fewest nodes.
+isolate it. Candidate curves are sampled against the measured node circles. On
+collision, the renderer finds the nearest curve point, measures its local
+tangent and proposes waypoints displaced just beyond the obstacle along either
+normal. It iteratively retains only a waypoint that reduces the number of
+collisions or their total penetration, with a fixed limit of six corrections.
+Each accepted obstacle waypoint retains a tangent perpendicular to the radius
+from the node centre to that waypoint, oriented to agree with the curve's prior
+direction of travel. Regenerating the spline therefore cannot turn it back
+towards the obstacle merely because neighbouring waypoints moved.
+Ordinary edges use quadratic Bézier curves with their sole control point above
+the target. They therefore have no independent source handle, while still
+arriving vertically so arrowheads receive a clean, predictable tangent.
+Every dependency begins with a quadratic segment at the centre of its source:
+that segment is either the complete direct route, a shared outgoing trunk or
+the first leg towards a collision detour. Cubics may only appear after it when
+two subsequent tangencies must be controlled independently.
+Shared trunks are considered per edge rather than per node. Only edges with
+more than two visible units between their endpoints are eligible, and a trunk
+is created only when at least two eligible edges share its source or target.
+Nearby relations therefore remain independent even when the same node also has
+distant relations. A branch leaving an outgoing shared trunk uses a vertical
+departure tangent so it joins that trunk smoothly. The shared trunk is itself
+a quadratic ending at the horizontal centre of its grouped destinations with
+a vertical tangent; aligned groups naturally reduce to a straight trunk. When
+both departure and arrival tangencies are constrained, one cubic segment
+supplies their two independent controls. A collision detour composes a
+quadratic that arrives at its first inferred waypoint with cubic segments
+through any later waypoints.
+Unconstrained intermediate tangents follow the normalized direction between
+their neighbours; obstacle waypoints retain their clearance tangent, and the
+destination retains its required vertical tangent. Control lengths are derived
+from each segment chord and capped by the standard arrival handle.
+An edge starts geometrically at the centre of its source node. The SVG is
+stacked above later nodes, while a per-edge SVG mask cuts the path out inside
+its own source circle. The curve therefore appears beneath its origin but may
+remain visible over future units, without requiring a synthetic source handle.
 
 Learn and Curriculum Modification render the same `curriculum-graph` and
 `unit-navigation-search` templates. Server view models prepare consumer-specific
