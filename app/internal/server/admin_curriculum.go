@@ -495,6 +495,7 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 				return
 			}
 		}
+		services.PopulateCurriculumProposalPreviousState(proposalBaseGraph, activeProposal)
 	}
 	var reviewedProposal *models.CurriculumProposal
 	if reviewedValue := request.URL.Query().Get("review-proposal"); reviewedValue != "" {

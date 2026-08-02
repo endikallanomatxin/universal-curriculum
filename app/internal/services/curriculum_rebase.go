@@ -511,22 +511,15 @@ func normalizeProposalForRebase(proposal *models.CurriculumProposal, current *mo
 		switch change.Kind {
 		case "rename_unit":
 			if !created[change.UnitID] && unit != nil {
-				change.PreviousUnitName = unit.Name
 				if change.UnitName == unit.Name {
 					continue
 				}
 			}
 		case "update_content":
 			if !created[change.UnitID] && unit != nil {
-				change.PreviousUnitContent = unit.Content
 				if change.UnitContent == unit.Content {
 					continue
 				}
-			}
-		case "delete_unit":
-			if unit != nil {
-				change.UnitName = unit.Name
-				change.UnitContent = unit.Content
 			}
 		case "add_dependency":
 			if change.PrerequisiteID != nil && curriculumDependencyExists(current, change.UnitID, *change.PrerequisiteID) {

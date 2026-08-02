@@ -212,11 +212,8 @@ func (state *curriculumProposalValidationState) renameUnit(change models.Curricu
 	if state.renamedUnits[change.UnitID] {
 		return invalidChange(change, "the same unit is renamed more than once")
 	}
-	if !validCurriculumText(change.UnitName) || !validCurriculumText(change.PreviousUnitName) {
-		return invalidChange(change, "the unit names are empty or not normalized")
-	}
-	if change.PreviousUnitName != unit.Name {
-		return invalidChange(change, "the previous name does not match the proposal state")
+	if !validCurriculumText(change.UnitName) {
+		return invalidChange(change, "the unit name is empty or not normalized")
 	}
 	if change.UnitName == unit.Name {
 		return invalidChange(change, "the rename has no effect")
@@ -235,11 +232,8 @@ func (state *curriculumProposalValidationState) updateUnitContent(change models.
 	if state.contentUpdatedUnits[change.UnitID] {
 		return invalidChange(change, "the same unit content is updated more than once")
 	}
-	if !validCurriculumText(change.UnitContent) || !validCurriculumText(change.PreviousUnitContent) {
+	if !validCurriculumText(change.UnitContent) {
 		return invalidChange(change, "the unit content is empty or not normalized")
-	}
-	if change.PreviousUnitContent != unit.Content {
-		return invalidChange(change, "the previous content does not match the proposal state")
 	}
 	if change.UnitContent == unit.Content {
 		return invalidChange(change, "the content update has no effect")
@@ -254,7 +248,7 @@ func (state *curriculumProposalValidationState) deleteUnit(change models.Curricu
 	if state.deletedUnits[change.UnitID] {
 		return invalidChange(change, "the same unit is deleted more than once")
 	}
-	unit, exists := state.units[change.UnitID]
+	_, exists := state.units[change.UnitID]
 	if !exists {
 		return invalidChange(change, "the unit to delete does not exist")
 	}
@@ -263,9 +257,6 @@ func (state *curriculumProposalValidationState) deleteUnit(change models.Curricu
 	}
 	if state.renamedUnits[change.UnitID] || state.contentUpdatedUnits[change.UnitID] {
 		return invalidChange(change, "changes superseded by the unit deletion must be omitted")
-	}
-	if change.UnitName != unit.Name || change.UnitContent != unit.Content {
-		return invalidChange(change, "the deleted unit snapshot does not match the proposal state")
 	}
 	for dependency := range state.dependencies {
 		if dependency.prerequisiteID == change.UnitID {

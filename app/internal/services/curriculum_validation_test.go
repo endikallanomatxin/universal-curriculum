@@ -7,6 +7,26 @@ import (
 	"universal-curriculum/internal/models"
 )
 
+func TestPopulateCurriculumProposalPreviousStateReplaysBase(t *testing.T) {
+	base := &models.CurriculumGraph{Units: []models.Unit{{
+		ID: 1, Name: "Foundations", Content: "Original notes.",
+	}}}
+	proposal := &models.CurriculumProposal{Changes: []models.CurriculumProposalChange{
+		{Kind: "rename_unit", UnitID: 1, UnitName: "Mathematical foundations"},
+		{Kind: "update_content", UnitID: 1, UnitContent: "Revised notes."},
+		{Kind: "delete_unit", UnitID: 1},
+	}}
+
+	PopulateCurriculumProposalPreviousState(base, proposal)
+
+	if proposal.Changes[0].PreviousUnitName != "Foundations" ||
+		proposal.Changes[1].PreviousUnitContent != "Original notes." ||
+		proposal.Changes[2].UnitName != "Mathematical foundations" ||
+		proposal.Changes[2].UnitContent != "Revised notes." {
+		t.Fatalf("derived proposal state = %#v", proposal.Changes)
+	}
+}
+
 func TestValidateCurriculumProposalAcceptsCoherentOrderedChanges(t *testing.T) {
 	base := validationTestGraph()
 	prerequisiteID := int64(1)
@@ -84,13 +104,6 @@ func TestValidateCurriculumProposalRejectsIncoherentChanges(t *testing.T) {
 			changes: []models.CurriculumProposalChange{{
 				ID: 10, Position: 1, Kind: "rename_unit", UnitID: 99,
 				PreviousUnitName: "Missing", UnitName: "Still missing",
-			}},
-		},
-		{
-			name: "stale previous value",
-			changes: []models.CurriculumProposalChange{{
-				ID: 10, Position: 1, Kind: "rename_unit", UnitID: 1,
-				PreviousUnitName: "Old foundations", UnitName: "New foundations",
 			}},
 		},
 		{

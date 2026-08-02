@@ -226,35 +226,19 @@ func UpdateDraftCurriculumProposalChangeForRebase(
 	var err error
 	switch change.Kind {
 	case "rename_unit":
-		result, err = q.Exec(`
-			UPDATE curriculum_unit_renames rename
-			SET previous_name = $2
-			FROM curriculum_proposal_changes change, curriculum_proposals proposal
-			WHERE rename.change_id = $1
-			  AND change.id = rename.change_id
-			  AND proposal.id = change.proposal_id
-			  AND proposal.status = 'draft'
-		`, change.ID, change.PreviousUnitName)
+		return nil
 	case "update_content":
 		result, err = q.Exec(`
 			UPDATE curriculum_unit_content_updates content_update
-			SET content = $2, previous_content = $3
+			SET content = $2
 			FROM curriculum_proposal_changes change, curriculum_proposals proposal
 			WHERE content_update.change_id = $1
 			  AND change.id = content_update.change_id
 			  AND proposal.id = change.proposal_id
 			  AND proposal.status = 'draft'
-		`, change.ID, change.UnitContent, change.PreviousUnitContent)
+		`, change.ID, change.UnitContent)
 	case "delete_unit":
-		result, err = q.Exec(`
-			UPDATE curriculum_unit_deletions deletion
-			SET name = $2, content = $3
-			FROM curriculum_proposal_changes change, curriculum_proposals proposal
-			WHERE deletion.change_id = $1
-			  AND change.id = deletion.change_id
-			  AND proposal.id = change.proposal_id
-			  AND proposal.status = 'draft'
-		`, change.ID, change.UnitName, change.UnitContent)
+		return nil
 	default:
 		return nil
 	}
@@ -519,8 +503,7 @@ func ListDraftCurriculumProposalsByAuthor(database *sql.DB, authorID int64) ([]m
 func listCurriculumProposalChanges(q curriculumExecutor, proposalID int64) ([]models.CurriculumProposalChange, error) {
 	rows, err := q.Query(`
 		SELECT id, proposal_id, position, kind, unit_id,
-		       COALESCE(unit_name, ''), COALESCE(previous_unit_name, ''),
-		       COALESCE(unit_content, ''), COALESCE(previous_unit_content, ''),
+		       COALESCE(unit_name, ''), COALESCE(unit_content, ''),
 		       prerequisite_id, COALESCE(recognition_rationale, '')
 		FROM curriculum_proposal_change_details
 		WHERE proposal_id = $1
@@ -533,15 +516,17 @@ func listCurriculumProposalChanges(q curriculumExecutor, proposalID int64) ([]mo
 	var changes []models.CurriculumProposalChange
 	for rows.Next() {
 		var change models.CurriculumProposalChange
-		var prerequisite sql.NullInt64
+		var unitID, prerequisite sql.NullInt64
 		var recognitionRationale string
 		if err := rows.Scan(
 			&change.ID, &change.ProposalID, &change.Position, &change.Kind,
-			&change.UnitID, &change.UnitName, &change.PreviousUnitName,
-			&change.UnitContent, &change.PreviousUnitContent, &prerequisite,
+			&unitID, &change.UnitName, &change.UnitContent, &prerequisite,
 			&recognitionRationale,
 		); err != nil {
 			return nil, fmt.Errorf("scan curriculum proposal change: %w", err)
+		}
+		if unitID.Valid {
+			change.UnitID = unitID.Int64
 		}
 		if prerequisite.Valid {
 			change.PrerequisiteID = &prerequisite.Int64
@@ -574,21 +559,19 @@ func insertCurriculumProposalChangeDetail(q curriculumExecutor, change *models.C
 		`, change.ID, change.UnitName, change.UnitContent)
 	case "rename_unit":
 		_, err = q.Exec(`
-			INSERT INTO curriculum_unit_renames (change_id, unit_id, name, previous_name)
-			VALUES ($1, $2, $3, $4)
-		`, change.ID, change.UnitID, change.UnitName, change.PreviousUnitName)
+			INSERT INTO curriculum_unit_renames (change_id, unit_id, name)
+			VALUES ($1, $2, $3)
+		`, change.ID, change.UnitID, change.UnitName)
 	case "update_content":
 		_, err = q.Exec(`
-			INSERT INTO curriculum_unit_content_updates (
-				change_id, unit_id, content, previous_content
-			)
-			VALUES ($1, $2, $3, $4)
-		`, change.ID, change.UnitID, change.UnitContent, change.PreviousUnitContent)
+			INSERT INTO curriculum_unit_content_updates (change_id, unit_id, content)
+			VALUES ($1, $2, $3)
+		`, change.ID, change.UnitID, change.UnitContent)
 	case "delete_unit":
 		_, err = q.Exec(`
-			INSERT INTO curriculum_unit_deletions (change_id, unit_id, name, content)
-			VALUES ($1, $2, $3, $4)
-		`, change.ID, change.UnitID, change.UnitName, change.UnitContent)
+			INSERT INTO curriculum_unit_deletions (change_id, unit_id)
+			VALUES ($1, $2)
+		`, change.ID, change.UnitID)
 	case "add_dependency":
 		_, err = q.Exec(`
 			INSERT INTO curriculum_dependency_additions (

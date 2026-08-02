@@ -181,7 +181,6 @@ func UpdateCurriculumUnit(database *sql.DB, authorID, proposalID, unitID int64, 
 		if name != created.UnitName {
 			change = &models.CurriculumProposalChange{
 				Kind: "rename_unit", UnitID: unitID, UnitName: name,
-				PreviousUnitName: created.UnitName,
 			}
 		}
 		return replaceUnitProposalChange(database, authorID, proposalID, unitID, "rename_unit", change)
@@ -195,7 +194,6 @@ func UpdateCurriculumUnit(database *sql.DB, authorID, proposalID, unitID int64, 
 	}
 	change := &models.CurriculumProposalChange{
 		Kind: "rename_unit", UnitID: unitID, UnitName: name,
-		PreviousUnitName: unit.Name,
 	}
 	if name == unit.Name {
 		change = nil
@@ -220,7 +218,7 @@ func UpdateCurriculumUnitContent(database *sql.DB, authorID, proposalID, unitID 
 		if content != created.UnitContent {
 			change = &models.CurriculumProposalChange{
 				Kind: "update_content", UnitID: unitID,
-				UnitContent: content, PreviousUnitContent: created.UnitContent,
+				UnitContent: content,
 			}
 		}
 		return replaceUnitProposalChange(database, authorID, proposalID, unitID, "update_content", change)
@@ -236,7 +234,7 @@ func UpdateCurriculumUnitContent(database *sql.DB, authorID, proposalID, unitID 
 	if content != unit.Content {
 		change = &models.CurriculumProposalChange{
 			Kind: "update_content", UnitID: unitID,
-			UnitContent: content, PreviousUnitContent: unit.Content,
+			UnitContent: content,
 		}
 	}
 	return replaceUnitProposalChange(database, authorID, proposalID, unitID, "update_content", change)
@@ -315,8 +313,7 @@ func DeleteCurriculumUnit(database *sql.DB, authorID, proposalID, unitID int64) 
 	if len(dependentNames) > 0 {
 		return &UnitIsPrerequisiteError{DependentNames: dependentNames}
 	}
-	baseUnit := curriculumUnitByID(graph, unitID)
-	if baseUnit == nil {
+	if curriculumUnitByID(graph, unitID) == nil {
 		return ErrUnitNotFound
 	}
 	for _, change := range proposal.Changes {
@@ -334,8 +331,7 @@ func DeleteCurriculumUnit(database *sql.DB, authorID, proposalID, unitID int64) 
 		}
 	}
 	if err := db.AddDraftCurriculumProposalChange(tx, proposalID, authorID, &models.CurriculumProposalChange{
-		Kind: "delete_unit", UnitID: unitID, UnitName: baseUnit.Name,
-		UnitContent: baseUnit.Content,
+		Kind: "delete_unit", UnitID: unitID,
 	}); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrProposalNotFound
@@ -781,6 +777,50 @@ func sameOptionalID(left, right *int64) bool {
 		return left == nil && right == nil
 	}
 	return *left == *right
+}
+
+// PopulateCurriculumProposalPreviousState derives display-only historical
+// values by replaying a proposal over its frozen base. These values are never
+// persisted in proposal change payloads.
+func PopulateCurriculumProposalPreviousState(
+	base *models.CurriculumGraph,
+	proposal *models.CurriculumProposal,
+) {
+	if base == nil || proposal == nil {
+		return
+	}
+	units := make(map[int64]models.Unit, len(base.Units))
+	for _, unit := range base.Units {
+		units[unit.ID] = unit
+	}
+	for index := range proposal.Changes {
+		change := &proposal.Changes[index]
+		unit, exists := units[change.UnitID]
+		switch change.Kind {
+		case "create_unit":
+			units[change.UnitID] = models.Unit{
+				ID: change.UnitID, Name: change.UnitName, Content: change.UnitContent,
+			}
+		case "rename_unit":
+			if exists {
+				change.PreviousUnitName = unit.Name
+				unit.Name = change.UnitName
+				units[change.UnitID] = unit
+			}
+		case "update_content":
+			if exists {
+				change.PreviousUnitContent = unit.Content
+				unit.Content = change.UnitContent
+				units[change.UnitID] = unit
+			}
+		case "delete_unit":
+			if exists {
+				change.UnitName = unit.Name
+				change.UnitContent = unit.Content
+				delete(units, change.UnitID)
+			}
+		}
+	}
 }
 
 func validateProposalMetadata(title, rationale string) (string, string, error) {

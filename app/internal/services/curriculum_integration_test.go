@@ -269,8 +269,7 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	conflictingProposal, err = db.GetCurriculumProposal(database, conflictingProposal.ID)
 	if err != nil || conflictingProposal == nil || conflictingProposal.BaseProposalID == nil ||
 		*conflictingProposal.BaseProposalID != proposal.ID ||
-		len(conflictingProposal.Changes) != 2 ||
-		conflictingProposal.Changes[0].PreviousUnitName != "Introductory algebra" {
+		len(conflictingProposal.Changes) != 2 {
 		t.Fatalf("manual rebase did not normalize the retained change: proposal=%#v err=%v", conflictingProposal, err)
 	}
 	var resolvedContent *models.CurriculumProposalChange
@@ -279,8 +278,7 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 			resolvedContent = &conflictingProposal.Changes[index]
 		}
 	}
-	if resolvedContent == nil || resolvedContent.UnitContent != "A reconciled algebra explanation." ||
-		resolvedContent.PreviousUnitContent != "Work through variables, expressions, and equations." {
+	if resolvedContent == nil || resolvedContent.UnitContent != "A reconciled algebra explanation." {
 		t.Fatalf("custom content rebase resolution = %#v", resolvedContent)
 	}
 	if err := DeleteCurriculumProposal(database, authorID, conflictingProposal.ID); err != nil {
@@ -367,8 +365,6 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if err != nil || normalizedRetirement == nil ||
 		len(normalizedRetirement.Changes) != 3 ||
 		normalizedRetirement.Changes[1].Kind != "delete_unit" ||
-		normalizedRetirement.Changes[1].UnitName != "Introductory algebra" ||
-		normalizedRetirement.Changes[1].UnitContent != "Work through variables, expressions, and equations." ||
 		normalizedRetirement.Changes[2].Kind != "recognition" ||
 		len(normalizedRetirement.Changes[2].Recognition.Sources) != 1 ||
 		normalizedRetirement.Changes[2].Recognition.Sources[0].ID != algebra.ID ||

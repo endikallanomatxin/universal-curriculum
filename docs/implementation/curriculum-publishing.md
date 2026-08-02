@@ -32,9 +32,10 @@ Publication accepts every change in the proposal atomically. It succeeds only
 when the proposal's base is still the current accepted proposal. The projection
 is rebuilt by following that proposal lineage inside the same transaction.
 Before acceptance, the ordered changes are strictly replayed over that base.
-Every operation must affect the state it declares, its previous values must
-match, all referenced units must be active at that point, and the resulting
-graph must satisfy the product invariants.
+Every operation must affect the state it declares, all referenced units must be
+active at that point, and the resulting graph must satisfy the product
+invariants. Previous values and deleted-unit snapshots are derived by replaying
+the proposal over its frozen base rather than duplicated in change storage.
 
 Draft editing keeps the proposal as a normalized diff from its base. Reversing a
 dependency change removes that change instead of recording the opposite change.
@@ -67,9 +68,8 @@ never removes the author's original proposed version. A single unrestricted
 source field is the canonical client-side result. The browser regenerates the
 comparison from its latest value whenever that view opens; the backend supplies
 the two references and receives only the resolved content. Other changes can
-be kept or dropped. Kept name, content and deletion changes
-receive snapshots from the new base; dependency changes that already have their
-desired result become no-ops. The normalized proposal is validated as a whole
+be kept or dropped. Dependency changes that already have their desired result
+become no-ops. The normalized proposal is validated as a whole
 before its base moves. Until then ordinary curriculum edits and publication are
 blocked, while proposal metadata and draft deletion remain available.
 
