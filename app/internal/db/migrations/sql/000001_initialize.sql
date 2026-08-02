@@ -98,9 +98,7 @@ CREATE INDEX curriculum_proposals_status_created_at_idx
 CREATE TABLE curriculum_proposal_authors (
     proposal_id BIGINT NOT NULL REFERENCES curriculum_proposals(id) ON DELETE CASCADE,
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-    position INTEGER NOT NULL CHECK (position > 0),
-    PRIMARY KEY (proposal_id, user_id),
-    UNIQUE (proposal_id, position)
+    PRIMARY KEY (proposal_id, user_id)
 );
 
 CREATE INDEX curriculum_proposal_authors_user_id_idx

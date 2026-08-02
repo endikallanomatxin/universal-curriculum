@@ -37,8 +37,8 @@ func CreateDraftCurriculumProposal(q curriculumExecutor, proposal *models.Curric
 		return fmt.Errorf("create draft curriculum proposal: %w", err)
 	}
 	if _, err := q.Exec(`
-		INSERT INTO curriculum_proposal_authors (proposal_id, user_id, position)
-		VALUES ($1, $2, 1)
+		INSERT INTO curriculum_proposal_authors (proposal_id, user_id)
+		VALUES ($1, $2)
 	`, proposal.ID, proposal.AuthorIDs[0]); err != nil {
 		return fmt.Errorf("add draft curriculum proposal author: %w", err)
 	}
@@ -56,8 +56,8 @@ func GetCurriculumProposal(q curriculumExecutor, proposalID int64) (*models.Curr
 		       proposal.created_at, proposal.accepted_at
 		FROM curriculum_proposals proposal
 		JOIN LATERAL (
-			SELECT array_agg(user_id ORDER BY position) AS ids,
-			       string_agg(users.full_name, ', ' ORDER BY position) AS names
+			SELECT array_agg(user_id ORDER BY users.full_name, user_id) AS ids,
+			       string_agg(users.full_name, ', ' ORDER BY users.full_name, user_id) AS names
 			FROM curriculum_proposal_authors
 			JOIN users ON users.id = user_id
 			WHERE proposal_id = proposal.id
@@ -441,8 +441,8 @@ func ListCurriculumProposals(database *sql.DB, limit int) ([]models.CurriculumPr
 		       proposal.created_at, proposal.accepted_at
 		FROM curriculum_proposals proposal
 		JOIN LATERAL (
-			SELECT array_agg(user_id ORDER BY position) AS ids,
-			       string_agg(users.full_name, ', ' ORDER BY position) AS names
+			SELECT array_agg(user_id ORDER BY users.full_name, user_id) AS ids,
+			       string_agg(users.full_name, ', ' ORDER BY users.full_name, user_id) AS names
 			FROM curriculum_proposal_authors
 			JOIN users ON users.id = user_id
 			WHERE proposal_id = proposal.id
@@ -489,8 +489,8 @@ func ListDraftCurriculumProposalsByAuthor(database *sql.DB, authorID int64) ([]m
 		       COUNT(change.id)
 		FROM curriculum_proposals proposal
 		JOIN LATERAL (
-			SELECT array_agg(user_id ORDER BY position) AS ids,
-			       string_agg(users.full_name, ', ' ORDER BY position) AS names
+			SELECT array_agg(user_id ORDER BY users.full_name, user_id) AS ids,
+			       string_agg(users.full_name, ', ' ORDER BY users.full_name, user_id) AS names
 			FROM curriculum_proposal_authors
 			JOIN users ON users.id = user_id
 			WHERE proposal_id = proposal.id
