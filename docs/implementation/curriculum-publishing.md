@@ -35,6 +35,10 @@ draft can refer to it normally.
 Publication accepts every change in the proposal atomically. It succeeds only
 when the proposal's base is still the current accepted proposal. The projection
 is rebuilt by following that proposal lineage inside the same transaction.
+PostgreSQL also enforces that proposal bases are accepted, that publication
+extends the locked projection head, and that the projection advances to that
+direct successor before commit. These constraints keep the canonical history
+linear even if persistence is called outside the normal service workflow.
 Before acceptance, the ordered changes are strictly replayed over that base.
 Every operation must affect the state it declares, all referenced units must be
 active at that point, and the resulting graph must satisfy the product

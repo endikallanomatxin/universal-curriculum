@@ -90,6 +90,11 @@ CREATE TABLE curriculum_proposals (
     )
 );
 
+CREATE INDEX curriculum_proposals_base_proposal_id_idx
+    ON curriculum_proposals (base_proposal_id);
+CREATE INDEX curriculum_proposals_status_created_at_idx
+    ON curriculum_proposals (status, created_at DESC);
+
 CREATE TABLE curriculum_proposal_authors (
     proposal_id BIGINT NOT NULL REFERENCES curriculum_proposals(id) ON DELETE CASCADE,
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
@@ -251,6 +256,108 @@ CREATE TABLE curriculum_projection_state (
 
 INSERT INTO curriculum_projection_state (singleton, proposal_id)
 VALUES (TRUE, NULL);
+
+-- +goose StatementBegin
+CREATE FUNCTION validate_curriculum_proposal_base() RETURNS TRIGGER
+LANGUAGE plpgsql AS $$
+DECLARE
+    base_status TEXT;
+BEGIN
+    IF NEW.base_proposal_id IS NULL THEN
+        RETURN NEW;
+    END IF;
+    SELECT status INTO base_status
+    FROM curriculum_proposals
+    WHERE id = NEW.base_proposal_id;
+    IF base_status IS DISTINCT FROM 'accepted' THEN
+        RAISE EXCEPTION 'curriculum proposal base % must be accepted', NEW.base_proposal_id;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+-- +goose StatementEnd
+
+CREATE TRIGGER curriculum_proposals_require_accepted_base
+BEFORE INSERT OR UPDATE OF base_proposal_id ON curriculum_proposals
+FOR EACH ROW EXECUTE FUNCTION validate_curriculum_proposal_base();
+
+-- +goose StatementBegin
+CREATE FUNCTION validate_curriculum_proposal_acceptance() RETURNS TRIGGER
+LANGUAGE plpgsql AS $$
+DECLARE
+    current_proposal_id BIGINT;
+BEGIN
+    IF NEW.status <> 'accepted' OR OLD.status = 'accepted' THEN
+        RETURN NEW;
+    END IF;
+    SELECT proposal_id INTO current_proposal_id
+    FROM curriculum_projection_state
+    WHERE singleton = TRUE
+    FOR UPDATE;
+    IF NEW.base_proposal_id IS DISTINCT FROM current_proposal_id THEN
+        RAISE EXCEPTION 'accepted curriculum proposal must extend the current projection';
+    END IF;
+    RETURN NEW;
+END;
+$$;
+-- +goose StatementEnd
+
+CREATE TRIGGER curriculum_proposals_accept_current_base
+BEFORE UPDATE OF status ON curriculum_proposals
+FOR EACH ROW EXECUTE FUNCTION validate_curriculum_proposal_acceptance();
+
+-- +goose StatementBegin
+CREATE FUNCTION validate_accepted_curriculum_proposal_is_projected() RETURNS TRIGGER
+LANGUAGE plpgsql AS $$
+BEGIN
+    IF NEW.status = 'accepted' AND OLD.status <> 'accepted'
+       AND NOT EXISTS (
+           SELECT 1 FROM curriculum_projection_state
+           WHERE singleton = TRUE AND proposal_id = NEW.id
+       ) THEN
+        RAISE EXCEPTION 'accepted curriculum proposal % must become the current projection', NEW.id;
+    END IF;
+    RETURN NULL;
+END;
+$$;
+-- +goose StatementEnd
+
+CREATE CONSTRAINT TRIGGER curriculum_proposals_require_projection
+AFTER UPDATE OF status ON curriculum_proposals
+DEFERRABLE INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION validate_accepted_curriculum_proposal_is_projected();
+
+-- +goose StatementBegin
+CREATE FUNCTION protect_curriculum_projection_state() RETURNS TRIGGER
+LANGUAGE plpgsql AS $$
+DECLARE
+    projected_base_id BIGINT;
+BEGIN
+    IF TG_OP = 'DELETE' THEN
+        RAISE EXCEPTION 'curriculum projection state cannot be deleted';
+    END IF;
+    IF NEW.proposal_id IS NULL AND OLD.proposal_id IS NOT NULL THEN
+        RAISE EXCEPTION 'curriculum projection cannot discard its accepted history';
+    END IF;
+    IF NEW.proposal_id IS NOT NULL THEN
+        SELECT base_proposal_id INTO projected_base_id
+        FROM curriculum_proposals
+        WHERE id = NEW.proposal_id AND status = 'accepted';
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'curriculum projection must reference an accepted proposal';
+        END IF;
+        IF projected_base_id IS DISTINCT FROM OLD.proposal_id THEN
+            RAISE EXCEPTION 'curriculum projection must advance to a direct successor';
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+-- +goose StatementEnd
+
+CREATE TRIGGER curriculum_projection_state_valid
+BEFORE UPDATE OR DELETE ON curriculum_projection_state
+FOR EACH ROW EXECUTE FUNCTION protect_curriculum_projection_state();
 
 -- +goose StatementBegin
 CREATE FUNCTION protect_accepted_curriculum_proposal() RETURNS TRIGGER
@@ -623,6 +730,7 @@ DROP TABLE completed_units;
 DROP TABLE learning_path_units;
 DROP TABLE learning_paths;
 DROP TABLE curriculum_projection_state;
+DROP FUNCTION protect_curriculum_projection_state();
 DROP TABLE unit_dependencies;
 DROP TABLE units;
 DROP VIEW curriculum_proposal_change_details;
@@ -642,11 +750,17 @@ DROP FUNCTION validate_curriculum_proposal_change_detail();
 DROP FUNCTION protect_accepted_curriculum_recognition_member();
 DROP FUNCTION protect_accepted_curriculum_proposal_change_detail();
 DROP TABLE curriculum_proposal_changes;
+DROP TRIGGER curriculum_proposals_require_projection ON curriculum_proposals;
+DROP TRIGGER curriculum_proposals_accept_current_base ON curriculum_proposals;
+DROP TRIGGER curriculum_proposals_require_accepted_base ON curriculum_proposals;
 DROP TRIGGER curriculum_proposals_accepted_immutable ON curriculum_proposals;
 DROP TRIGGER curriculum_proposals_require_author ON curriculum_proposals;
 DROP TABLE curriculum_proposal_authors;
 DROP FUNCTION validate_curriculum_proposal_has_author();
 DROP FUNCTION protect_accepted_curriculum_proposal_author();
+DROP FUNCTION validate_accepted_curriculum_proposal_is_projected();
+DROP FUNCTION validate_curriculum_proposal_acceptance();
+DROP FUNCTION validate_curriculum_proposal_base();
 DROP FUNCTION protect_accepted_curriculum_proposal_change();
 DROP FUNCTION protect_accepted_curriculum_proposal();
 DROP TABLE curriculum_proposals;
