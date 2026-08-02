@@ -4,7 +4,7 @@ import "time"
 
 type CurriculumProposal struct {
 	ID             int64
-	AuthorID       *int64
+	AuthorIDs      []int64
 	AuthorName     string
 	Title          string
 	Rationale      string
@@ -14,6 +14,15 @@ type CurriculumProposal struct {
 	AcceptedAt     *time.Time
 	Changes        []CurriculumProposalChange
 	ChangeCount    int
+}
+
+func (proposal CurriculumProposal) HasAuthor(userID int64) bool {
+	for _, authorID := range proposal.AuthorIDs {
+		if authorID == userID {
+			return true
+		}
+	}
+	return false
 }
 
 type CurriculumProposalChange struct {

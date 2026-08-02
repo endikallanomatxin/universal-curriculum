@@ -8,6 +8,10 @@ on which it was based, forming the canonical publication lineage without a
 separate version number. The `units` and `unit_dependencies` tables are a
 rebuildable projection used to serve the current graph efficiently.
 
+Proposal authorship is an ordered many-to-many relation. New drafts currently
+start with their creator as their sole author, while the storage model allows
+later composition workflows to retain every contributing author.
+
 Every change has a common header that owns its proposal, position and kind. Its
 payload lives in a type-specific table for unit creation, rename, content
 update, deletion or dependency mutation. Database constraints require exactly

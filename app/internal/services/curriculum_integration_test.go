@@ -49,6 +49,23 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	var coauthorID int64
+	if err := database.QueryRow(`
+		INSERT INTO users (full_name) VALUES ('Curriculum Coauthor') RETURNING id
+	`).Scan(&coauthorID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.Exec(`
+		INSERT INTO curriculum_proposal_authors (proposal_id, user_id, position)
+		VALUES ($1, $2, 2)
+	`, proposal.ID, coauthorID); err != nil {
+		t.Fatal(err)
+	}
+	proposal, err = db.GetCurriculumProposal(database, proposal.ID)
+	if err != nil || proposal == nil || !proposal.HasAuthor(authorID) || !proposal.HasAuthor(coauthorID) ||
+		proposal.AuthorName != "Curriculum Editor, Curriculum Coauthor" {
+		t.Fatalf("proposal authors = %#v err=%v", proposal, err)
+	}
 	foundations, err := CreateCurriculumUnit(database, authorID, proposal.ID, "Foundations", "Learn the core foundations.")
 	if err != nil {
 		t.Fatal(err)

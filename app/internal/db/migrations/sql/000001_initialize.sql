@@ -76,7 +76,6 @@ CREATE INDEX authentication_rate_limits_cleanup_idx
 
 CREATE TABLE curriculum_proposals (
     id BIGSERIAL PRIMARY KEY,
-    author_id BIGINT REFERENCES users(id) ON DELETE RESTRICT,
     title TEXT NOT NULL CHECK (title <> '' AND title = btrim(title)),
     rationale TEXT NOT NULL CHECK (rationale <> '' AND rationale = btrim(rationale)),
     status TEXT NOT NULL CHECK (status IN ('draft', 'accepted', 'rejected')),
@@ -90,6 +89,17 @@ CREATE TABLE curriculum_proposals (
         (status <> 'accepted' AND accepted_at IS NULL)
     )
 );
+
+CREATE TABLE curriculum_proposal_authors (
+    proposal_id BIGINT NOT NULL REFERENCES curriculum_proposals(id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    position INTEGER NOT NULL CHECK (position > 0),
+    PRIMARY KEY (proposal_id, user_id),
+    UNIQUE (proposal_id, position)
+);
+
+CREATE INDEX curriculum_proposal_authors_user_id_idx
+    ON curriculum_proposal_authors (user_id, proposal_id);
 
 CREATE TABLE curriculum_proposal_changes (
     id BIGSERIAL PRIMARY KEY,
@@ -260,6 +270,62 @@ $$;
 CREATE TRIGGER curriculum_proposals_accepted_immutable
 BEFORE UPDATE OR DELETE ON curriculum_proposals
 FOR EACH ROW EXECUTE FUNCTION protect_accepted_curriculum_proposal();
+
+-- +goose StatementBegin
+CREATE FUNCTION protect_accepted_curriculum_proposal_author() RETURNS TRIGGER
+LANGUAGE plpgsql AS $$
+DECLARE
+    parent_status TEXT;
+BEGIN
+    SELECT status INTO parent_status
+    FROM curriculum_proposals
+    WHERE id = CASE WHEN TG_OP = 'DELETE' THEN OLD.proposal_id ELSE NEW.proposal_id END;
+    IF parent_status = 'accepted' THEN
+        RAISE EXCEPTION 'authors of accepted curriculum proposals are immutable';
+    END IF;
+    IF TG_OP = 'DELETE' THEN
+        RETURN OLD;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+-- +goose StatementEnd
+
+CREATE TRIGGER curriculum_proposal_authors_accepted_immutable
+BEFORE INSERT OR UPDATE OR DELETE ON curriculum_proposal_authors
+FOR EACH ROW EXECUTE FUNCTION protect_accepted_curriculum_proposal_author();
+
+-- +goose StatementBegin
+CREATE FUNCTION validate_curriculum_proposal_has_author() RETURNS TRIGGER
+LANGUAGE plpgsql AS $$
+DECLARE
+    checked_proposal_id BIGINT;
+BEGIN
+    IF TG_TABLE_NAME = 'curriculum_proposals' THEN
+        checked_proposal_id := NEW.id;
+    ELSE
+        checked_proposal_id := OLD.proposal_id;
+    END IF;
+    IF EXISTS (SELECT 1 FROM curriculum_proposals WHERE id = checked_proposal_id)
+       AND NOT EXISTS (
+           SELECT 1 FROM curriculum_proposal_authors
+           WHERE proposal_id = checked_proposal_id
+       ) THEN
+        RAISE EXCEPTION 'curriculum proposal % must have at least one author', checked_proposal_id;
+    END IF;
+    RETURN NULL;
+END;
+$$;
+-- +goose StatementEnd
+
+CREATE CONSTRAINT TRIGGER curriculum_proposals_require_author
+AFTER INSERT OR UPDATE ON curriculum_proposals
+DEFERRABLE INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION validate_curriculum_proposal_has_author();
+CREATE CONSTRAINT TRIGGER curriculum_proposal_authors_preserve_author
+AFTER DELETE ON curriculum_proposal_authors
+DEFERRABLE INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION validate_curriculum_proposal_has_author();
 
 -- +goose StatementBegin
 CREATE FUNCTION protect_accepted_curriculum_proposal_change() RETURNS TRIGGER
@@ -577,6 +643,10 @@ DROP FUNCTION protect_accepted_curriculum_recognition_member();
 DROP FUNCTION protect_accepted_curriculum_proposal_change_detail();
 DROP TABLE curriculum_proposal_changes;
 DROP TRIGGER curriculum_proposals_accepted_immutable ON curriculum_proposals;
+DROP TRIGGER curriculum_proposals_require_author ON curriculum_proposals;
+DROP TABLE curriculum_proposal_authors;
+DROP FUNCTION validate_curriculum_proposal_has_author();
+DROP FUNCTION protect_accepted_curriculum_proposal_author();
 DROP FUNCTION protect_accepted_curriculum_proposal_change();
 DROP FUNCTION protect_accepted_curriculum_proposal();
 DROP TABLE curriculum_proposals;

@@ -473,7 +473,7 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 				http.Error(writer, "Unable to load curriculum proposal", http.StatusInternalServerError)
 				return
 			}
-			if activeProposal != nil && (activeProposal.Status != "draft" || activeProposal.AuthorID == nil || *activeProposal.AuthorID != userID) {
+			if activeProposal != nil && (activeProposal.Status != "draft" || !activeProposal.HasAuthor(userID)) {
 				activeProposal = nil
 			}
 		}

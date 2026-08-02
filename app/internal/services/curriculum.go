@@ -92,7 +92,7 @@ func CreateCurriculumProposal(database *sql.DB, authorID int64, title, rationale
 		return nil, err
 	}
 	proposal := &models.CurriculumProposal{
-		AuthorID: &authorID, Title: title, Rationale: rationale, BaseProposalID: baseProposalID,
+		AuthorIDs: []int64{authorID}, Title: title, Rationale: rationale, BaseProposalID: baseProposalID,
 	}
 	if err := db.CreateDraftCurriculumProposal(tx, proposal); err != nil {
 		return nil, err
@@ -245,7 +245,7 @@ func draftCreatedCurriculumUnit(database *sql.DB, authorID, proposalID, unitID i
 	if err != nil {
 		return nil, err
 	}
-	if proposal == nil || proposal.Status != "draft" || proposal.AuthorID == nil || *proposal.AuthorID != authorID {
+	if proposal == nil || proposal.Status != "draft" || !proposal.HasAuthor(authorID) {
 		return nil, ErrProposalNotFound
 	}
 	for index := range proposal.Changes {
@@ -720,7 +720,7 @@ func PublishCurriculumProposal(
 	if err != nil {
 		return summary, err
 	}
-	if proposal == nil || proposal.Status != "draft" || proposal.AuthorID == nil || *proposal.AuthorID != authorID {
+	if proposal == nil || proposal.Status != "draft" || !proposal.HasAuthor(authorID) {
 		return summary, ErrProposalNotFound
 	}
 	if len(proposal.Changes) == 0 {
@@ -884,7 +884,7 @@ func currentDraftCurriculumProposal(
 	if err != nil {
 		return nil, err
 	}
-	if proposal == nil || proposal.Status != "draft" || proposal.AuthorID == nil || *proposal.AuthorID != authorID {
+	if proposal == nil || proposal.Status != "draft" || !proposal.HasAuthor(authorID) {
 		return nil, ErrProposalNotFound
 	}
 	currentProposalID, err := db.LockCurrentCurriculumProposal(tx)

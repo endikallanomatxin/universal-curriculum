@@ -197,7 +197,7 @@ func ResolveCurriculumProposalRebase(
 	if err != nil {
 		return err
 	}
-	if proposal.AuthorID == nil || *proposal.AuthorID != authorID {
+	if !proposal.HasAuthor(authorID) {
 		return ErrProposalNotFound
 	}
 	plan, err := planCurriculumProposalRebase(tx, proposal, currentProposalID, graph)
@@ -293,7 +293,7 @@ func EnsureCurriculumProposalReady(
 	if err != nil {
 		return err
 	}
-	if proposal == nil || proposal.AuthorID == nil || *proposal.AuthorID != authorID || proposal.Status != "draft" {
+	if proposal == nil || !proposal.HasAuthor(authorID) || proposal.Status != "draft" {
 		return ErrProposalNotFound
 	}
 	plan, err := TryAutoRebaseCurriculumProposal(database, proposalID)

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/lib/pq"
+
 	"universal-curriculum/internal/models"
 )
 
@@ -26,13 +28,19 @@ func LockCurrentCurriculumProposal(q curriculumExecutor) (*int64, error) {
 
 func CreateDraftCurriculumProposal(q curriculumExecutor, proposal *models.CurriculumProposal) error {
 	err := q.QueryRow(`
-		INSERT INTO curriculum_proposals (author_id, title, rationale, status, base_proposal_id)
-		VALUES ($1, $2, $3, 'draft', $4)
+		INSERT INTO curriculum_proposals (title, rationale, status, base_proposal_id)
+		VALUES ($1, $2, 'draft', $3)
 		RETURNING id, created_at
-	`, proposal.AuthorID, proposal.Title, proposal.Rationale, proposal.BaseProposalID).
+	`, proposal.Title, proposal.Rationale, proposal.BaseProposalID).
 		Scan(&proposal.ID, &proposal.CreatedAt)
 	if err != nil {
 		return fmt.Errorf("create draft curriculum proposal: %w", err)
+	}
+	if _, err := q.Exec(`
+		INSERT INTO curriculum_proposal_authors (proposal_id, user_id, position)
+		VALUES ($1, $2, 1)
+	`, proposal.ID, proposal.AuthorIDs[0]); err != nil {
+		return fmt.Errorf("add draft curriculum proposal author: %w", err)
 	}
 	proposal.Status = "draft"
 	return nil
@@ -40,17 +48,23 @@ func CreateDraftCurriculumProposal(q curriculumExecutor, proposal *models.Curric
 
 func GetCurriculumProposal(q curriculumExecutor, proposalID int64) (*models.CurriculumProposal, error) {
 	var proposal models.CurriculumProposal
-	var authorID, baseProposalID sql.NullInt64
+	var baseProposalID sql.NullInt64
 	var acceptedAt sql.NullTime
 	err := q.QueryRow(`
-		SELECT proposal.id, proposal.author_id, COALESCE(author.full_name, 'System'),
+		SELECT proposal.id, authors.ids, authors.names,
 		       proposal.title, proposal.rationale, proposal.status, proposal.base_proposal_id,
 		       proposal.created_at, proposal.accepted_at
 		FROM curriculum_proposals proposal
-		LEFT JOIN users author ON author.id = proposal.author_id
+		JOIN LATERAL (
+			SELECT array_agg(user_id ORDER BY position) AS ids,
+			       string_agg(users.full_name, ', ' ORDER BY position) AS names
+			FROM curriculum_proposal_authors
+			JOIN users ON users.id = user_id
+			WHERE proposal_id = proposal.id
+		) authors ON TRUE
 		WHERE proposal.id = $1
 	`, proposalID).Scan(
-		&proposal.ID, &authorID, &proposal.AuthorName, &proposal.Title,
+		&proposal.ID, pq.Array(&proposal.AuthorIDs), &proposal.AuthorName, &proposal.Title,
 		&proposal.Rationale, &proposal.Status, &baseProposalID,
 		&proposal.CreatedAt, &acceptedAt,
 	)
@@ -59,9 +73,6 @@ func GetCurriculumProposal(q curriculumExecutor, proposalID int64) (*models.Curr
 	}
 	if err != nil {
 		return nil, fmt.Errorf("get curriculum proposal: %w", err)
-	}
-	if authorID.Valid {
-		proposal.AuthorID = &authorID.Int64
 	}
 	if baseProposalID.Valid {
 		proposal.BaseProposalID = &baseProposalID.Int64
@@ -80,7 +91,8 @@ func GetCurriculumProposal(q curriculumExecutor, proposalID int64) (*models.Curr
 func UpdateDraftCurriculumProposal(q curriculumExecutor, proposalID, authorID int64, title, rationale string) (bool, error) {
 	result, err := q.Exec(`
 		UPDATE curriculum_proposals SET title = $3, rationale = $4
-		WHERE id = $1 AND author_id = $2 AND status = 'draft'
+		WHERE id = $1 AND status = 'draft'
+		  AND EXISTS (SELECT 1 FROM curriculum_proposal_authors WHERE proposal_id = id AND user_id = $2)
 	`, proposalID, authorID, title, rationale)
 	if err != nil {
 		return false, fmt.Errorf("update draft curriculum proposal: %w", err)
@@ -92,7 +104,8 @@ func UpdateDraftCurriculumProposal(q curriculumExecutor, proposalID, authorID in
 func DeleteDraftCurriculumProposal(q curriculumExecutor, proposalID, authorID int64) (bool, error) {
 	result, err := q.Exec(`
 		DELETE FROM curriculum_proposals
-		WHERE id = $1 AND author_id = $2 AND status = 'draft'
+		WHERE id = $1 AND status = 'draft'
+		  AND EXISTS (SELECT 1 FROM curriculum_proposal_authors WHERE proposal_id = id AND user_id = $2)
 	`, proposalID, authorID)
 	if err != nil {
 		return false, fmt.Errorf("delete draft curriculum proposal: %w", err)
@@ -109,7 +122,8 @@ func AddDraftCurriculumProposalChange(q curriculumExecutor, proposalID, authorID
 		       COALESCE((SELECT MAX(position) + 1 FROM curriculum_proposal_changes WHERE proposal_id = proposal.id), 1),
 		       $3
 		FROM curriculum_proposals proposal
-		WHERE proposal.id = $1 AND proposal.author_id = $2 AND proposal.status = 'draft'
+		WHERE proposal.id = $1 AND proposal.status = 'draft'
+		  AND EXISTS (SELECT 1 FROM curriculum_proposal_authors WHERE proposal_id = proposal.id AND user_id = $2)
 		RETURNING id, position
 	`, proposalID, authorID, change.Kind).Scan(&change.ID, &change.Position)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -126,7 +140,8 @@ func DeleteDraftCurriculumProposalChange(q curriculumExecutor, proposalID, chang
 		DELETE FROM curriculum_proposal_changes change
 		USING curriculum_proposals proposal
 		WHERE change.id = $2 AND change.proposal_id = $1
-		  AND proposal.id = change.proposal_id AND proposal.author_id = $3
+		  AND proposal.id = change.proposal_id
+		  AND EXISTS (SELECT 1 FROM curriculum_proposal_authors WHERE proposal_id = proposal.id AND user_id = $3)
 		  AND proposal.status = 'draft'
 	`, proposalID, changeID, authorID)
 	if err != nil {
@@ -142,7 +157,8 @@ func DeleteDraftCurriculumProposalUnitChanges(q curriculumExecutor, proposalID, 
 		WITH authorized_proposal AS (
 			SELECT id
 			FROM curriculum_proposals
-			WHERE id = $1 AND author_id = $2 AND status = 'draft'
+			WHERE id = $1 AND status = 'draft'
+			  AND EXISTS (SELECT 1 FROM curriculum_proposal_authors WHERE proposal_id = id AND user_id = $2)
 		),
 		deleted AS (
 			DELETE FROM curriculum_proposal_changes change
@@ -165,7 +181,8 @@ func AcceptDraftCurriculumProposal(q curriculumExecutor, proposalID, authorID in
 	result, err := q.Exec(`
 		UPDATE curriculum_proposals
 		SET status = 'accepted', accepted_at = clock_timestamp()
-		WHERE id = $1 AND author_id = $2 AND status = 'draft'
+		WHERE id = $1 AND status = 'draft'
+		  AND EXISTS (SELECT 1 FROM curriculum_proposal_authors WHERE proposal_id = id AND user_id = $2)
 	`, proposalID, authorID)
 	if err != nil {
 		return false, fmt.Errorf("accept draft curriculum proposal: %w", err)
@@ -283,12 +300,15 @@ func RebuildCurriculumProjection(q curriculumExecutor, proposalID int64) error {
 	var changes []models.CurriculumProposalChange
 	for rows.Next() {
 		var change models.CurriculumProposalChange
-		var prerequisite sql.NullInt64
+		var unitID, prerequisite sql.NullInt64
 		if err := rows.Scan(
-			&change.Kind, &change.UnitID, &change.UnitName,
+			&change.Kind, &unitID, &change.UnitName,
 			&change.UnitContent, &prerequisite,
 		); err != nil {
 			return fmt.Errorf("scan accepted curriculum change: %w", err)
+		}
+		if unitID.Valid {
+			change.UnitID = unitID.Int64
 		}
 		if prerequisite.Valid {
 			change.PrerequisiteID = &prerequisite.Int64
@@ -415,12 +435,18 @@ func RebuildCurriculumProjection(q curriculumExecutor, proposalID int64) error {
 
 func ListCurriculumProposals(database *sql.DB, limit int) ([]models.CurriculumProposal, error) {
 	rows, err := database.Query(`
-		SELECT proposal.id, proposal.author_id, COALESCE(author.full_name, 'System'),
+		SELECT proposal.id, authors.ids, authors.names,
 		       proposal.title, proposal.rationale, proposal.status,
 		       proposal.base_proposal_id,
 		       proposal.created_at, proposal.accepted_at
 		FROM curriculum_proposals proposal
-		LEFT JOIN users author ON author.id = proposal.author_id
+		JOIN LATERAL (
+			SELECT array_agg(user_id ORDER BY position) AS ids,
+			       string_agg(users.full_name, ', ' ORDER BY position) AS names
+			FROM curriculum_proposal_authors
+			JOIN users ON users.id = user_id
+			WHERE proposal_id = proposal.id
+		) authors ON TRUE
 		WHERE proposal.status <> 'draft'
 		ORDER BY proposal.created_at DESC
 		LIMIT $1
@@ -432,17 +458,14 @@ func ListCurriculumProposals(database *sql.DB, limit int) ([]models.CurriculumPr
 	var proposals []models.CurriculumProposal
 	for rows.Next() {
 		var proposal models.CurriculumProposal
-		var authorID, baseProposalID sql.NullInt64
+		var baseProposalID sql.NullInt64
 		var acceptedAt sql.NullTime
 		if err := rows.Scan(
-			&proposal.ID, &authorID, &proposal.AuthorName, &proposal.Title,
+			&proposal.ID, pq.Array(&proposal.AuthorIDs), &proposal.AuthorName, &proposal.Title,
 			&proposal.Rationale, &proposal.Status, &baseProposalID,
 			&proposal.CreatedAt, &acceptedAt,
 		); err != nil {
 			return nil, fmt.Errorf("scan curriculum proposal: %w", err)
-		}
-		if authorID.Valid {
-			proposal.AuthorID = &authorID.Int64
 		}
 		if baseProposalID.Valid {
 			proposal.BaseProposalID = &baseProposalID.Int64
@@ -460,15 +483,22 @@ func ListCurriculumProposals(database *sql.DB, limit int) ([]models.CurriculumPr
 
 func ListDraftCurriculumProposalsByAuthor(database *sql.DB, authorID int64) ([]models.CurriculumProposal, error) {
 	rows, err := database.Query(`
-		SELECT proposal.id, proposal.author_id, COALESCE(author.full_name, 'System'),
+		SELECT proposal.id, authors.ids, authors.names,
 		       proposal.title, proposal.rationale, proposal.status,
 		       proposal.base_proposal_id, proposal.created_at,
 		       COUNT(change.id)
 		FROM curriculum_proposals proposal
-		LEFT JOIN users author ON author.id = proposal.author_id
+		JOIN LATERAL (
+			SELECT array_agg(user_id ORDER BY position) AS ids,
+			       string_agg(users.full_name, ', ' ORDER BY position) AS names
+			FROM curriculum_proposal_authors
+			JOIN users ON users.id = user_id
+			WHERE proposal_id = proposal.id
+		) authors ON TRUE
 		LEFT JOIN curriculum_proposal_changes change ON change.proposal_id = proposal.id
-		WHERE proposal.status = 'draft' AND proposal.author_id = $1
-		GROUP BY proposal.id, author.full_name
+		WHERE proposal.status = 'draft'
+		  AND EXISTS (SELECT 1 FROM curriculum_proposal_authors WHERE proposal_id = proposal.id AND user_id = $1)
+		GROUP BY proposal.id, authors.ids, authors.names
 		ORDER BY proposal.created_at DESC
 	`, authorID)
 	if err != nil {
@@ -478,16 +508,13 @@ func ListDraftCurriculumProposalsByAuthor(database *sql.DB, authorID int64) ([]m
 	var proposals []models.CurriculumProposal
 	for rows.Next() {
 		var proposal models.CurriculumProposal
-		var proposalAuthorID, baseProposalID sql.NullInt64
+		var baseProposalID sql.NullInt64
 		if err := rows.Scan(
-			&proposal.ID, &proposalAuthorID, &proposal.AuthorName, &proposal.Title,
+			&proposal.ID, pq.Array(&proposal.AuthorIDs), &proposal.AuthorName, &proposal.Title,
 			&proposal.Rationale, &proposal.Status, &baseProposalID,
 			&proposal.CreatedAt, &proposal.ChangeCount,
 		); err != nil {
 			return nil, fmt.Errorf("scan draft curriculum proposal: %w", err)
-		}
-		if proposalAuthorID.Valid {
-			proposal.AuthorID = &proposalAuthorID.Int64
 		}
 		if baseProposalID.Valid {
 			proposal.BaseProposalID = &baseProposalID.Int64
