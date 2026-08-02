@@ -458,7 +458,7 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 		http.Error(writer, "Unable to load curriculum", http.StatusInternalServerError)
 		return
 	}
-	completedUnitIDs, err := db.CompletedUnitIDs(server.Database, userID)
+	completionStatuses, err := db.UnitCompletionStatuses(server.Database, userID)
 	if err != nil {
 		log.Printf("load curriculum completion indicators: %v", err)
 		http.Error(writer, "Unable to load progress", http.StatusInternalServerError)
@@ -632,7 +632,7 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 		layout,
 		focusedUnit,
 		nil,
-		completedUnitIDs,
+		completionStatuses,
 		true,
 		navigateURL,
 		contentURL,

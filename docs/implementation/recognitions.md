@@ -22,6 +22,13 @@ for convalidation and certification. Accepted recognitions are followed
 transitively when reading current progress. Derived recognition is never
 persisted, so it cannot overwrite or obscure the evidence from which it came.
 
+A direct completion remains literal while the unit's content is unchanged. A
+later content update preserves it as recognized completion; explicit
+recognition changes can copy completion to other unit identities in the same
+way. Neither mechanism removes completion from its source. Marking a recognized
+unit as completed records fresh direct evidence against the current accepted
+proposal, without introducing a separate reaffirmation action.
+
 The learning interface distinguishes a direct completion from recognition
 derived from previous learning. A recognized unit cannot be independently
 returned to pending while all of its source completions remain true.

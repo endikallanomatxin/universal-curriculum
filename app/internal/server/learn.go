@@ -217,7 +217,7 @@ func (server *Server) learn(writer http.ResponseWriter, request *http.Request) {
 		data.Graph,
 		data.FocusedUnit,
 		data.TargetUnitIDs,
-		data.CompletedUnitIDs,
+		data.CompletionStatuses,
 		authenticated,
 		navigateURL,
 		contentURL,
@@ -304,6 +304,7 @@ func (server *Server) setUnitCompletion(writer http.ResponseWriter, request *htt
 			Anchor: curriculumGraphNodeView{
 				CurriculumGraphNode: models.CurriculumGraphNode{Unit: *unit},
 				IsCompleted:         completed,
+				IsRecognized:        completionStatus.Recognized && !completionStatus.Direct,
 				HasProgress:         true,
 				IsOOB:               true,
 			},

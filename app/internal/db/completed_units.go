@@ -22,14 +22,37 @@ func CompletedUnitIDs(q curriculumExecutor, userID int64) (map[int64]bool, error
 
 func UnitCompletionStatuses(q curriculumExecutor, userID int64) (map[int64]models.UnitCompletionStatus, error) {
 	rows, err := q.Query(`
-		SELECT unit_id, is_completed
-		FROM (
+		WITH RECURSIVE proposal_lineage AS (
+			SELECT proposal.id, proposal.base_proposal_id, 0 AS depth
+			FROM curriculum_projection_state state
+			JOIN curriculum_proposals proposal ON proposal.id = state.proposal_id
+			WHERE state.singleton = TRUE
+
+			UNION ALL
+
+			SELECT proposal.id, proposal.base_proposal_id, lineage.depth + 1
+			FROM curriculum_proposals proposal
+			JOIN proposal_lineage lineage ON proposal.id = lineage.base_proposal_id
+		), current_completion AS (
 			SELECT DISTINCT ON (unit_id) unit_id, is_completed
+			     , curriculum_proposal_id
 			FROM unit_completion_events
 			WHERE user_id = $1
 			ORDER BY unit_id, id DESC
-		) current_completion
-		ORDER BY unit_id
+		)
+		SELECT completion.unit_id, completion.is_completed,
+		       EXISTS (
+			SELECT 1
+			FROM proposal_lineage completed_at
+			JOIN proposal_lineage changed_after ON changed_after.depth < completed_at.depth
+			JOIN curriculum_proposal_change_details change
+			  ON change.proposal_id = changed_after.id
+			WHERE completed_at.id = completion.curriculum_proposal_id
+			  AND change.kind = 'update_content'
+			  AND change.unit_id = completion.unit_id
+		       ) AS changed_since_completion
+		FROM current_completion completion
+		ORDER BY completion.unit_id
 	`, userID)
 	if err != nil {
 		return nil, fmt.Errorf("list completed unit ids: %w", err)
@@ -39,12 +62,14 @@ func UnitCompletionStatuses(q curriculumExecutor, userID int64) (map[int64]model
 	statuses := make(map[int64]models.UnitCompletionStatus)
 	for rows.Next() {
 		var unitID int64
-		var completed bool
-		if err := rows.Scan(&unitID, &completed); err != nil {
+		var completed, changedSinceCompletion bool
+		if err := rows.Scan(&unitID, &completed, &changedSinceCompletion); err != nil {
 			return nil, fmt.Errorf("scan completed unit id: %w", err)
 		}
 		if completed {
-			statuses[unitID] = models.UnitCompletionStatus{Direct: true}
+			statuses[unitID] = models.UnitCompletionStatus{
+				Direct: !changedSinceCompletion, Recognized: changedSinceCompletion,
+			}
 		}
 	}
 	if err := rows.Err(); err != nil {
@@ -101,13 +126,22 @@ func SetUnitCompleted(q curriculumExecutor, userID, unitID int64, completed bool
 		JOIN units unit ON unit.id = $2
 		WHERE state.singleton = TRUE
 		  AND state.proposal_id IS NOT NULL
-		  AND COALESCE((
-			SELECT event.is_completed
-			FROM unit_completion_events event
-			WHERE event.user_id = $1 AND event.unit_id = $2
-			ORDER BY event.id DESC
-			LIMIT 1
-		  ), FALSE) IS DISTINCT FROM $3
+		  AND ($3 OR EXISTS (
+			SELECT 1 FROM unit_completion_events existing
+			WHERE existing.user_id = $1 AND existing.unit_id = $2
+		  ))
+		  AND NOT EXISTS (
+			SELECT 1
+			FROM (
+				SELECT event.is_completed, event.curriculum_proposal_id
+				FROM unit_completion_events event
+				WHERE event.user_id = $1 AND event.unit_id = $2
+				ORDER BY event.id DESC
+				LIMIT 1
+			) latest
+			WHERE latest.is_completed = $3
+			  AND (NOT $3 OR latest.curriculum_proposal_id = state.proposal_id)
+		  )
 	`, userID, unitID, completed); err != nil {
 		return fmt.Errorf("set unit completion: %w", err)
 	}

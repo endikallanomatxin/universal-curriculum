@@ -532,13 +532,17 @@ a.learning-path-card {
   content: none;
 }
 
+.curriculum-graph__anchor.has-progress.is-recognized,
+.unit-completion__indicator.is-recognized {
+  background: linear-gradient(to top, currentColor 75%, var(--color-surface) 75%);
+}
+
 .unit-completion {
   flex: none;
   margin-left: auto;
 }
 
-.unit-completion button,
-.unit-completion__recognized {
+.unit-completion button {
   align-items: center;
   background: transparent;
   border: 0;
@@ -549,10 +553,6 @@ a.learning-path-card {
   gap: var(--space-2);
   padding: var(--space-2);
   white-space: nowrap;
-}
-
-.unit-completion__recognized {
-  color: var(--color-muted);
 }
 
 .unit-completion__indicator {

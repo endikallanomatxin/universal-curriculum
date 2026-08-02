@@ -17,6 +17,7 @@ type curriculumGraphNodeView struct {
 	IsCurrent          bool
 	IsTarget           bool
 	IsCompleted        bool
+	IsRecognized       bool
 	HasProgress        bool
 }
 
@@ -83,7 +84,7 @@ func newCurriculumGraphView(
 	layout *models.CurriculumGraphLayout,
 	focusedUnit *models.Unit,
 	targetUnitIDs map[int64]bool,
-	completedUnitIDs map[int64]bool,
+	completionStatuses map[int64]models.UnitCompletionStatus,
 	hasProgress bool,
 	navigateURL func(int64) string,
 	contentURL func(int64) string,
@@ -98,13 +99,15 @@ func newCurriculumGraphView(
 	}
 	view.Nodes = make([]curriculumGraphNodeView, 0, len(layout.Nodes))
 	for _, node := range layout.Nodes {
+		completion := completionStatuses[node.ID]
 		view.Nodes = append(view.Nodes, curriculumGraphNodeView{
 			CurriculumGraphNode: node,
 			NavigateURL:         navigateURL(node.ID),
 			ContentURL:          contentURL(node.ID),
 			IsCurrent:           node.ID == currentID,
 			IsTarget:            targetUnitIDs[node.ID],
-			IsCompleted:         completedUnitIDs[node.ID],
+			IsCompleted:         completion.Completed(),
+			IsRecognized:        completion.Recognized && !completion.Direct,
 			HasProgress:         hasProgress,
 		})
 	}

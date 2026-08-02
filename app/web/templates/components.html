@@ -153,21 +153,13 @@
 
 {{ define "curriculum-graph-anchor" -}}
 <span id="curriculum-anchor-{{ .ID }}"
-      class="curriculum-graph__anchor {{ if .HasProgress }}has-progress{{ end }} {{ if .IsCompleted }}is-completed{{ end }}"
+      class="curriculum-graph__anchor {{ if .HasProgress }}has-progress{{ end }} {{ if .IsCompleted }}is-completed{{ end }} {{ if .IsRecognized }}is-recognized{{ end }}"
       data-curriculum-anchor
       {{ if .IsOOB }}hx-swap-oob="outerHTML"{{ end }}
       aria-hidden="true"></span>
 {{- end }}
 
 {{ define "unit-completion-form" -}}
-{{ if .Recognized }}
-<div class="unit-completion" id="unit-completion-{{ .UnitID }}">
-  <span class="unit-completion__recognized">
-    <span class="unit-completion__indicator {{ if .Completed }}is-completed{{ end }}" aria-hidden="true"></span>
-    <span>Recognized from previous learning</span>
-  </span>
-</div>
-{{ else }}
   <form class="unit-completion"
         id="unit-completion-{{ .UnitID }}"
         action="/learn/units/{{ .UnitID }}/completion"
@@ -177,13 +169,12 @@
         hx-swap="outerHTML">
     <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
     <input type="hidden" name="return_to" value="{{ .ReturnURL }}">
-    <input type="hidden" name="completed" value="{{ if .Completed }}false{{ else }}true{{ end }}">
+    <input type="hidden" name="completed" value="{{ if and .Completed (not .Recognized) }}false{{ else }}true{{ end }}">
     <button type="submit" aria-pressed="{{ if .Completed }}true{{ else }}false{{ end }}">
-      <span class="unit-completion__indicator {{ if .Completed }}is-completed{{ end }}" aria-hidden="true"></span>
-      <span>{{ if .Completed }}Completed{{ else }}Mark as completed{{ end }}</span>
+      <span class="unit-completion__indicator {{ if .Completed }}is-completed{{ end }} {{ if .Recognized }}is-recognized{{ end }}" aria-hidden="true"></span>
+      <span>{{ if .Recognized }}Recognized{{ else if .Completed }}Completed{{ else }}Mark as completed{{ end }}</span>
     </button>
   </form>
-{{ end }}
 {{- end }}
 
 {{ define "unit-completion-update" -}}

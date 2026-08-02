@@ -427,6 +427,35 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 		!completionStatuses[replacement.ID].Recognized {
 		t.Fatalf("direct and recognized progress were conflated: statuses=%v err=%v", completionStatuses, err)
 	}
+	if err := db.SetUnitCompleted(database, authorID, replacement.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	contentRevision, err := CreateCurriculumProposal(
+		database, authorID, "Revise applied algebra", "Exercise version-aware completion evidence.",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := UpdateCurriculumUnitContent(
+		database, authorID, contentRevision.ID, replacement.ID,
+		"Apply algebra to practical problems with revised examples.",
+	); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := PublishCurriculumProposal(database, authorID, contentRevision.ID); err != nil {
+		t.Fatal(err)
+	}
+	completionStatuses, err = db.UnitCompletionStatuses(database, authorID)
+	if err != nil || completionStatuses[replacement.ID].Direct || !completionStatuses[replacement.ID].Recognized {
+		t.Fatalf("modified completion was not convalidated: statuses=%v err=%v", completionStatuses, err)
+	}
+	if err := db.SetUnitCompleted(database, authorID, replacement.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	completionStatuses, err = db.UnitCompletionStatuses(database, authorID)
+	if err != nil || !completionStatuses[replacement.ID].Direct || completionStatuses[replacement.ID].Recognized {
+		t.Fatalf("current-version completion was not refreshed: statuses=%v err=%v", completionStatuses, err)
+	}
 
 	discarded, err := CreateCurriculumProposal(database, authorID, "Discarded draft", "Exercise hypothetical identity cleanup.")
 	if err != nil {

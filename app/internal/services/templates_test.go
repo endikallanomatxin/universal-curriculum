@@ -229,7 +229,7 @@ func TestUnitCompletionRendersNarrowHTMXUpdate(t *testing.T) {
 	}
 }
 
-func TestRecognizedUnitCompletionIsReadOnlyRecognition(t *testing.T) {
+func TestRecognizedUnitCompletionCanBeCompletedLiterally(t *testing.T) {
 	templates := loadTestTemplates(t)
 	output := renderTemplate(t, templates, "unit-completion-form", map[string]any{
 		"UnitID":     int64(7),
@@ -237,11 +237,12 @@ func TestRecognizedUnitCompletionIsReadOnlyRecognition(t *testing.T) {
 		"Recognized": true,
 	})
 
-	if !strings.Contains(output, "Recognized from previous learning") {
-		t.Fatal("recognized completion does not explain its provenance")
+	if !strings.Contains(output, ">Recognized<") || !strings.Contains(output, "is-recognized") {
+		t.Fatal("recognized completion does not show its state")
 	}
-	if strings.Contains(output, `action="/learn/units/7/completion"`) {
-		t.Fatal("recognized-only completion can be independently changed")
+	if !strings.Contains(output, `action="/learn/units/7/completion"`) ||
+		!strings.Contains(output, `name="completed" value="true"`) {
+		t.Fatal("recognized completion cannot be completed against the current version")
 	}
 }
 
