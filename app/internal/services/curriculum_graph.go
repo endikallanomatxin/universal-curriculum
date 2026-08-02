@@ -613,9 +613,62 @@ func assignCurriculumGraphLanes(graph *models.CurriculumGraphLayout, previousLan
 	}
 	continuous := cloneCurriculumGraphLayout(graph)
 	assignCurriculumGraphLaneCandidate(continuous, previousLanes)
+	hybrid := cloneCurriculumGraphLayout(fresh)
+	stabilizeCurriculumNodeLanes(hybrid, previousLanes)
 	*graph = *preferredCurriculumLaneLayout(
-		[]*models.CurriculumGraphLayout{fresh, continuous}, previousLanes,
+		[]*models.CurriculumGraphLayout{fresh, continuous, hybrid}, previousLanes,
 	)
+}
+
+// stabilizeCurriculumNodeLanes retains the compact fresh routing and only
+// moves persistent nodes towards their previous lane when that lane is free at
+// the node's row. The normal candidate scoring rejects the result if these
+// local continuity improvements introduce too many bends.
+func stabilizeCurriculumNodeLanes(graph *models.CurriculumGraphLayout, previousLanes map[int64]float64) {
+	if graph == nil || graph.LaneCount == 0 || len(previousLanes) == 0 {
+		return
+	}
+	nodeIndexes := make(map[int64]int, len(graph.Nodes))
+	for index, node := range graph.Nodes {
+		nodeIndexes[node.ID] = index
+	}
+	for index := range graph.Nodes {
+		node := &graph.Nodes[index]
+		previous, exists := previousLanes[node.ID]
+		if !exists {
+			continue
+		}
+		target := min(max(previous, 0), float64(graph.LaneCount-1))
+		if absoluteFloat(target-previous) >= absoluteFloat(node.Lane-previous) ||
+			curriculumLaneCrossesNodeRow(graph, nodeIndexes, index, target) {
+			continue
+		}
+		node.Lane = target
+	}
+	compactCurriculumGraphLanes(graph)
+}
+
+func curriculumLaneCrossesNodeRow(
+	graph *models.CurriculumGraphLayout,
+	nodeIndexes map[int64]int,
+	nodeIndex int,
+	lane float64,
+) bool {
+	for _, edge := range graph.Edges {
+		start := nodeIndexes[edge.PrerequisiteID]
+		end := nodeIndexes[edge.DependentID]
+		if start >= nodeIndex || nodeIndex >= end {
+			continue
+		}
+		edgeLane := edge.Lane
+		if graph.Nodes[start].Lane == graph.Nodes[end].Lane {
+			edgeLane = graph.Nodes[start].Lane
+		}
+		if edgeLane == lane {
+			return true
+		}
+	}
+	return false
 }
 
 func assignCurriculumGraphLaneCandidate(graph *models.CurriculumGraphLayout, previousLanes map[int64]float64) {

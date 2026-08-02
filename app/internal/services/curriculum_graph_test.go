@@ -243,6 +243,28 @@ func TestPreferredCurriculumLanesRejectWiderContinuousLayout(t *testing.T) {
 	}
 }
 
+func TestStabilizeCurriculumNodeLanesMovesOnlyToClearPreviousLanes(t *testing.T) {
+	layout := &models.CurriculumGraphLayout{
+		LaneCount: 3,
+		Nodes: []models.CurriculumGraphNode{
+			{Unit: models.Unit{ID: 1}, Lane: 0},
+			{Unit: models.Unit{ID: 2}, Lane: 0},
+			{Unit: models.Unit{ID: 3}, Lane: 2},
+			{Unit: models.Unit{ID: 4}, Lane: 2},
+		},
+		Edges: []models.CurriculumGraphEdge{{PrerequisiteID: 1, DependentID: 4, Lane: 1}},
+	}
+
+	stabilizeCurriculumNodeLanes(layout, map[int64]float64{2: 1, 3: 0})
+
+	if layout.Nodes[1].Lane == 1 {
+		t.Fatal("persistent node moved onto a dependency crossing its row")
+	}
+	if layout.Nodes[2].Lane != 0 {
+		t.Fatalf("clear persistent node lane = %g, want previous lane 0", layout.Nodes[2].Lane)
+	}
+}
+
 func TestBuildCurriculumGraphLayoutImprovesCrossingPreviousOrder(t *testing.T) {
 	graph := &models.CurriculumGraph{
 		Units: []models.Unit{

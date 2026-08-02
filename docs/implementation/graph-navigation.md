@@ -31,12 +31,13 @@ while equivalent arrangements retain continuity. The fixed budget is
 intentionally sized for the small neighbourhoods rendered by the application
 rather than the complete curriculum.
 
-The optimized order is then handed to the established lane allocator twice:
-once from a fresh state and once seeded by previous lanes. These are the only
-two lane candidates. Minimum width is mandatory, bend distance has a small
-quality band, and movement breaks the remaining tie. Ordering and routing
-deliberately remain separate, preserving breathing room without allowing stale
-lane hints to dictate the result.
+The optimized order is then handed to the lane allocator to produce three
+cheap candidates: one from a fresh state, one seeded by previous lanes and a
+hybrid that keeps the fresh routing while moving persistent nodes towards a
+previous lane only when that lane is clear at their row. Minimum width is
+mandatory, bend distance has a small quality band, and movement breaks the
+remaining tie. Ordering and routing deliberately remain separate, preserving
+breathing room without allowing stale lane hints to dictate the result.
 
 The browser groups sufficiently long dependencies with a shared source or
 target into short common trunks and joins their branch points with continuous
