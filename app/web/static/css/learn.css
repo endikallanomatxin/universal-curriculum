@@ -519,12 +519,12 @@ a.learning-path-card {
   background: var(--color-surface);
   border-radius: 50%;
   content: "";
-  height: 50%;
+  height: 60%;
+  width: 60%;
   left: 50%;
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 50%;
 }
 
 .curriculum-graph__anchor.has-progress.is-completed:not(.is-recognized)::before,
@@ -646,24 +646,24 @@ a.learning-path-card {
   background: var(--color-surface);
   border-radius: 50%;
   content: "";
-  height: 66.6667%;
+  height: 60%;
+  width: 60%;
   left: 50%;
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 66.6667%;
 }
 
 .curriculum-graph__item.is-path-target .curriculum-graph__anchor::after {
   background: currentColor;
   border-radius: 50%;
   content: "";
-  height: 33.3333%;
+  height: 25%;
+  width: 25%;
   left: 50%;
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 33.3333%;
 }
 
 .curriculum-graph__row:focus-visible {
