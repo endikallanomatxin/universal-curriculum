@@ -1,0 +1,399 @@
+package server
+
+import (
+	"errors"
+	"fmt"
+	"log"
+	"net/http"
+	"strconv"
+	"strings"
+
+	"universal-curriculum/internal/services"
+)
+
+func (server *Server) createCurriculumUnit(writer http.ResponseWriter, request *http.Request) {
+	if !server.parseCurriculumMutation(writer, request) {
+		return
+	}
+	authorID, _ := services.SessionUserID(request)
+	proposalID, err := parsePositiveID(request.FormValue("proposal_id"))
+	if err != nil {
+		server.renderCurriculumMutationError(writer, request, services.ErrProposalNotFound)
+		return
+	}
+	_, err = services.CreateCurriculumUnit(
+		server.Database,
+		authorID,
+		proposalID,
+		request.FormValue("name"),
+		request.FormValue("content"),
+	)
+	if err != nil {
+		server.renderCurriculumMutationError(writer, request, err)
+		return
+	}
+	redirectToProposal(writer, request, proposalID)
+}
+
+func (server *Server) updateCurriculumUnit(writer http.ResponseWriter, request *http.Request) {
+	if !server.parseCurriculumMutation(writer, request) {
+		return
+	}
+	unitID, err := parsePositiveID(request.PathValue("id"))
+	if err != nil {
+		http.Error(writer, "Invalid unit ID", http.StatusBadRequest)
+		return
+	}
+	proposalID, err := parsePositiveID(request.FormValue("proposal_id"))
+	if err != nil {
+		server.renderCurriculumMutationError(writer, request, services.ErrProposalNotFound)
+		return
+	}
+	authorID, _ := services.SessionUserID(request)
+	if err := services.UpdateCurriculumUnit(server.Database, authorID, proposalID, unitID, request.FormValue("name")); err != nil {
+		server.renderCurriculumMutationError(writer, request, err)
+		return
+	}
+	redirectToProposalUnit(writer, request, proposalID, unitID)
+}
+
+func (server *Server) updateCurriculumUnitContent(writer http.ResponseWriter, request *http.Request) {
+	if !server.parseCurriculumMutation(writer, request) {
+		return
+	}
+	unitID, err := parsePositiveID(request.PathValue("id"))
+	if err != nil {
+		http.Error(writer, "Invalid unit ID", http.StatusBadRequest)
+		return
+	}
+	proposalID, err := parsePositiveID(request.FormValue("proposal_id"))
+	if err != nil {
+		server.renderCurriculumMutationError(writer, request, services.ErrProposalNotFound)
+		return
+	}
+	authorID, _ := services.SessionUserID(request)
+	if err := services.UpdateCurriculumUnitContent(
+		server.Database, authorID, proposalID, unitID, request.FormValue("content"),
+	); err != nil {
+		server.renderCurriculumMutationError(writer, request, err)
+		return
+	}
+	redirectToProposalUnit(writer, request, proposalID, unitID)
+}
+
+func (server *Server) deleteCurriculumUnit(writer http.ResponseWriter, request *http.Request) {
+	if !server.parseCurriculumMutation(writer, request) {
+		return
+	}
+	unitID, err := parsePositiveID(request.PathValue("id"))
+	if err != nil {
+		http.Error(writer, "Invalid unit ID", http.StatusBadRequest)
+		return
+	}
+	authorID, _ := services.SessionUserID(request)
+	proposalID, err := parsePositiveID(request.FormValue("proposal_id"))
+	if err != nil {
+		server.renderCurriculumMutationError(writer, request, services.ErrProposalNotFound)
+		return
+	}
+	if err := services.DeleteCurriculumUnit(server.Database, authorID, proposalID, unitID); err != nil {
+		server.renderCurriculumMutationError(writer, request, err)
+		return
+	}
+	redirectToProposal(writer, request, proposalID)
+}
+
+func (server *Server) createUnitDependency(writer http.ResponseWriter, request *http.Request) {
+	if !server.parseCurriculumMutation(writer, request) {
+		return
+	}
+	unitID, unitErr := parsePositiveID(request.FormValue("unit_id"))
+	prerequisiteID, prerequisiteErr := parsePositiveID(request.FormValue("prerequisite_id"))
+	if unitErr != nil || prerequisiteErr != nil {
+		http.Error(writer, "Invalid dependency", http.StatusBadRequest)
+		return
+	}
+	authorID, _ := services.SessionUserID(request)
+	proposalID, err := parsePositiveID(request.FormValue("proposal_id"))
+	if err != nil {
+		server.renderCurriculumMutationError(writer, request, services.ErrProposalNotFound)
+		return
+	}
+	if err := services.AddUnitDependency(server.Database, authorID, proposalID, unitID, prerequisiteID); err != nil {
+		server.renderCurriculumMutationError(writer, request, err)
+		return
+	}
+	redirectToProposalPanel(writer, request, proposalID, "edit_dependencies", unitID)
+}
+
+func (server *Server) deleteUnitDependency(writer http.ResponseWriter, request *http.Request) {
+	if !server.parseCurriculumMutation(writer, request) {
+		return
+	}
+	unitID, unitErr := parsePositiveID(request.FormValue("unit_id"))
+	prerequisiteID, prerequisiteErr := parsePositiveID(request.FormValue("prerequisite_id"))
+	if unitErr != nil || prerequisiteErr != nil {
+		http.Error(writer, "Invalid dependency", http.StatusBadRequest)
+		return
+	}
+	authorID, _ := services.SessionUserID(request)
+	proposalID, err := parsePositiveID(request.FormValue("proposal_id"))
+	if err != nil {
+		server.renderCurriculumMutationError(writer, request, services.ErrProposalNotFound)
+		return
+	}
+	if err := services.RemoveUnitDependency(server.Database, authorID, proposalID, unitID, prerequisiteID); err != nil {
+		server.renderCurriculumMutationError(writer, request, err)
+		return
+	}
+	redirectToProposalPanel(writer, request, proposalID, "edit_dependencies", unitID)
+}
+
+func (server *Server) createCurriculumRecognition(writer http.ResponseWriter, request *http.Request) {
+	if !server.parseCurriculumMutation(writer, request) {
+		return
+	}
+	proposalID, err := parsePositiveID(request.FormValue("proposal_id"))
+	if err != nil {
+		server.renderCurriculumMutationError(writer, request, services.ErrProposalNotFound)
+		return
+	}
+	authorID, _ := services.SessionUserID(request)
+	err = services.AddCurriculumRecognition(
+		server.Database,
+		authorID,
+		proposalID,
+		parseLearningPathUnitIDs(request.Form["source_unit_ids"]),
+		parseLearningPathUnitIDs(request.Form["target_unit_ids"]),
+	)
+	if err != nil {
+		server.renderCurriculumMutationError(writer, request, err)
+		return
+	}
+	redirectToProposal(writer, request, proposalID)
+}
+
+func (server *Server) createCurriculumProposal(writer http.ResponseWriter, request *http.Request) {
+	if !server.parseCurriculumMutation(writer, request) {
+		return
+	}
+	authorID, _ := services.SessionUserID(request)
+	proposal, err := services.CreateCurriculumProposal(server.Database, authorID, request.FormValue("title"), request.FormValue("rationale"))
+	if err != nil {
+		server.renderCurriculumMutationError(writer, request, err)
+		return
+	}
+	redirectToProposal(writer, request, proposal.ID)
+}
+
+func (server *Server) updateCurriculumProposal(writer http.ResponseWriter, request *http.Request) {
+	if !server.parseCurriculumMutation(writer, request) {
+		return
+	}
+	proposalID, err := parsePositiveID(request.PathValue("id"))
+	if err != nil {
+		http.Error(writer, "Invalid proposal ID", http.StatusBadRequest)
+		return
+	}
+	authorID, _ := services.SessionUserID(request)
+	if err := services.UpdateCurriculumProposal(server.Database, authorID, proposalID, request.FormValue("title"), request.FormValue("rationale")); err != nil {
+		if request.Header.Get("HX-Request") == "true" {
+			message, _ := curriculumErrorResponse(err)
+			server.render(writer, "proposal-metadata-save-status", proposalMetadataSaveStatusView{Error: message})
+			return
+		}
+		server.renderCurriculumMutationError(writer, request, err)
+		return
+	}
+	if request.Header.Get("HX-Request") == "true" {
+		server.render(writer, "proposal-metadata-save-status", proposalMetadataSaveStatusView{})
+		return
+	}
+	redirectToProposal(writer, request, proposalID)
+}
+
+func (server *Server) deleteCurriculumProposal(writer http.ResponseWriter, request *http.Request) {
+	if !server.parseCurriculumMutation(writer, request) {
+		return
+	}
+	proposalID, err := parsePositiveID(request.PathValue("id"))
+	if err != nil {
+		http.Error(writer, "Invalid proposal ID", http.StatusBadRequest)
+		return
+	}
+	authorID, _ := services.SessionUserID(request)
+	if err := services.DeleteCurriculumProposal(server.Database, authorID, proposalID); err != nil {
+		server.renderCurriculumMutationError(writer, request, err)
+		return
+	}
+	http.Redirect(writer, request, "/curriculum-modification", http.StatusSeeOther)
+}
+
+func (server *Server) publishCurriculumProposal(writer http.ResponseWriter, request *http.Request) {
+	if !server.parseCurriculumMutation(writer, request) {
+		return
+	}
+	proposalID, err := parsePositiveID(request.PathValue("id"))
+	if err != nil {
+		http.Error(writer, "Invalid proposal ID", http.StatusBadRequest)
+		return
+	}
+	authorID, _ := services.SessionUserID(request)
+	rebaseSummary, err := services.PublishCurriculumProposal(server.Database, authorID, proposalID)
+	if err != nil {
+		server.renderCurriculumMutationError(writer, request, err)
+		return
+	}
+	if rebaseSummary.Failures != nil {
+		log.Printf("rebase drafts after curriculum publication: %v", rebaseSummary.Failures)
+	}
+	http.Redirect(writer, request, "/curriculum-modification", http.StatusSeeOther)
+}
+
+func (server *Server) rebaseCurriculumProposal(writer http.ResponseWriter, request *http.Request) {
+	if !server.parseCurriculumMutation(writer, request) {
+		return
+	}
+	proposalID, err := parsePositiveID(request.PathValue("id"))
+	if err != nil {
+		http.Error(writer, "Invalid proposal ID", http.StatusBadRequest)
+		return
+	}
+	resolutions := make(map[int64]services.CurriculumProposalRebaseResolution)
+	for key, values := range request.Form {
+		if !strings.HasPrefix(key, "resolution_") || len(values) == 0 {
+			continue
+		}
+		changeID, parseErr := parsePositiveID(strings.TrimPrefix(key, "resolution_"))
+		if parseErr == nil {
+			resolutions[changeID] = services.CurriculumProposalRebaseResolution{
+				Choice:  values[0],
+				Content: request.FormValue(fmt.Sprintf("resolution_content_%d", changeID)),
+			}
+		}
+	}
+	authorID, _ := services.SessionUserID(request)
+	if err := services.ResolveCurriculumProposalRebase(
+		server.Database, authorID, proposalID, resolutions,
+	); err != nil {
+		server.renderCurriculumMutationError(writer, request, err)
+		return
+	}
+	redirectToProposal(writer, request, proposalID)
+}
+
+func (server *Server) deleteCurriculumProposalChange(writer http.ResponseWriter, request *http.Request) {
+	if !server.parseCurriculumMutation(writer, request) {
+		return
+	}
+	proposalID, proposalErr := parsePositiveID(request.PathValue("id"))
+	changeID, changeErr := parsePositiveID(request.PathValue("changeID"))
+	if proposalErr != nil || changeErr != nil {
+		http.Error(writer, "Invalid proposal change", http.StatusBadRequest)
+		return
+	}
+	authorID, _ := services.SessionUserID(request)
+	if err := services.DeleteCurriculumProposalChange(server.Database, authorID, proposalID, changeID); err != nil {
+		server.renderCurriculumMutationError(writer, request, err)
+		return
+	}
+	redirectToProposal(writer, request, proposalID)
+}
+
+func (server *Server) parseCurriculumMutation(writer http.ResponseWriter, request *http.Request) bool {
+	request.Body = http.MaxBytesReader(writer, request.Body, 1<<20)
+	if err := request.ParseForm(); err != nil {
+		http.Error(writer, "Invalid form", http.StatusBadRequest)
+		return false
+	}
+	if !services.ValidCSRFToken(request, request.FormValue("csrf_token")) {
+		http.Error(writer, "Invalid CSRF token", http.StatusForbidden)
+		return false
+	}
+	return true
+}
+
+func (server *Server) renderCurriculumMutationError(writer http.ResponseWriter, request *http.Request, err error) {
+	message, status := curriculumErrorResponse(err)
+	if status == http.StatusInternalServerError {
+		log.Printf("modify curriculum: %v", err)
+	}
+	server.renderCurriculumModification(writer, request, status, message)
+}
+
+func curriculumErrorResponse(err error) (string, int) {
+	var prerequisiteError *services.UnitIsPrerequisiteError
+	switch {
+	case errors.As(err, &prerequisiteError):
+		return "Remove the dependencies from " + joinNames(prerequisiteError.DependentNames) + " before deleting this unit.", http.StatusConflict
+	case errors.Is(err, services.ErrUnitNameRequired):
+		return "A unit name is required.", http.StatusBadRequest
+	case errors.Is(err, services.ErrUnitContentRequired):
+		return "Unit content cannot be empty.", http.StatusBadRequest
+	case errors.Is(err, services.ErrUnitNotFound):
+		return "The selected unit no longer exists.", http.StatusNotFound
+	case errors.Is(err, services.ErrDependencyExists):
+		return "That dependency already exists.", http.StatusConflict
+	case errors.Is(err, services.ErrDependencyNotFound):
+		return "That dependency no longer exists.", http.StatusNotFound
+	case errors.Is(err, services.ErrDependencyCycle):
+		return "That dependency would create a cycle.", http.StatusConflict
+	case errors.Is(err, services.ErrProposalNotFound):
+		return "Select an editable draft proposal first.", http.StatusNotFound
+	case errors.Is(err, services.ErrProposalTitleRequired):
+		return "A proposal title is required.", http.StatusBadRequest
+	case errors.Is(err, services.ErrProposalRationaleRequired):
+		return "Explain the purpose of the proposal.", http.StatusBadRequest
+	case errors.Is(err, services.ErrProposalEmpty):
+		return "Add at least one proposed change before publishing.", http.StatusBadRequest
+	case errors.Is(err, services.ErrProposalOutdated):
+		return "The proposal base could not be reconciled with the accepted curriculum history.", http.StatusConflict
+	case errors.Is(err, services.ErrProposalRebaseRequired):
+		return "Review the proposal changes that overlap with newer accepted work before continuing.", http.StatusConflict
+	case errors.Is(err, services.ErrRebaseResolutionRequired):
+		return "Choose a valid resolution for every conflicting change.", http.StatusBadRequest
+	case errors.Is(err, services.ErrRecognitionSourcesRequired):
+		return "Select at least one source unit.", http.StatusBadRequest
+	case errors.Is(err, services.ErrRecognitionTargetsRequired):
+		return "Select at least one target unit.", http.StatusBadRequest
+	case errors.Is(err, services.ErrProposalInvalid):
+		return err.Error(), http.StatusConflict
+	default:
+		return "Unable to modify the curriculum.", http.StatusInternalServerError
+	}
+}
+
+func redirectToProposal(writer http.ResponseWriter, request *http.Request, proposalID int64) {
+	http.Redirect(writer, request, "/curriculum-modification?proposal="+strconv.FormatInt(proposalID, 10), http.StatusSeeOther)
+}
+
+func redirectToProposalUnit(writer http.ResponseWriter, request *http.Request, proposalID, unitID int64) {
+	target := "/curriculum-modification?proposal=" + strconv.FormatInt(proposalID, 10) +
+		"&unit=" + strconv.FormatInt(unitID, 10) +
+		"&content=" + strconv.FormatInt(unitID, 10)
+	http.Redirect(writer, request, target, http.StatusSeeOther)
+}
+
+func redirectToProposalPanel(writer http.ResponseWriter, request *http.Request, proposalID int64, panel string, subjectID int64) {
+	target := "/curriculum-modification?proposal=" + strconv.FormatInt(proposalID, 10) +
+		"&" + panel + "=" + strconv.FormatInt(subjectID, 10)
+	http.Redirect(writer, request, target, http.StatusSeeOther)
+}
+
+func joinNames(names []string) string {
+	if len(names) == 1 {
+		return names[0]
+	}
+	result := ""
+	for index, name := range names {
+		switch {
+		case index == 0:
+			result = name
+		case index == len(names)-1:
+			result += " and " + name
+		default:
+			result += ", " + name
+		}
+	}
+	return result
+}
