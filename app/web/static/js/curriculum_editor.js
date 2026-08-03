@@ -54,7 +54,7 @@
         preview.textContent = title;
       });
       const panel = form.closest("[data-panel-breadcrumb]");
-      const breadcrumbTitle = form.querySelector(".proposal-workspace__breadcrumb-title");
+      const breadcrumbTitle = form.querySelector(".pane-breadcrumb__title");
       const breadcrumb = "Working on " + title;
       if (panel) panel.dataset.panelBreadcrumb = breadcrumb;
       if (breadcrumbTitle) breadcrumbTitle.textContent = breadcrumb;

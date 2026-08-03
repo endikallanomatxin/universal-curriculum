@@ -12,6 +12,12 @@
 ## Shared vocabulary
 
 - Prefer simple structure, spacing and hierarchy over decorative wrappers.
+- Keep stylesheet boundaries conceptual: `base.css` owns foundations,
+  `shell.css` owns application panes and navigation, `components.css` owns
+  reusable primitives, and concept-level files such as
+  `curriculum-graph.css` and `unit-content.css` serve every page that renders
+  that concept. Page styles should contain only page composition and genuine
+  feature-specific variants.
 - Build pages from system-wide interaction and visual primitives. Reuse and
   extend shared CSS, JavaScript and template fragments instead of creating
   page-specific versions of an existing concept.

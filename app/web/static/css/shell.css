@@ -406,7 +406,7 @@
   border-radius: 0.5rem;
   display: grid;
   font-size: 0.75rem;
-  font-weight: 650;
+  font-weight: 700;
   gap: var(--space-2);
   grid-template-columns: 0.7rem minmax(0, 1fr);
   padding: var(--space-2);
@@ -714,25 +714,59 @@ button.primary-menu__link {
   height: 100%;
 }
 
-.ui-pane[data-panel-mode="breadcrumb"] .label,
-.ui-pane[data-panel-mode="breadcrumb"] .learn-view > :not(.learn-heading),
-.ui-pane[data-panel-mode="breadcrumb"] .learn-heading > :not(h1),
-.ui-pane[data-panel-mode="breadcrumb"] .curriculum-editor > :not(.curriculum-editor__header),
-.ui-pane[data-panel-mode="breadcrumb"] .curriculum-editor__header > :not(:first-child),
-.ui-pane[data-panel-mode="breadcrumb"] .curriculum-editor__header > :first-child > :not(h1) {
+.pane-breadcrumb__title {
+  color: inherit;
+  display: none;
+  text-decoration: none;
+}
+
+.ui-pane[data-panel-mode="breadcrumb"] .pane-breadcrumb > :not(.pane-breadcrumb__container, .pane-breadcrumb__header),
+.ui-pane[data-panel-mode="breadcrumb"] .pane-breadcrumb__container > :not(.pane-breadcrumb__header),
+.ui-pane[data-panel-mode="breadcrumb"] .pane-breadcrumb__header > :not(:first-child),
+.ui-pane[data-panel-mode="breadcrumb"] .pane-breadcrumb__header > :first-child > :not(.pane-breadcrumb__title) {
   display: none;
 }
 
-.ui-pane[data-panel-mode="breadcrumb"] .learn-heading,
-.ui-pane[data-panel-mode="breadcrumb"] .curriculum-editor__header {
+.ui-pane[data-panel-mode="breadcrumb"] .pane-breadcrumb__container {
+  height: 100%;
+  margin: 0;
+}
+
+.ui-pane[data-panel-mode="breadcrumb"] .pane-breadcrumb__header {
+  align-items: flex-end;
+  box-sizing: border-box;
+  display: flex;
+  height: 100%;
+  justify-content: flex-end;
+  margin: 0;
+  padding-bottom: calc(3.5rem + 2 * var(--space-3));
+}
+
+.ui-pane[data-panel-mode="breadcrumb"] .pane-breadcrumb__title {
+  display: block;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  margin: 0;
+  transform: rotate(180deg);
+  white-space: nowrap;
+  writing-mode: vertical-rl;
+}
+
+.ui-pane[data-panel-mode="breadcrumb"] .label,
+.ui-pane[data-panel-mode="breadcrumb"] .learn-view > :not(.learn-heading),
+.ui-pane[data-panel-mode="breadcrumb"] .learn-heading > :not(h1) {
+  display: none;
+}
+
+.ui-pane[data-panel-mode="breadcrumb"] .learn-heading {
   align-items: center;
   display: flex;
   height: 100%;
   justify-content: flex-end;
 }
 
-.ui-pane[data-panel-mode="breadcrumb"] .learn-heading h1,
-.ui-pane[data-panel-mode="breadcrumb"] .curriculum-editor__header h1 {
+.ui-pane[data-panel-mode="breadcrumb"] .learn-heading h1 {
   font-size: 1rem;
   letter-spacing: 0.03em;
   margin: 0;
@@ -808,7 +842,7 @@ button.primary-menu__link {
   .mobile-panel-breadcrumbs button[aria-current="page"] {
     color: var(--color-ink-strong);
     flex-shrink: 0;
-    font-weight: 650;
+    font-weight: 700;
   }
 
   .pane-stack > .ui-pane:not([data-panel-mode="collapsed"]) {
@@ -829,6 +863,11 @@ button.primary-menu__link {
     opacity: 0;
     transform: translateX(1.5rem);
   }
+}
+
+::view-transition-group(*) {
+  animation-duration: 280ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 ::view-transition-group(brand-u),

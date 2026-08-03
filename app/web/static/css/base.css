@@ -20,6 +20,7 @@
   --color-selection-outline: oklch(0.58 0 0);
   --radius-surface: 1rem;
   --radius-control: 0.8rem;
+  --font-sans: Montserrat, Inter, ui-sans-serif, system-ui, sans-serif;
   --font-size-pane-title: clamp(2rem, 3vw, 3rem);
   --font-size-section-title: 1.5rem;
   --font-size-subsection-title: 1rem;
@@ -36,7 +37,7 @@
   --panel-motion-easing: cubic-bezier(0.2, 0.7, 0.3, 1);
   --panel-motion-distance: 3rem;
   --mobile-panel-composition: 0;
-  font-family: Montserrat, Inter, ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-sans);
   font-synthesis: none;
   line-height: 1.5;
   text-rendering: optimizeLegibility;

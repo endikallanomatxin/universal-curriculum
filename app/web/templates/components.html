@@ -10,9 +10,12 @@
   <link rel="stylesheet" href="/static/css/base.css?v={{ assetVersion }}">
   <link rel="stylesheet" href="/static/css/shell.css?v={{ assetVersion }}">
   <link rel="stylesheet" href="/static/css/components.css?v={{ assetVersion }}">
-  <link rel="stylesheet" href="/static/css/curriculum.css?v={{ assetVersion }}">
+  <link rel="stylesheet" href="/static/css/auth.css?v={{ assetVersion }}">
+  <link rel="stylesheet" href="/static/css/curriculum-graph.css?v={{ assetVersion }}">
   <link rel="stylesheet" href="/static/vendor/highlight/github.min.css?v={{ assetVersion }}">
   <link rel="stylesheet" href="/static/vendor/katex/katex.min.css?v={{ assetVersion }}">
+  <link rel="stylesheet" href="/static/css/unit-content.css?v={{ assetVersion }}">
+  <link rel="stylesheet" href="/static/css/curriculum-admin.css?v={{ assetVersion }}">
   <link rel="stylesheet" href="/static/css/learn.css?v={{ assetVersion }}">
   <noscript><style>.app-shell:not([data-panel-layout-ready]) { visibility: visible !important; }</style></noscript>
 {{- end }}
@@ -57,8 +60,8 @@
 {{ end }}
 
 {{ define "unit-navigation-search" -}}
-<div class="graph-search" data-graph-search>
-  <span class="material-symbols-rounded graph-search__icon" aria-hidden="true">search</span>
+<div class="graph-search search-control" data-graph-search>
+  <span class="material-symbols-rounded graph-search__icon search-control__icon" aria-hidden="true">search</span>
   <input type="search"
          placeholder="{{ .Placeholder }}"
          autocomplete="off"
@@ -66,7 +69,7 @@
          aria-controls="{{ .ID }}"
          aria-expanded="false"
          data-graph-search-input>
-  <div class="graph-search__results" id="{{ .ID }}" data-graph-search-results hidden>
+  <div class="graph-search__results search-control__results" id="{{ .ID }}" data-graph-search-results hidden>
     {{ range .Options }}
       <a href="{{ .URL }}"
          hx-get="{{ .URL }}"

@@ -8,14 +8,14 @@
     <main class="pane-stack" id="workspace" data-shell-view="detail" data-document-title="Curriculum modification · Universal Curriculum" data-layout-panel data-panel-modes="mobile:20 content:34 wide:46" data-panel-required-mode="content" data-panel-fill data-panel-group>
       <nav class="mobile-panel-breadcrumbs" data-mobile-panel-breadcrumbs aria-label="Current location" hidden></nav>
       <section class="ui-pane proposal-index-pane" aria-labelledby="active-proposals-title" data-layout-panel data-panel-modes="collapsed:0 breadcrumb:4 mobile:20 content:24 wide:28" data-panel-required-mode="mobile" data-panel-fill data-panel-breadcrumb="Proposals">
-        <div class="ui-pane__inner curriculum-editor proposal-index" id="curriculum-editor" data-pane-content-width="narrow">
-          <header class="curriculum-editor__header proposal-index__header">
+        <div class="ui-pane__inner proposal-pane proposal-index pane-breadcrumb" data-pane-content-width="narrow">
+          <header class="proposal-pane__header proposal-index__header pane-breadcrumb__header">
             <div>
-              <a class="proposal-index__breadcrumb-title" href="/curriculum-modification" hx-get="/curriculum-modification" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true">Proposals</a>
+              <a class="pane-breadcrumb__title" href="/curriculum-modification" hx-get="/curriculum-modification" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true">Proposals</a>
             </div>
           </header>
 
-          {{ if .Error }}<p class="form-error curriculum-editor__error" role="alert">{{ .Error }}</p>{{ end }}
+          {{ if .Error }}<p class="form-error proposal-index__error" role="alert">{{ .Error }}</p>{{ end }}
 
           <section class="active-proposals" aria-labelledby="active-proposals-title">
             <div class="section-heading">
@@ -74,8 +74,8 @@
 
       {{ if .ActiveProposal }}
         <section class="ui-pane ui-pane--wide proposal-workspace-pane" id="proposal-workspace-panel" data-nested-panel data-panel-motion="horizontal" data-layout-panel data-panel-modes="collapsed:0 breadcrumb:4 mobile:20 content:34 wide:46" data-panel-required-mode="mobile" data-panel-fill data-panel-breadcrumb="Working on {{ .ActiveProposal.Title }}" aria-labelledby="proposal-workspace-title">
-          <div class="ui-pane__inner curriculum-editor" data-pane-content-width="wide">
-            <form class="proposal-workspace__metadata"
+          <div class="ui-pane__inner proposal-pane pane-breadcrumb" data-pane-content-width="wide">
+            <form class="proposal-workspace__metadata pane-breadcrumb__container"
                   data-proposal-metadata="{{ .ActiveProposal.ID }}"
                   action="/curriculum-modification/proposals/{{ .ActiveProposal.ID }}"
                   method="post"
@@ -84,11 +84,11 @@
                   hx-target="#proposal-metadata-save-status"
                   hx-swap="outerHTML">
               <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
-              <header class="nested-panel__header curriculum-editor__header proposal-workspace__main-header">
+              <header class="nested-panel__header proposal-pane__header proposal-workspace__main-header pane-breadcrumb__header">
                 <div>
                   <label class="visually-hidden" for="working-proposal-title">Proposal title</label>
                   <textarea class="proposal-workspace__title-input" id="working-proposal-title" name="title" required maxlength="200" rows="1" data-autoresize data-autoresize-unbounded data-proposal-title-input>{{ .ActiveProposal.Title }}</textarea>
-                <a class="proposal-workspace__breadcrumb-title" href="/curriculum-modification?proposal={{ .ActiveProposal.ID }}" hx-get="/curriculum-modification?proposal={{ .ActiveProposal.ID }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true">Working on {{ .ActiveProposal.Title }}</a>
+                <a class="pane-breadcrumb__title" href="/curriculum-modification?proposal={{ .ActiveProposal.ID }}" hx-get="/curriculum-modification?proposal={{ .ActiveProposal.ID }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true">Working on {{ .ActiveProposal.Title }}</a>
                 </div>
                 <a class="icon-button ui-pane__close" href="/curriculum-modification" hx-get="/curriculum-modification" hx-trigger="panel-close" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML" hx-push-url="true" data-panel-navigation="close" aria-label="Close proposal workspace">
                   <span class="material-symbols-rounded" aria-hidden="true">close</span>
@@ -304,7 +304,6 @@
               {{ end }}
             </section>
 
-            <div class="curriculum-editor__layout">
             <section class="curriculum-units" aria-label="Curriculum">
               {{ if .CanEditProposal }}<div class="curriculum-units__heading-actions">
                 <button class="secondary-button" type="button" data-open-panel="new-unit-panel" aria-controls="new-unit-panel" aria-expanded="false">
@@ -343,14 +342,13 @@
                 {{ template "curriculum-graph" .GraphView }}
                 </section>
               {{ else }}
-                <div class="curriculum-empty">
+                <div class="empty-state empty-state--bounded">
                   <span class="material-symbols-rounded" aria-hidden="true">conversion_path</span>
                   <h3>The curriculum is empty</h3>
                   <p>Create the first unit to start defining it.</p>
                 </div>
               {{ end }}
             </section>
-            </div>
 
             <footer class="proposal-workspace__terminal-actions" aria-label="Proposal actions">
               <form action="/curriculum-modification/proposals/{{ .ActiveProposal.ID }}/delete" method="post" onsubmit="return confirm('Delete this draft proposal?')">
@@ -651,10 +649,10 @@
             <input type="hidden" name="unit_id" value="" data-dependent-input>
             <input type="hidden" name="prerequisite_id" value="" data-prerequisite-input>
             <label for="prerequisite-unit-search">Add prerequisite</label>
-            <div class="unit-search">
-              <span class="material-symbols-rounded unit-search__icon" aria-hidden="true">search</span>
+            <div class="unit-search search-control">
+              <span class="material-symbols-rounded unit-search__icon search-control__icon" aria-hidden="true">search</span>
               <input id="prerequisite-unit-search" type="search" autocomplete="off" placeholder="Search units" data-unit-picker-input aria-controls="prerequisite-unit-results" aria-expanded="false">
-              <div class="unit-search__results" id="prerequisite-unit-results" data-unit-picker-results hidden>
+              <div class="unit-search__results search-control__results" id="prerequisite-unit-results" data-unit-picker-results hidden>
                 {{ range .Units }}
                   <button type="button" data-unit-picker-option data-unit-id="{{ .ID }}" data-unit-name="{{ .Name }}">
                     <strong>{{ .Name }}</strong>
@@ -701,10 +699,10 @@
                 <div class="selection-list" data-unit-picker-current></div>
               </section>
               <label for="recognition-source-search">Add source unit</label>
-              <div class="unit-search">
-                <span class="material-symbols-rounded unit-search__icon" aria-hidden="true">search</span>
+              <div class="unit-search search-control">
+                <span class="material-symbols-rounded unit-search__icon search-control__icon" aria-hidden="true">search</span>
                 <input id="recognition-source-search" type="search" autocomplete="off" placeholder="Search published units" data-unit-picker-input aria-controls="recognition-source-results" aria-expanded="false">
-                <div class="unit-search__results" id="recognition-source-results" data-unit-picker-results hidden>
+                <div class="unit-search__results search-control__results" id="recognition-source-results" data-unit-picker-results hidden>
                   {{ range .RecognitionSources }}
                     <button type="button" data-unit-picker-option data-unit-id="{{ .ID }}" data-unit-name="{{ .Name }}"><strong>{{ .Name }}</strong></button>
                   {{ end }}
@@ -725,10 +723,10 @@
                 <div class="selection-list" data-unit-picker-current></div>
               </section>
               <label for="recognition-target-search">Add target unit</label>
-              <div class="unit-search">
-                <span class="material-symbols-rounded unit-search__icon" aria-hidden="true">search</span>
+              <div class="unit-search search-control">
+                <span class="material-symbols-rounded unit-search__icon search-control__icon" aria-hidden="true">search</span>
                 <input id="recognition-target-search" type="search" autocomplete="off" placeholder="Search resulting units" data-unit-picker-input aria-controls="recognition-target-results" aria-expanded="false">
-                <div class="unit-search__results" id="recognition-target-results" data-unit-picker-results hidden>
+                <div class="unit-search__results search-control__results" id="recognition-target-results" data-unit-picker-results hidden>
                   {{ range .RecognitionTargets }}
                     <button type="button" data-unit-picker-option data-unit-id="{{ .ID }}" data-unit-name="{{ .Name }}"><strong>{{ .Name }}</strong></button>
                   {{ end }}

@@ -8,11 +8,11 @@
     <main class="pane-stack" id="workspace" data-shell-view="detail" data-document-title="Learn · Universal Curriculum" data-layout-panel data-panel-modes="mobile:20 content:34 wide:46" data-panel-required-mode="content" data-panel-fill data-panel-group>
       <nav class="mobile-panel-breadcrumbs" data-mobile-panel-breadcrumbs aria-label="Current location" hidden></nav>
       <section class="ui-pane learning-paths-pane" aria-labelledby="learning-paths-title" data-layout-panel data-panel-modes="collapsed:0 breadcrumb:4 mobile:20 content:24 wide:28" data-panel-required-mode="mobile" data-panel-fill data-panel-breadcrumb="Learning paths">
-        <div class="ui-pane__inner learning-paths" data-pane-content-width="narrow">
-          <header class="learning-paths__header">
+        <div class="ui-pane__inner learning-paths pane-breadcrumb" data-pane-content-width="narrow">
+          <header class="learning-paths__header pane-breadcrumb__header">
             <div>
               <h1 id="learning-paths-title">Learning paths</h1>
-              <a class="learning-paths__breadcrumb-title" href="/learn" {{ template "shell-link-attributes" "/learn" }}>Learning paths</a>
+              <a class="pane-breadcrumb__title" href="/learn" {{ template "shell-link-attributes" "/learn" }}>Learning paths</a>
             </div>
           </header>
           <p class="learning-path-list__heading">Views</p>
@@ -115,7 +115,7 @@
                 </nav>
                 {{ template "curriculum-graph" .GraphView }}
               {{ else }}
-                <div class="learn-empty"><span class="material-symbols-rounded" aria-hidden="true">route</span><h2>This path has no visible units</h2><p>Edit it and select at least one target.</p></div>
+                <div class="empty-state"><span class="material-symbols-rounded" aria-hidden="true">route</span><h2>This path has no visible units</h2><p>Edit it and select at least one target.</p></div>
               {{ end }}
             </section>
           </div>
@@ -189,10 +189,10 @@
                 </section>
                 <div class="editor-form__field">
                   <label for="learning-path-unit-search">Add target unit</label>
-                  <div class="unit-search">
-                    <span class="material-symbols-rounded unit-search__icon" aria-hidden="true">search</span>
+                  <div class="unit-search search-control">
+                    <span class="material-symbols-rounded unit-search__icon search-control__icon" aria-hidden="true">search</span>
                     <input id="learning-path-unit-search" type="search" placeholder="Search units" autocomplete="off" data-unit-picker-input aria-controls="learning-path-unit-results" aria-expanded="false">
-                    <div class="unit-search__results" id="learning-path-unit-results" data-unit-picker-results hidden>
+                    <div class="unit-search__results search-control__results" id="learning-path-unit-results" data-unit-picker-results hidden>
                       {{ with .EditingPath }}{{ range .Units }}{{ if .Retired }}
                         <button type="button" data-unit-picker-option data-unit-retired="true" data-unit-id="{{ .ID }}" data-unit-name="{{ .Name }} (retired)">{{ .Name }} (retired)</button>
                       {{ end }}{{ end }}{{ end }}
