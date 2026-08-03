@@ -1,0 +1,79 @@
+{{/* Curriculum modification unit content pane. */}}
+{{ define "curriculum-modification-unit-content-pane" -}}
+      {{ with .ContentUnit }}
+        <section class="ui-pane ui-pane--wide unit-content-pane" data-nested-panel data-panel-motion="horizontal" data-layout-panel data-panel-modes="collapsed:0 breadcrumb:4 mobile:20 content:32 wide:42" data-panel-required-mode="mobile" data-panel-fill data-panel-breadcrumb="{{ .Name }}" aria-labelledby="curriculum-modification-unit-content-title">
+          <article class="ui-pane__inner unit-content" data-pane-content-width="reading" data-inline-editing>
+            <header class="nested-panel__header">
+              <div>
+                <p class="label">{{ if .Historical }}Proposal base unit content{{ else }}Published unit content{{ end }}</p>
+                <h1 id="curriculum-modification-unit-content-title" data-inline-editor-display="inline-rename-unit">{{ .Name }}</h1>
+                {{ if and $.CanEditProposal (not .Historical) }}
+                  <form class="editor-form unit-content__inline-editor unit-content__inline-editor--rename" id="inline-rename-unit" action="/curriculum-modification/units/{{ .ID }}" method="post" data-inline-editor hidden>
+                    <input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}">
+                    <input type="hidden" name="proposal_id" value="{{ $.ActiveProposal.ID }}">
+                    <label class="visually-hidden" for="inline-unit-name">Unit name</label>
+                    <textarea id="inline-unit-name" name="name" required maxlength="200" rows="1" data-autoresize>{{ .Name }}</textarea>
+                    <div class="unit-content__inline-actions">
+                      <button class="primary-button" type="submit">Add rename</button>
+                      <button class="secondary-button" type="button" data-inline-editor-close>Cancel</button>
+                    </div>
+                  </form>
+                {{ end }}
+              </div>
+              <a class="icon-button ui-pane__close"
+                 href="/curriculum-modification?proposal={{ $.ActiveProposal.ID }}&amp;unit={{ .ID }}"
+                 hx-get="/curriculum-modification?proposal={{ $.ActiveProposal.ID }}&amp;unit={{ .ID }}"
+                 hx-target="#workspace"
+                 hx-select="#workspace"
+                 hx-swap="outerHTML transition:true"
+                 hx-push-url="true"
+                 aria-label="Close unit content">
+                <span class="material-symbols-rounded" aria-hidden="true">close</span>
+              </a>
+            </header>
+            {{ if and $.CanEditProposal (not .Historical) }}
+              <div class="unit-content__editing-actions">
+                <button class="secondary-button secondary-button--compact" type="button" data-inline-editor-trigger="inline-rename-unit" aria-controls="inline-rename-unit" aria-expanded="false"><span class="material-symbols-rounded" aria-hidden="true">edit</span>Rename</button>
+                <button class="secondary-button secondary-button--compact" type="button" data-inline-editor-trigger="inline-edit-unit-content" aria-controls="inline-edit-unit-content" aria-expanded="false"><span class="material-symbols-rounded" aria-hidden="true">article</span>Edit content</button>
+                <button class="secondary-button secondary-button--compact" type="button" data-open-panel="edit-dependencies-panel" data-dependent-id="{{ .ID }}" data-dependent-name="{{ .Name }}" data-prerequisite-ids="{{ range .Prerequisites }}{{ .ID }},{{ end }}" aria-controls="edit-dependencies-panel" aria-expanded="false"><span class="material-symbols-rounded" aria-hidden="true">conversion_path</span>Edit dependencies</button>
+                <form action="/curriculum-modification/units/{{ .ID }}/delete" method="post" onsubmit="return confirm('Add deletion of {{ .Name }} to this proposal?')">
+                  <input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}">
+                  <input type="hidden" name="proposal_id" value="{{ $.ActiveProposal.ID }}">
+                  <button class="icon-button icon-button--danger" type="submit" aria-label="Propose deleting {{ .Name }}" {{ if .Dependents }}disabled title="Remove dependent relationships first"{{ end }}><span class="material-symbols-rounded" aria-hidden="true">delete</span></button>
+                </form>
+              </div>
+              <form class="editor-form unit-content__inline-editor unit-content__inline-editor--content" id="inline-edit-unit-content" action="/curriculum-modification/units/{{ .ID }}/content" method="post" data-inline-editor hidden>
+                <input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}">
+                <input type="hidden" name="proposal_id" value="{{ $.ActiveProposal.ID }}">
+                <div class="unit-content__source-header">
+                  <span><span class="material-symbols-rounded" aria-hidden="true">code</span>Source</span>
+                  <div class="unit-content__inline-actions">
+                    <button class="primary-button" type="submit">Save to proposal</button>
+                    <button class="secondary-button" type="button" data-inline-editor-close>Cancel</button>
+                  </div>
+                </div>
+                <label class="visually-hidden" for="inline-unit-content">Markdown source</label>
+                <textarea id="inline-unit-content" name="content" required rows="1" spellcheck="true" data-autoresize data-autoresize-unbounded>{{ .Content }}</textarea>
+              </form>
+            {{ end }}
+            <div data-inline-editor-display="inline-edit-unit-content" data-view-switcher>
+              {{ if .HasContentDiff }}
+                <div class="unit-content__view-header">
+                  <p>Proposed content changes</p>
+                  {{ template "view-switcher" (viewSwitcher "Content view" "source" "source" "Source" "rendered" "Rendered") }}
+                </div>
+                <div class="unit-content__body unit-content__body--diff" role="tabpanel" data-view-switcher-panel="source">
+                  {{ renderContentDiff .PreviousContent .Content }}
+                </div>
+                <div class="unit-content__body" role="tabpanel" data-view-switcher-panel="rendered" hidden>
+                  {{ renderRenderedContentDiff .PreviousContent .Content }}
+                </div>
+              {{ else }}
+                <div class="unit-content__body">{{ renderUnitContent .Content }}</div>
+              {{ end }}
+            </div>
+          </article>
+        </section>
+      {{ end }}
+
+{{- end }}

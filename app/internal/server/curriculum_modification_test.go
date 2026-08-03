@@ -11,7 +11,7 @@ import (
 	"universal-curriculum/internal/services"
 )
 
-func TestCurriculumModificationUsesCleanAdminProtectedRoutes(t *testing.T) {
+func TestCurriculumModificationUsesProtectedRoutes(t *testing.T) {
 	handler := (&Server{}).routes()
 
 	for _, test := range []struct {

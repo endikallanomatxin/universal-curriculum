@@ -38,9 +38,9 @@ func TestLoadTemplatesCompilesAndRendersRepresentativePages(t *testing.T) {
 			},
 		},
 		{
-			name: "admin-curriculum.html",
+			name: "curriculum-modification.html",
 			data: map[string]any{
-				"User": user, "CSRFToken": "csrf", "CurrentSection": "curriculum",
+				"User": user, "CSRFToken": "csrf", "CurrentSection": "curriculum-modification",
 			},
 		},
 	} {
@@ -249,7 +249,7 @@ func TestRecognizedUnitCompletionCanBeCompletedLiterally(t *testing.T) {
 
 func TestCurriculumProposalRendersRecognitionWorkflowAndPublishWarning(t *testing.T) {
 	templates := loadTestTemplates(t)
-	output := renderTemplate(t, templates, "admin-curriculum.html", map[string]any{
+	output := renderTemplate(t, templates, "curriculum-modification.html", map[string]any{
 		"User":            &models.User{FullName: "Admin", IsAdmin: true},
 		"CSRFToken":       "csrf",
 		"CanEditProposal": true,
@@ -289,7 +289,7 @@ func TestCurriculumProposalRendersRecognitionWorkflowAndPublishWarning(t *testin
 func TestProposalDependencyChangeLinksBothUnitsIndependently(t *testing.T) {
 	templates := loadTestTemplates(t)
 	prerequisiteID := int64(1)
-	output := renderTemplate(t, templates, "admin-curriculum.html", map[string]any{
+	output := renderTemplate(t, templates, "curriculum-modification.html", map[string]any{
 		"ActiveProposal": &models.CurriculumProposal{
 			ID: 12, Title: "Connect algebra", Status: "draft",
 			Changes: []models.CurriculumProposalChange{{
@@ -311,7 +311,7 @@ func TestProposalDependencyChangeLinksBothUnitsIndependently(t *testing.T) {
 
 func TestCurriculumProposalContentPanelRendersUnitContentDiff(t *testing.T) {
 	templates := loadTestTemplates(t)
-	output := renderTemplate(t, templates, "admin-curriculum.html", map[string]any{
+	output := renderTemplate(t, templates, "curriculum-modification.html", map[string]any{
 		"ActiveProposal": &models.CurriculumProposal{
 			ID: 12, Title: "Improve explanations", Status: "draft",
 		},
@@ -348,7 +348,7 @@ func TestCurriculumProposalRendersRebaseResolutionInUnifiedWorkspace(t *testing.
 		ID: 31, Kind: "update_content", UnitID: 7, UnitName: "Energy",
 		UnitContent: "Proposed energy content.", PreviousUnitContent: "Original energy content.",
 	}
-	output := renderTemplate(t, templates, "admin-curriculum.html", map[string]any{
+	output := renderTemplate(t, templates, "curriculum-modification.html", map[string]any{
 		"CSRFToken": "csrf",
 		"ActiveProposal": &models.CurriculumProposal{
 			ID: 12, Title: "Improve energy", Rationale: "Clarify the unit.", Status: "draft",

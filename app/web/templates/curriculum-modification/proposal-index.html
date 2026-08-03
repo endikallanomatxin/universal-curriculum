@@ -1,0 +1,68 @@
+{{/* Curriculum modification proposal index. */}}
+{{ define "proposal-index-pane" -}}
+      <section class="ui-pane proposal-index-pane" aria-labelledby="active-proposals-title" data-layout-panel data-panel-modes="collapsed:0 breadcrumb:4 mobile:20 content:24 wide:28" data-panel-required-mode="mobile" data-panel-fill data-panel-breadcrumb="Proposals">
+        <div class="ui-pane__inner proposal-pane proposal-index pane-breadcrumb" data-pane-content-width="narrow">
+          <header class="proposal-pane__header proposal-index__header pane-breadcrumb__header">
+            <div>
+              <a class="pane-breadcrumb__title" href="/curriculum-modification" hx-get="/curriculum-modification" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true">Proposals</a>
+            </div>
+          </header>
+
+          {{ if .Error }}<p class="form-error proposal-index__error" role="alert">{{ .Error }}</p>{{ end }}
+
+          <section class="active-proposals" aria-labelledby="active-proposals-title">
+            <div class="section-heading">
+              <h2 id="active-proposals-title" style="view-transition-name:active-proposals-title;">Active proposals</h2>
+            </div>
+            {{ if .DraftProposals }}
+              <div class="active-proposal-list">
+                {{ range .DraftProposals }}
+                  {{ $proposal := . }}
+                  <article class="active-proposal-card selectable-surface {{ with $.ActiveProposal }}{{ if eq .ID $proposal.ID }}is-selected{{ end }}{{ end }}" style="view-transition-name:active-proposal-card-{{ .ID }};">
+                    <a class="active-proposal-card__identity active-proposal-card__work"
+                       href="/curriculum-modification?proposal={{ .ID }}"
+                       hx-get="/curriculum-modification?proposal={{ .ID }}"
+                       hx-target="#workspace"
+                       hx-select="#workspace"
+                       hx-swap="outerHTML"
+                       hx-push-url="true"
+                       data-panel-navigation="{{ if $.ActiveProposal }}replace{{ else }}open{{ end }}"
+                       aria-label="Work on {{ .Title }}">
+                      <span class="material-symbols-rounded active-proposal-card__icon" style="view-transition-name:active-proposal-icon-{{ .ID }};" aria-hidden="true">rebase_edit</span>
+                      <strong class="active-proposal-card__title" style="view-transition-name:active-proposal-title-{{ .ID }};" data-proposal-title-preview="{{ .ID }}">{{ .Title }}</strong>
+                      <span class="active-proposal-card__rationale" style="view-transition-name:active-proposal-rationale-{{ .ID }};" data-proposal-rationale-preview="{{ .ID }}">{{ .Rationale }}</span>
+                      <span class="active-proposal-card__meta" style="view-transition-name:active-proposal-meta-{{ .ID }};">
+                        <span>{{ .ChangeCount }} {{ if eq .ChangeCount 1 }}change{{ else }}changes{{ end }}</span>
+                        {{ if eq .RebaseStatus "needs_review" }}<span class="proposal-status proposal-status--warning"><span class="material-symbols-rounded" aria-hidden="true">fork_right</span>Needs rebase review</span>{{ end }}
+                      </span>
+                    </a>
+                  </article>
+                {{ end }}
+              </div>
+            {{ else }}
+              <p class="empty-message">No active proposals. Create one to start collecting curriculum changes.</p>
+            {{ end }}
+            <div class="pane-list-actions">
+              <button class="pane-list-action" type="button" data-open-panel="new-proposal-panel" aria-controls="new-proposal-panel" aria-expanded="false">
+                <span class="material-symbols-rounded" aria-hidden="true">add</span>
+                New proposal
+              </button>
+              <a class="pane-list-action"
+                 href="/curriculum-modification?{{ if .ActiveProposal }}proposal={{ .ActiveProposal.ID }}&amp;{{ end }}history=1"
+                 hx-get="/curriculum-modification?{{ if .ActiveProposal }}proposal={{ .ActiveProposal.ID }}&amp;{{ end }}history=1"
+                 hx-target="#workspace"
+                 hx-select="#workspace"
+                 hx-swap="outerHTML transition:true"
+                 hx-push-url="true"
+                 data-panel-navigation="open-or-replace"
+                 aria-controls="proposal-history-panel"
+                 aria-expanded="{{ if .ShowProposalHistory }}true{{ else }}false{{ end }}">
+                <span class="material-symbols-rounded" aria-hidden="true">history</span>
+                Show history
+              </a>
+            </div>
+          </section>
+        </div>
+      </section>
+
+{{- end }}

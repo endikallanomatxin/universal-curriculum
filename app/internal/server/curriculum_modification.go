@@ -24,7 +24,7 @@ type curriculumUnitView struct {
 	Historical      bool
 }
 
-type adminCurriculumPageData struct {
+type curriculumModificationPageData struct {
 	userPageData
 	Units               []curriculumUnitView
 	Dependencies        []models.UnitDependency
@@ -86,12 +86,12 @@ type proposalMetadataSaveStatusView struct {
 	Error string
 }
 
-func (server *Server) adminCurriculum(writer http.ResponseWriter, request *http.Request) {
-	server.renderAdminCurriculum(writer, request, http.StatusOK, "")
+func (server *Server) curriculumModification(writer http.ResponseWriter, request *http.Request) {
+	server.renderCurriculumModification(writer, request, http.StatusOK, "")
 }
 
 func (server *Server) createCurriculumUnit(writer http.ResponseWriter, request *http.Request) {
-	if !server.parseAdminMutation(writer, request) {
+	if !server.parseCurriculumMutation(writer, request) {
 		return
 	}
 	authorID, _ := services.SessionUserID(request)
@@ -115,7 +115,7 @@ func (server *Server) createCurriculumUnit(writer http.ResponseWriter, request *
 }
 
 func (server *Server) updateCurriculumUnit(writer http.ResponseWriter, request *http.Request) {
-	if !server.parseAdminMutation(writer, request) {
+	if !server.parseCurriculumMutation(writer, request) {
 		return
 	}
 	unitID, err := parsePositiveID(request.PathValue("id"))
@@ -137,7 +137,7 @@ func (server *Server) updateCurriculumUnit(writer http.ResponseWriter, request *
 }
 
 func (server *Server) updateCurriculumUnitContent(writer http.ResponseWriter, request *http.Request) {
-	if !server.parseAdminMutation(writer, request) {
+	if !server.parseCurriculumMutation(writer, request) {
 		return
 	}
 	unitID, err := parsePositiveID(request.PathValue("id"))
@@ -161,7 +161,7 @@ func (server *Server) updateCurriculumUnitContent(writer http.ResponseWriter, re
 }
 
 func (server *Server) deleteCurriculumUnit(writer http.ResponseWriter, request *http.Request) {
-	if !server.parseAdminMutation(writer, request) {
+	if !server.parseCurriculumMutation(writer, request) {
 		return
 	}
 	unitID, err := parsePositiveID(request.PathValue("id"))
@@ -183,7 +183,7 @@ func (server *Server) deleteCurriculumUnit(writer http.ResponseWriter, request *
 }
 
 func (server *Server) createUnitDependency(writer http.ResponseWriter, request *http.Request) {
-	if !server.parseAdminMutation(writer, request) {
+	if !server.parseCurriculumMutation(writer, request) {
 		return
 	}
 	unitID, unitErr := parsePositiveID(request.FormValue("unit_id"))
@@ -206,7 +206,7 @@ func (server *Server) createUnitDependency(writer http.ResponseWriter, request *
 }
 
 func (server *Server) deleteUnitDependency(writer http.ResponseWriter, request *http.Request) {
-	if !server.parseAdminMutation(writer, request) {
+	if !server.parseCurriculumMutation(writer, request) {
 		return
 	}
 	unitID, unitErr := parsePositiveID(request.FormValue("unit_id"))
@@ -229,7 +229,7 @@ func (server *Server) deleteUnitDependency(writer http.ResponseWriter, request *
 }
 
 func (server *Server) createCurriculumRecognition(writer http.ResponseWriter, request *http.Request) {
-	if !server.parseAdminMutation(writer, request) {
+	if !server.parseCurriculumMutation(writer, request) {
 		return
 	}
 	proposalID, err := parsePositiveID(request.FormValue("proposal_id"))
@@ -253,7 +253,7 @@ func (server *Server) createCurriculumRecognition(writer http.ResponseWriter, re
 }
 
 func (server *Server) createCurriculumProposal(writer http.ResponseWriter, request *http.Request) {
-	if !server.parseAdminMutation(writer, request) {
+	if !server.parseCurriculumMutation(writer, request) {
 		return
 	}
 	authorID, _ := services.SessionUserID(request)
@@ -266,7 +266,7 @@ func (server *Server) createCurriculumProposal(writer http.ResponseWriter, reque
 }
 
 func (server *Server) updateCurriculumProposal(writer http.ResponseWriter, request *http.Request) {
-	if !server.parseAdminMutation(writer, request) {
+	if !server.parseCurriculumMutation(writer, request) {
 		return
 	}
 	proposalID, err := parsePositiveID(request.PathValue("id"))
@@ -292,7 +292,7 @@ func (server *Server) updateCurriculumProposal(writer http.ResponseWriter, reque
 }
 
 func (server *Server) deleteCurriculumProposal(writer http.ResponseWriter, request *http.Request) {
-	if !server.parseAdminMutation(writer, request) {
+	if !server.parseCurriculumMutation(writer, request) {
 		return
 	}
 	proposalID, err := parsePositiveID(request.PathValue("id"))
@@ -309,7 +309,7 @@ func (server *Server) deleteCurriculumProposal(writer http.ResponseWriter, reque
 }
 
 func (server *Server) publishCurriculumProposal(writer http.ResponseWriter, request *http.Request) {
-	if !server.parseAdminMutation(writer, request) {
+	if !server.parseCurriculumMutation(writer, request) {
 		return
 	}
 	proposalID, err := parsePositiveID(request.PathValue("id"))
@@ -330,7 +330,7 @@ func (server *Server) publishCurriculumProposal(writer http.ResponseWriter, requ
 }
 
 func (server *Server) rebaseCurriculumProposal(writer http.ResponseWriter, request *http.Request) {
-	if !server.parseAdminMutation(writer, request) {
+	if !server.parseCurriculumMutation(writer, request) {
 		return
 	}
 	proposalID, err := parsePositiveID(request.PathValue("id"))
@@ -362,7 +362,7 @@ func (server *Server) rebaseCurriculumProposal(writer http.ResponseWriter, reque
 }
 
 func (server *Server) deleteCurriculumProposalChange(writer http.ResponseWriter, request *http.Request) {
-	if !server.parseAdminMutation(writer, request) {
+	if !server.parseCurriculumMutation(writer, request) {
 		return
 	}
 	proposalID, proposalErr := parsePositiveID(request.PathValue("id"))
@@ -379,7 +379,7 @@ func (server *Server) deleteCurriculumProposalChange(writer http.ResponseWriter,
 	redirectToProposal(writer, request, proposalID)
 }
 
-func (server *Server) parseAdminMutation(writer http.ResponseWriter, request *http.Request) bool {
+func (server *Server) parseCurriculumMutation(writer http.ResponseWriter, request *http.Request) bool {
 	request.Body = http.MaxBytesReader(writer, request.Body, 1<<20)
 	if err := request.ParseForm(); err != nil {
 		http.Error(writer, "Invalid form", http.StatusBadRequest)
@@ -397,7 +397,7 @@ func (server *Server) renderCurriculumMutationError(writer http.ResponseWriter, 
 	if status == http.StatusInternalServerError {
 		log.Printf("modify curriculum: %v", err)
 	}
-	server.renderAdminCurriculum(writer, request, status, message)
+	server.renderCurriculumModification(writer, request, status, message)
 }
 
 func curriculumErrorResponse(err error) (string, int) {
@@ -442,12 +442,12 @@ func curriculumErrorResponse(err error) (string, int) {
 	}
 }
 
-func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request *http.Request, status int, message string) {
+func (server *Server) renderCurriculumModification(writer http.ResponseWriter, request *http.Request, status int, message string) {
 	userID, _ := services.SessionUserID(request)
 	user, err := db.GetUserByID(server.Database, userID)
 	if err != nil || user == nil {
-		log.Printf("load curriculum administrator: %v", err)
-		http.Error(writer, "Unable to load administrator", http.StatusInternalServerError)
+		log.Printf("load curriculum editor: %v", err)
+		http.Error(writer, "Unable to load curriculum editor", http.StatusInternalServerError)
 		return
 	}
 	graph, err := db.GetCurriculumGraph(server.Database)
@@ -533,7 +533,7 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 		return
 	}
 	if err != nil {
-		log.Printf("build admin curriculum neighborhood: %v", err)
+		log.Printf("build curriculum modification neighborhood: %v", err)
 		http.Error(writer, "Unable to navigate curriculum", http.StatusInternalServerError)
 		return
 	}
@@ -575,9 +575,9 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 		})
 	}
 	history, rootDrafts := curriculumProposalHistory(proposals, draftViews)
-	data := adminCurriculumPageData{
+	data := curriculumModificationPageData{
 		userPageData: userPageData{
-			User: user, CSRFToken: sessionCSRFToken(request), CurrentSection: "curriculum",
+			User: user, CSRFToken: sessionCSRFToken(request), CurrentSection: "curriculum-modification",
 		},
 		Dependencies:        proposalBaseGraph.Dependencies,
 		Graph:               layout,
@@ -629,7 +629,7 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 	}
 	navigateURL, contentURL := curriculumUnitURLs(unitURL, data.ContentUnit != nil)
 	data.GraphView = newCurriculumGraphView(
-		"admin-curriculum",
+		"curriculum-modification",
 		"Arrows go from each prerequisite to the units that depend on it. Select a unit to navigate, or use its document action to open the content.",
 		layout,
 		focusedUnit,
@@ -641,12 +641,12 @@ func (server *Server) renderAdminCurriculum(writer http.ResponseWriter, request 
 	)
 	applyProposalGraphStates(&data.GraphView, activeProposal)
 	data.GraphSearch = newUnitNavigationSearchView(
-		"admin-graph-search-results",
+		"curriculum-graph-search-results",
 		"Find a unit in the curriculum",
 		workingGraph.Units,
 		navigateURL,
 	)
-	server.renderStatus(writer, status, "admin-curriculum.html", data)
+	server.renderStatus(writer, status, "curriculum-modification.html", data)
 }
 
 func applyUnitContentDiff(unit *curriculumUnitView, proposal *models.CurriculumProposal) {

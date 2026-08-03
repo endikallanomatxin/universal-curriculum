@@ -82,7 +82,7 @@ func (server *Server) routes() http.Handler {
 	mux.Handle("POST /auth/reset-password", resetPasswordHandler)
 	mux.HandleFunc("POST /auth/logout", server.logout)
 	mux.Handle("GET /account", requireUser(http.HandlerFunc(server.account)))
-	mux.Handle("GET /curriculum-modification", server.requireAdmin(http.HandlerFunc(server.adminCurriculum)))
+	mux.Handle("GET /curriculum-modification", server.requireAdmin(http.HandlerFunc(server.curriculumModification)))
 	mux.Handle("POST /curriculum-modification/proposals", server.requireAdmin(http.HandlerFunc(server.createCurriculumProposal)))
 	mux.Handle("POST /curriculum-modification/proposals/{id}", server.requireAdmin(http.HandlerFunc(server.updateCurriculumProposal)))
 	mux.Handle("POST /curriculum-modification/proposals/{id}/delete", server.requireAdmin(http.HandlerFunc(server.deleteCurriculumProposal)))

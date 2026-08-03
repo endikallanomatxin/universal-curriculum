@@ -18,6 +18,9 @@
   `curriculum-graph.css` and `unit-content.css` serve every page that renders
   that concept. Page styles should contain only page composition and genuine
   feature-specific variants.
+- Keep top-level page templates compositional. Put substantial feature
+  fragments in the matching template subdirectory and load that directory
+  explicitly through `services.LoadTemplates`.
 - Build pages from system-wide interaction and visual primitives. Reuse and
   extend shared CSS, JavaScript and template fragments instead of creating
   page-specific versions of an existing concept.

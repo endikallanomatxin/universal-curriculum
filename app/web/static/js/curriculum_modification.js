@@ -1,3 +1,4 @@
+/* Curriculum modification interactions. */
 (function () {
   "use strict";
 

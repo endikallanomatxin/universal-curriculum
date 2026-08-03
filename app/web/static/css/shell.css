@@ -501,8 +501,8 @@
   view-transition-name: logout-action;
 }
 
-.primary-menu__link--curriculum .primary-menu__icon {
-  view-transition-name: curriculum-navigation;
+.primary-menu__link--curriculum-modification .primary-menu__icon {
+  view-transition-name: curriculum-modification-navigation;
 }
 
 .primary-menu__link--learn .primary-menu__icon {
@@ -510,7 +510,7 @@
 }
 
 .primary-menu__learn-item,
-.primary-menu__admin-item,
+.primary-menu__curriculum-modification-item,
 .primary-menu__account-item,
 .primary-menu__login-item,
 .primary-menu__logout-item {
@@ -518,22 +518,22 @@
   width: 12rem;
 }
 
-.primary-menu__admin-item {
+.primary-menu__curriculum-modification-item {
   width: calc(var(--sidebar-width) - 2 * var(--space-3));
 }
 
-.primary-menu__admin-item,
+.primary-menu__curriculum-modification-item,
 .primary-menu__account-item,
 .primary-menu__login-item {
   margin-top: var(--space-4);
 }
 
-.primary-menu__admin-item .primary-menu__link {
+.primary-menu__curriculum-modification-item .primary-menu__link {
   gap: var(--space-1);
   padding-inline: var(--space-1);
 }
 
-.primary-menu__admin-item .primary-menu__label {
+.primary-menu__curriculum-modification-item .primary-menu__label {
   font-size: 0.8rem;
   line-height: 1;
 }
@@ -670,6 +670,8 @@ button.primary-menu__link {
 }
 
 .ui-pane {
+  --ui-pane-close-inset: clamp(var(--space-3), 2.5vw, var(--space-6));
+
   background: linear-gradient(90deg, var(--color-panel-start), var(--color-panel-end));
   flex: 0 0 var(--panel-width, min(100%, 42rem));
   height: 100dvh;
@@ -677,6 +679,69 @@ button.primary-menu__link {
   overflow-y: auto;
   padding: clamp(2rem, 5vw, 6rem);
   position: relative;
+}
+
+.ui-pane--form {
+  clip-path: inset(0);
+  container: form-pane / inline-size;
+  transform-origin: left center;
+  transition: clip-path var(--panel-motion-duration) var(--panel-motion-easing), opacity 140ms ease;
+}
+
+.ui-pane--form.is-opening,
+.ui-pane--form.is-closing {
+  clip-path: inset(0 0 0 100%);
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.ui-pane__close {
+  inset-block-start: var(--ui-pane-close-block-start, var(--ui-pane-close-inset));
+  inset-inline-end: var(--ui-pane-close-inset);
+  position: absolute;
+  z-index: 3;
+}
+
+@keyframes horizontal-panel-enter {
+  from {
+    opacity: 0;
+    transform: translateX(var(--panel-motion-distance));
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes horizontal-panel-exit {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateX(var(--panel-motion-distance));
+  }
+}
+
+.ui-pane[data-panel-motion="horizontal"].is-opening,
+.pane-stack.is-opening {
+  animation: horizontal-panel-enter var(--panel-motion-duration) var(--panel-motion-easing);
+  overflow: hidden;
+  pointer-events: none;
+  will-change: opacity, transform;
+}
+
+.ui-pane[data-panel-motion="horizontal"].is-closing {
+  animation: horizontal-panel-exit var(--panel-motion-duration) var(--panel-motion-easing) forwards;
+  clip-path: none;
+  opacity: 1;
+  overflow: hidden;
+  pointer-events: none;
+  will-change: opacity, transform;
 }
 
 .ui-pane[data-panel-mode="compact"] {
@@ -797,6 +862,10 @@ button.primary-menu__link {
 }
 
 @media (max-width: 42rem) {
+  .ui-pane {
+    --ui-pane-close-block-start: calc(2.75rem + var(--ui-pane-close-inset));
+  }
+
   .mobile-panel-breadcrumbs:not([hidden]) {
     align-items: center;
     background: color-mix(in srgb, var(--color-panel-start) 94%, transparent);

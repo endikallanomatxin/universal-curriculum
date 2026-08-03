@@ -15,7 +15,10 @@
   <link rel="stylesheet" href="/static/vendor/highlight/github.min.css?v={{ assetVersion }}">
   <link rel="stylesheet" href="/static/vendor/katex/katex.min.css?v={{ assetVersion }}">
   <link rel="stylesheet" href="/static/css/unit-content.css?v={{ assetVersion }}">
-  <link rel="stylesheet" href="/static/css/curriculum-admin.css?v={{ assetVersion }}">
+  <link rel="stylesheet" href="/static/css/proposal-rebase.css?v={{ assetVersion }}">
+  <link rel="stylesheet" href="/static/css/curriculum-modification.css?v={{ assetVersion }}">
+  <link rel="stylesheet" href="/static/css/unit-content-editor.css?v={{ assetVersion }}">
+  <link rel="stylesheet" href="/static/css/content-diff.css?v={{ assetVersion }}">
   <link rel="stylesheet" href="/static/css/learn.css?v={{ assetVersion }}">
   <noscript><style>.app-shell:not([data-panel-layout-ready]) { visibility: visible !important; }</style></noscript>
 {{- end }}
@@ -28,7 +31,7 @@
 <span class="material-symbols-rounded primary-menu__icon" aria-hidden="true">logout</span>
 {{- end }}
 
-{{ define "icon-curriculum" -}}
+{{ define "icon-curriculum-modification" -}}
 <span class="material-symbols-rounded primary-menu__icon" aria-hidden="true">design_services</span>
 {{- end }}
 
@@ -267,9 +270,9 @@
           </a>
         </li>
         {{ if and .User .User.IsAdmin }}
-          <li class="primary-menu__admin-item">
-            <a class="primary-menu__link primary-menu__link--curriculum primary-menu__link--session-action" href="/curriculum-modification" {{ if eq .CurrentSection "curriculum" }}aria-current="page"{{ end }} {{ template "shell-link-attributes" "/curriculum-modification" }} data-panel-navigation="workspace">
-              {{ template "icon-curriculum" }}
+          <li class="primary-menu__curriculum-modification-item">
+            <a class="primary-menu__link primary-menu__link--curriculum-modification primary-menu__link--session-action" href="/curriculum-modification" {{ if eq .CurrentSection "curriculum-modification" }}aria-current="page"{{ end }} {{ template "shell-link-attributes" "/curriculum-modification" }} data-panel-navigation="workspace">
+              {{ template "icon-curriculum-modification" }}
               <span class="primary-menu__label">Curriculum<br>modification</span>
             </a>
           </li>
@@ -316,7 +319,7 @@
   <script src="/static/js/merge_editor.js?v={{ assetVersion }}" defer></script>
   <script src="/static/js/rebase_graph.js?v={{ assetVersion }}" defer></script>
   <script src="/static/js/unit_picker.js?v={{ assetVersion }}" defer></script>
-  <script src="/static/js/curriculum_editor.js?v={{ assetVersion }}" defer></script>
+  <script src="/static/js/curriculum_modification.js?v={{ assetVersion }}" defer></script>
   <script src="/static/js/curriculum_graph.js?v={{ assetVersion }}" defer></script>
   <script src="/static/vendor/katex/katex.min.js?v={{ assetVersion }}" defer></script>
   <script src="/static/vendor/katex/auto-render.min.js?v={{ assetVersion }}" defer></script>

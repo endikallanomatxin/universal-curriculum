@@ -1,0 +1,21 @@
+{{ define "curriculum-modification.html" -}}
+<!doctype html>
+<html lang="en">
+<head>{{ template "document-head" "Curriculum modification · Universal Curriculum" }}</head>
+<body>
+  <div class="app-shell" id="app-shell" data-panel-group>
+    {{ template "primary-navigation" . }}
+    <main class="pane-stack" id="workspace" data-shell-view="detail" data-document-title="Curriculum modification · Universal Curriculum" data-layout-panel data-panel-modes="mobile:20 content:34 wide:46" data-panel-required-mode="content" data-panel-fill data-panel-group>
+      <nav class="mobile-panel-breadcrumbs" data-mobile-panel-breadcrumbs aria-label="Current location" hidden></nav>
+      {{ template "proposal-index-pane" . }}
+      {{ template "proposal-workspace-pane" . }}
+      {{ template "reviewed-proposal-pane" . }}
+      {{ template "curriculum-modification-unit-content-pane" . }}
+      {{ template "proposal-history-pane" . }}
+      {{ template "curriculum-modification-editor-panels" . }}
+    </main>
+  </div>
+  {{ template "shell-scripts" }}
+</body>
+</html>
+{{- end }}
