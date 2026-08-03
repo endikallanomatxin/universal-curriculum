@@ -527,18 +527,26 @@ a.learning-path-card {
   width: 50%;
 }
 
-.curriculum-graph__anchor.has-progress.is-completed::before,
-.unit-completion__indicator.is-completed::before {
+.curriculum-graph__anchor.has-progress.is-completed:not(.is-recognized)::before,
+.unit-completion__indicator.is-completed:not(.is-recognized)::before {
   content: none;
 }
 
 .curriculum-graph__anchor.has-progress.is-recognized,
 .unit-completion__indicator.is-recognized {
+  background: currentColor;
+}
+
+.curriculum-graph__anchor.has-progress.is-recognized::before,
+.unit-completion__indicator.is-recognized::before {
   background: linear-gradient(to top, currentColor 75%, var(--color-surface) 75%);
 }
 
 .unit-completion {
+  align-items: center;
+  display: flex;
   flex: none;
+  gap: var(--space-1);
   margin-left: auto;
 }
 
@@ -553,6 +561,11 @@ a.learning-path-card {
   gap: var(--space-2);
   padding: var(--space-2);
   white-space: nowrap;
+}
+
+.unit-completion .unit-completion__literal {
+  color: var(--color-muted);
+  font-weight: 600;
 }
 
 .unit-completion__indicator {

@@ -333,12 +333,12 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if err != nil || completedUnitIDs[foundations.ID] {
 		t.Fatalf("unit remained completed after returning it to pending: ids=%v err=%v", completedUnitIDs, err)
 	}
-	var completionEventCount int
+	var completionCount int
 	if err := database.QueryRow(`
-		SELECT count(*) FROM unit_completion_events
+		SELECT count(*) FROM unit_completions
 		WHERE user_id = $1 AND unit_id = $2
-	`, authorID, foundations.ID).Scan(&completionEventCount); err != nil || completionEventCount != 2 {
-		t.Fatalf("completion history count = %d err=%v, want completion and pending events", completionEventCount, err)
+	`, authorID, foundations.ID).Scan(&completionCount); err != nil || completionCount != 0 {
+		t.Fatalf("direct completion count = %d err=%v, want no row after returning to pending", completionCount, err)
 	}
 
 	if err := db.SetUnitCompleted(database, authorID, algebra.ID, true); err != nil {
@@ -348,11 +348,8 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if err := database.QueryRow(`
 		SELECT creation.change_id, completion.curriculum_proposal_id
 		FROM curriculum_unit_creations creation
-		JOIN unit_completion_events completion ON completion.unit_id = creation.change_id
+		JOIN unit_completions completion ON completion.unit_id = creation.change_id
 		WHERE creation.change_id = $1 AND completion.user_id = $2
-		  AND completion.is_completed = TRUE
-		ORDER BY completion.id DESC
-		LIMIT 1
 	`, algebra.ID, authorID).Scan(&creationChangeID, &completionProposalID); err != nil {
 		t.Fatal(err)
 	}
@@ -425,6 +422,110 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 		completionStatuses[replacement.ID].Direct ||
 		!completionStatuses[replacement.ID].Recognized {
 		t.Fatalf("direct and recognized progress were conflated: statuses=%v err=%v", completionStatuses, err)
+	}
+	if err := db.SetUnitCompleted(database, authorID, foundations.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.SetUnitCompleted(database, coauthorID, replacement.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	var sameProposalUserID int64
+	if err := database.QueryRow(`
+		INSERT INTO users (full_name) VALUES ('Same proposal learner') RETURNING id
+	`).Scan(&sameProposalUserID); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.SetUnitCompleted(database, sameProposalUserID, foundations.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	advancedProposal, err := CreateCurriculumProposal(
+		database, authorID, "Extend applied algebra", "Exercise forward-only recognition.",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	advanced, err := CreateCurriculumUnit(
+		database, authorID, advancedProposal.ID, "Advanced applied algebra", "Solve advanced applications.",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := AddCurriculumRecognition(
+		database, authorID, advancedProposal.ID,
+		[]int64{foundations.ID}, []int64{replacement.ID},
+	); err != nil {
+		t.Fatal(err)
+	}
+	if err := AddCurriculumRecognition(
+		database, authorID, advancedProposal.ID,
+		[]int64{replacement.ID, foundations.ID}, []int64{advanced.ID},
+	); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := PublishCurriculumProposal(database, authorID, advancedProposal.ID); err != nil {
+		t.Fatal(err)
+	}
+	completedUnitIDs, err = db.CompletedUnitIDs(database, authorID)
+	if err != nil || !completedUnitIDs[advanced.ID] {
+		t.Fatalf("recognition did not flow through an earlier proposal: ids=%v err=%v", completedUnitIDs, err)
+	}
+	completedUnitIDs, err = db.CompletedUnitIDs(database, sameProposalUserID)
+	if err != nil || !completedUnitIDs[replacement.ID] || completedUnitIDs[advanced.ID] {
+		t.Fatalf("recognitions in one proposal fed one another: ids=%v err=%v", completedUnitIDs, err)
+	}
+	var lateEvidenceUserID int64
+	if err := database.QueryRow(`
+		INSERT INTO users (full_name) VALUES ('Late evidence learner') RETURNING id
+	`).Scan(&lateEvidenceUserID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.Exec(`
+		INSERT INTO unit_completions (user_id, unit_id, curriculum_proposal_id)
+		VALUES ($1, $2, $4), ($1, $3, $4)
+	`, lateEvidenceUserID, foundations.ID, replacement.ID, retirement.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.MaterializeCurriculumRecognitions(database, advancedProposal.ID); err != nil {
+		t.Fatal(err)
+	}
+	completedUnitIDs, err = db.CompletedUnitIDs(database, lateEvidenceUserID)
+	if err != nil || !completedUnitIDs[advanced.ID] {
+		t.Fatalf("late historical evidence did not catch up through recognition: ids=%v err=%v", completedUnitIDs, err)
+	}
+	if err := db.SetUnitCompleted(database, coauthorID, replacement.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	completedUnitIDs, err = db.CompletedUnitIDs(database, coauthorID)
+	if err != nil || !completedUnitIDs[replacement.ID] || completedUnitIDs[advanced.ID] {
+		t.Fatalf("recognition was applied without every source: ids=%v err=%v", completedUnitIDs, err)
+	}
+	if err := db.SetUnitCompleted(database, coauthorID, foundations.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	completedUnitIDs, err = db.CompletedUnitIDs(database, coauthorID)
+	if err != nil || completedUnitIDs[advanced.ID] {
+		t.Fatalf("later source completion activated an earlier recognition: ids=%v err=%v", completedUnitIDs, err)
+	}
+	if err := db.SetUnitCompleted(database, authorID, algebra.ID, false); err != nil {
+		t.Fatal(err)
+	}
+	completedUnitIDs, err = db.CompletedUnitIDs(database, authorID)
+	if err != nil || completedUnitIDs[algebra.ID] || !completedUnitIDs[replacement.ID] || completedUnitIDs[advanced.ID] {
+		t.Fatalf("unsupported recognized progress survived returning its source to pending: ids=%v err=%v", completedUnitIDs, err)
+	}
+	if err := db.SetUnitCompleted(database, authorID, replacement.ID, false); err != nil {
+		t.Fatal(err)
+	}
+	completedUnitIDs, err = db.CompletedUnitIDs(database, authorID)
+	if err != nil || completedUnitIDs[replacement.ID] || completedUnitIDs[advanced.ID] {
+		t.Fatalf("recognized completion did not softly return to pending: ids=%v err=%v", completedUnitIDs, err)
+	}
+	if err := db.MaterializeCurriculumRecognitions(database, advancedProposal.ID); err != nil {
+		t.Fatal(err)
+	}
+	completedUnitIDs, err = db.CompletedUnitIDs(database, authorID)
+	if err != nil || !completedUnitIDs[replacement.ID] || completedUnitIDs[advanced.ID] {
+		t.Fatalf("explicit replay did not regenerate soft recognition correctly: ids=%v err=%v", completedUnitIDs, err)
 	}
 	if err := db.SetUnitCompleted(database, authorID, replacement.ID, true); err != nil {
 		t.Fatal(err)

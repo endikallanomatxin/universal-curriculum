@@ -757,6 +757,9 @@ func PublishCurriculumProposal(
 	if !ok {
 		return summary, ErrProposalNotFound
 	}
+	if err := db.MaterializeCurriculumRecognitions(tx, proposalID); err != nil {
+		return summary, err
+	}
 	if err := db.RebuildCurriculumProjection(tx, proposalID); err != nil {
 		return summary, err
 	}

@@ -169,11 +169,18 @@
         hx-swap="outerHTML">
     <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
     <input type="hidden" name="return_to" value="{{ .ReturnURL }}">
-    <input type="hidden" name="completed" value="{{ if and .Completed (not .Recognized) }}false{{ else }}true{{ end }}">
-    <button type="submit" aria-pressed="{{ if .Completed }}true{{ else }}false{{ end }}">
-      <span class="unit-completion__indicator {{ if .Completed }}is-completed{{ end }} {{ if .Recognized }}is-recognized{{ end }}" aria-hidden="true"></span>
-      <span>{{ if .Recognized }}Recognized{{ else if .Completed }}Completed{{ else }}Mark as completed{{ end }}</span>
-    </button>
+    {{ if .Recognized }}
+      <button type="submit" name="completed" value="false" aria-pressed="true">
+        <span class="unit-completion__indicator is-completed is-recognized" aria-hidden="true"></span>
+        <span>Recognized</span>
+      </button>
+      <button class="unit-completion__literal" type="submit" name="completed" value="true">Complete current version</button>
+    {{ else }}
+      <button type="submit" name="completed" value="{{ if .Completed }}false{{ else }}true{{ end }}" aria-pressed="{{ if .Completed }}true{{ else }}false{{ end }}">
+        <span class="unit-completion__indicator {{ if .Completed }}is-completed{{ end }}" aria-hidden="true"></span>
+        <span>{{ if .Completed }}Completed{{ else }}Mark as completed{{ end }}</span>
+      </button>
+    {{ end }}
   </form>
 {{- end }}
 

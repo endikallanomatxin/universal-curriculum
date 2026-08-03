@@ -241,8 +241,9 @@ func TestRecognizedUnitCompletionCanBeCompletedLiterally(t *testing.T) {
 		t.Fatal("recognized completion does not show its state")
 	}
 	if !strings.Contains(output, `action="/learn/units/7/completion"`) ||
+		!strings.Contains(output, `name="completed" value="false"`) ||
 		!strings.Contains(output, `name="completed" value="true"`) {
-		t.Fatal("recognized completion cannot be completed against the current version")
+		t.Fatal("recognized completion cannot be returned to pending or completed against the current version")
 	}
 }
 

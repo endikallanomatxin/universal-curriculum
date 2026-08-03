@@ -238,9 +238,19 @@ A proposal is a coherent collection of changes. It may change:
 A proposal contains its authors, rationale, the accepted proposal on which it
 is based and a readable diff of both content and graph changes.
 
-A recognition marks every target as recognized when all of its sources have
-been completed. Recognitions are explicit proposal changes and may be proposed
-even when no unit is created or removed. Creating a unit without incoming
+A recognition marks every target as recognized for each learner who had
+completed all of its sources before the proposal was accepted. It is a
+historical migration of prior learning, not a permanent equivalence: completing
+a source after that proposal does not apply the recognition retroactively.
+Recognized progress can satisfy recognitions in later proposals, but
+recognitions accepted together do not feed one another. Returning direct
+progress to pending also removes any derived progress that no longer has a
+valid chain of evidence. A learner may likewise return a recognized target to
+pending; this softly removes its materialized recognition and unsupported
+downstream results without creating a permanent exclusion. A later explicit
+replay of historical evidence may recognize it again. Recognitions are
+explicit proposal changes and may be proposed even when no unit is created or
+removed. Creating a unit without incoming
 recognition means that it represents knowledge not previously covered. Removing
 a unit without outgoing recognition means that it has no recognized successor.
 These choices are valid, but the publishing interface warns the author before

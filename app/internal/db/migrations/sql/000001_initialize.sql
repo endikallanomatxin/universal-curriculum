@@ -707,47 +707,54 @@ CREATE TABLE learning_path_units (
     PRIMARY KEY (path_id, unit_id)
 );
 
-CREATE TABLE unit_completion_events (
-    id BIGSERIAL PRIMARY KEY,
+CREATE TABLE unit_completions (
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     unit_id BIGINT NOT NULL REFERENCES curriculum_unit_creations(change_id) ON DELETE RESTRICT,
     curriculum_proposal_id BIGINT NOT NULL REFERENCES curriculum_proposals(id) ON DELETE RESTRICT,
-    is_completed BOOLEAN NOT NULL,
-    occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    PRIMARY KEY (user_id, unit_id)
 );
 
-CREATE INDEX unit_completion_events_current_idx
-    ON unit_completion_events (user_id, unit_id, id DESC);
-CREATE INDEX unit_completion_events_unit_id_idx
-    ON unit_completion_events (unit_id);
-CREATE INDEX unit_completion_events_proposal_id_idx
-    ON unit_completion_events (curriculum_proposal_id);
+CREATE INDEX unit_completions_unit_id_user_id_idx
+    ON unit_completions (unit_id, user_id);
+CREATE INDEX unit_completions_proposal_id_idx
+    ON unit_completions (curriculum_proposal_id);
 
 -- +goose StatementBegin
-CREATE FUNCTION validate_unit_completion_event() RETURNS TRIGGER
+CREATE FUNCTION validate_unit_completion() RETURNS TRIGGER
 LANGUAGE plpgsql AS $$
 BEGIN
-    IF TG_OP = 'UPDATE' THEN
-        RAISE EXCEPTION 'unit completion events are immutable';
-    END IF;
     IF NOT EXISTS (
         SELECT 1 FROM curriculum_proposals
         WHERE id = NEW.curriculum_proposal_id AND status = 'accepted'
     ) THEN
-        RAISE EXCEPTION 'unit completion event must reference an accepted curriculum state';
+        RAISE EXCEPTION 'unit completion must reference an accepted curriculum state';
     END IF;
     RETURN NEW;
 END;
 $$;
 -- +goose StatementEnd
 
-CREATE TRIGGER unit_completion_events_valid
-BEFORE INSERT OR UPDATE ON unit_completion_events
-FOR EACH ROW EXECUTE FUNCTION validate_unit_completion_event();
+CREATE TRIGGER unit_completions_valid
+BEFORE INSERT OR UPDATE ON unit_completions
+FOR EACH ROW EXECUTE FUNCTION validate_unit_completion();
+
+CREATE TABLE unit_completion_recognitions (
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    unit_id BIGINT NOT NULL REFERENCES curriculum_unit_creations(change_id) ON DELETE RESTRICT,
+    recognition_change_id BIGINT NOT NULL
+        REFERENCES curriculum_recognitions(change_id) ON DELETE RESTRICT,
+    PRIMARY KEY (user_id, unit_id, recognition_change_id)
+);
+
+CREATE INDEX unit_completion_recognitions_unit_id_user_id_idx
+    ON unit_completion_recognitions (unit_id, user_id);
+CREATE INDEX unit_completion_recognitions_change_id_idx
+    ON unit_completion_recognitions (recognition_change_id);
 
 -- +goose Down
-DROP TABLE unit_completion_events;
-DROP FUNCTION validate_unit_completion_event();
+DROP TABLE unit_completion_recognitions;
+DROP TABLE unit_completions;
+DROP FUNCTION validate_unit_completion();
 DROP TABLE learning_path_units;
 DROP TABLE learning_paths;
 DROP TABLE curriculum_projection_state;
