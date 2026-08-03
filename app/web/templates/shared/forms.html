@@ -1,0 +1,16 @@
+{{ define "view-switcher" -}}
+<div class="view-switcher" role="tablist" aria-label="{{ .Label }}">
+  {{ range .Options }}
+    <button type="button" role="tab" aria-selected="{{ if .Selected }}true{{ else }}false{{ end }}" tabindex="{{ if .Selected }}0{{ else }}-1{{ end }}" data-view-switcher-trigger="{{ .Value }}">{{ .Label }}</button>
+  {{ end }}
+</div>
+{{- end }}
+
+{{ define "autosave-status-content" -}}
+  {{ if .Error }}
+    {{ .Error }}
+  {{ else }}
+    <span data-save-state-saved>Saved</span>
+    <span data-save-state-saving>Saving…</span>
+  {{ end }}
+{{- end }}

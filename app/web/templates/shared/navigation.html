@@ -1,0 +1,112 @@
+{{ define "icon-account" -}}
+<span class="material-symbols-rounded primary-menu__icon" aria-hidden="true">person</span>
+{{- end }}
+
+{{ define "icon-logout" -}}
+<span class="material-symbols-rounded primary-menu__icon" aria-hidden="true">logout</span>
+{{- end }}
+
+{{ define "icon-curriculum-modification" -}}
+<span class="material-symbols-rounded primary-menu__icon" aria-hidden="true">design_services</span>
+{{- end }}
+
+{{ define "icon-learn" -}}
+<span class="material-symbols-rounded primary-menu__icon" aria-hidden="true">book_5</span>
+{{- end }}
+
+{{ define "shell-link-attributes" }}hx-get="{{ . }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true"{{ end }}
+
+{{ define "shell-link-attributes-without-view-transition" }}hx-get="{{ . }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML" hx-push-url="true"{{ end }}
+
+{{ define "home-link-attributes" }}hx-get="/" hx-target="#app-shell" hx-select="#app-shell" hx-swap="outerHTML transition:true" hx-push-url="true"{{ end }}
+
+{{ define "primary-navigation" -}}
+<aside class="primary-navigation {{ if and .Home .Recommendations }}primary-navigation--with-recommendations{{ end }}"
+       data-layout-panel
+       data-panel-modes="mobile:0 icons:5 sidebar:13"
+       data-panel-required-mode="icons">
+  <button class="mobile-menu-toggle" type="button" data-mobile-menu-toggle aria-expanded="false" aria-label="Open menu">
+    <span class="mobile-menu-toggle__line" aria-hidden="true"></span>
+    <span class="mobile-menu-toggle__line" aria-hidden="true"></span>
+  </button>
+  <div class="primary-navigation__inner">
+    <a class="brand" href="/" {{ template "home-link-attributes" }}>
+      <span class="brand__name"><span class="brand__word"><span class="brand__initial">u</span><span class="brand__expansion">niversal</span></span><span class="brand__word brand__word--curriculum"><span class="brand__initial">c</span><span class="brand__expansion">urriculum</span></span></span>
+    </a>
+
+    {{ if .User }}
+      <div class="navigation-introduction">
+        <p>Welcome, <strong>{{ .User.DisplayName }}</strong>.</p>
+        {{ if and .Home .Recommendations }}
+          <section class="home-recommendations" aria-labelledby="home-recommendations-title">
+            <h2 id="home-recommendations-title">Continue learning</h2>
+            <div class="home-recommendations__paths">
+              {{ range .Recommendations }}
+                <article class="home-recommendation">
+                  <a class="home-recommendation__path" href="{{ .URL }}" {{ template "shell-link-attributes-without-view-transition" .URL }} data-panel-navigation="workspace">
+                    <strong>{{ .Name }}</strong>
+                    <span>{{ .PendingCount }} {{ if eq .PendingCount 1 }}unit{{ else }}units{{ end }} remaining</span>
+                  </a>
+                  <ul>
+                    {{ range .NextUnits }}
+                      <li>
+                        <a href="{{ .URL }}" {{ template "shell-link-attributes-without-view-transition" .URL }} data-panel-navigation="workspace">
+                          <span class="home-recommendation__indicator" aria-hidden="true"></span>
+                          <span>{{ .Name }}</span>
+                        </a>
+                      </li>
+                    {{ end }}
+                  </ul>
+                </article>
+              {{ end }}
+            </div>
+          </section>
+        {{ end }}
+      </div>
+    {{ end }}
+
+    <nav aria-label="Primary navigation">
+      <ul class="primary-menu">
+        <li class="primary-menu__learn-item">
+          <a class="primary-menu__link primary-menu__link--learn primary-menu__link--session-action" href="/learn" {{ if eq .CurrentSection "learn" }}aria-current="page"{{ end }} {{ template "shell-link-attributes" "/learn" }} data-panel-navigation="workspace">
+            {{ template "icon-learn" }}
+            <span class="primary-menu__label">Learn</span>
+          </a>
+        </li>
+        {{ if and .User .User.IsAdmin }}
+          <li class="primary-menu__curriculum-modification-item">
+            <a class="primary-menu__link primary-menu__link--curriculum-modification primary-menu__link--session-action" href="/curriculum-modification" {{ if eq .CurrentSection "curriculum-modification" }}aria-current="page"{{ end }} {{ template "shell-link-attributes" "/curriculum-modification" }} data-panel-navigation="workspace">
+              {{ template "icon-curriculum-modification" }}
+              <span class="primary-menu__label">Curriculum<br>modification</span>
+            </a>
+          </li>
+        {{ end }}
+        <li class="{{ if .User }}primary-menu__account-item{{ else }}primary-menu__login-item{{ end }}">
+          {{ if .User }}
+            <a class="primary-menu__link primary-menu__link--account primary-menu__link--session-action" href="/account" {{ if eq .CurrentSection "account" }}aria-current="page"{{ end }} {{ template "shell-link-attributes" "/account" }} data-panel-navigation="workspace">
+              {{ template "icon-account" }}
+              <span class="primary-menu__label">Account</span>
+            </a>
+          {{ else }}
+            <a class="primary-menu__link primary-menu__link--account primary-menu__link--session-action" href="/auth/login">
+              {{ template "icon-account" }}
+              <span class="primary-menu__label">Log in</span>
+            </a>
+          {{ end }}
+        </li>
+        {{ if .User }}
+          <li class="primary-menu__logout-item">
+            <form class="menu-form" action="/auth/logout" method="post">
+              <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+              <button class="primary-menu__link primary-menu__link--logout primary-menu__link--session-action" type="submit">
+                {{ template "icon-logout" }}
+                <span class="primary-menu__label">Log out</span>
+              </button>
+            </form>
+          </li>
+        {{ end }}
+      </ul>
+    </nav>
+  </div>
+</aside>
+{{- end }}

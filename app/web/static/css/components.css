@@ -325,7 +325,7 @@
 }
 
 .nested-panel__header .label,
-.learn-heading .label {
+.pane-breadcrumb__header .label {
   margin-bottom: var(--space-2);
 }
 
@@ -457,14 +457,6 @@
   display: none;
 }
 
-.learning-path-form.htmx-request + .editor-form-actions .learning-path-save-status [data-save-state-saved] {
-  display: none;
-}
-
-.learning-path-form.htmx-request + .editor-form-actions .learning-path-save-status [data-save-state-saving] {
-  display: inline;
-}
-
 .autosave-status.is-error {
   color: var(--color-danger);
 }
@@ -483,7 +475,7 @@
 }
 
 .nested-panel__header:has(> .ui-pane__close),
-.learn-heading:has(> .ui-pane__close) {
+.pane-breadcrumb__header:has(> .ui-pane__close) {
   padding-inline-end: 3rem;
 }
 

@@ -173,6 +173,14 @@ a.learning-path-card {
   margin-top: var(--space-5);
 }
 
+.learning-path-form.htmx-request + .editor-form-actions .learning-path-save-status [data-save-state-saved] {
+  display: none;
+}
+
+.learning-path-form.htmx-request + .editor-form-actions .learning-path-save-status [data-save-state-saving] {
+  display: inline;
+}
+
 .learn-heading {
   align-items: end;
   display: flex;

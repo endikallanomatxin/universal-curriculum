@@ -48,8 +48,14 @@ func LoadTemplates() (*template.Template, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parse templates: %w", err)
 	}
+	if _, err := templates.ParseGlob("web/templates/shared/*.html"); err != nil {
+		return nil, fmt.Errorf("parse shared templates: %w", err)
+	}
 	if _, err := templates.ParseGlob("web/templates/curriculum-modification/*.html"); err != nil {
 		return nil, fmt.Errorf("parse curriculum modification templates: %w", err)
+	}
+	if _, err := templates.ParseGlob("web/templates/learn/*.html"); err != nil {
+		return nil, fmt.Errorf("parse learning templates: %w", err)
 	}
 	if _, err := templates.ParseGlob("web/templates/auth/*.html"); err != nil {
 		return nil, fmt.Errorf("parse auth templates: %w", err)

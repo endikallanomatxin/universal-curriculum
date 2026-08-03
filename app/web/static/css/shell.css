@@ -818,27 +818,8 @@ button.primary-menu__link {
   writing-mode: vertical-rl;
 }
 
-.ui-pane[data-panel-mode="breadcrumb"] .label,
-.ui-pane[data-panel-mode="breadcrumb"] .learn-view > :not(.learn-heading),
-.ui-pane[data-panel-mode="breadcrumb"] .learn-heading > :not(h1) {
+.ui-pane[data-panel-mode="breadcrumb"] .label {
   display: none;
-}
-
-.ui-pane[data-panel-mode="breadcrumb"] .learn-heading {
-  align-items: center;
-  display: flex;
-  height: 100%;
-  justify-content: flex-end;
-}
-
-.ui-pane[data-panel-mode="breadcrumb"] .learn-heading h1 {
-  font-size: 1rem;
-  letter-spacing: 0.03em;
-  margin: 0;
-  max-width: none;
-  transform: rotate(180deg);
-  white-space: nowrap;
-  writing-mode: vertical-rl;
 }
 
 .ui-pane__inner {

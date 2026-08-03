@@ -1,0 +1,44 @@
+{{ define "document-head" -}}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="htmx-config" content='{"attributesToSettle":["class","width","height"]}'>
+  <title>{{ . }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded&display=block" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/base.css?v={{ assetVersion }}">
+  <link rel="stylesheet" href="/static/css/shell.css?v={{ assetVersion }}">
+  <link rel="stylesheet" href="/static/css/components.css?v={{ assetVersion }}">
+  <link rel="stylesheet" href="/static/css/auth.css?v={{ assetVersion }}">
+  <link rel="stylesheet" href="/static/css/curriculum-graph.css?v={{ assetVersion }}">
+  <link rel="stylesheet" href="/static/vendor/highlight/github.min.css?v={{ assetVersion }}">
+  <link rel="stylesheet" href="/static/vendor/katex/katex.min.css?v={{ assetVersion }}">
+  <link rel="stylesheet" href="/static/css/unit-content.css?v={{ assetVersion }}">
+  <link rel="stylesheet" href="/static/css/proposal-rebase.css?v={{ assetVersion }}">
+  <link rel="stylesheet" href="/static/css/curriculum-modification.css?v={{ assetVersion }}">
+  <link rel="stylesheet" href="/static/css/unit-content-editor.css?v={{ assetVersion }}">
+  <link rel="stylesheet" href="/static/css/content-diff.css?v={{ assetVersion }}">
+  <link rel="stylesheet" href="/static/css/learn.css?v={{ assetVersion }}">
+  <noscript><style>.app-shell:not([data-panel-layout-ready]) { visibility: visible !important; }</style></noscript>
+{{- end }}
+
+{{ define "shell-scripts" -}}
+  <script src="/static/js/htmx.min.js?v={{ assetVersion }}" defer></script>
+  <script src="/static/js/panel_layout.js?v={{ assetVersion }}"></script>
+  <script src="/static/js/panel_breadcrumbs.js?v={{ assetVersion }}" defer></script>
+  <script src="/static/js/shell.js?v={{ assetVersion }}" defer></script>
+  <script src="/static/js/autoresize.js?v={{ assetVersion }}" defer></script>
+  <script src="/static/js/panels.js?v={{ assetVersion }}" defer></script>
+  <script src="/static/js/inline_editing.js?v={{ assetVersion }}" defer></script>
+  <script src="/static/js/view_switcher.js?v={{ assetVersion }}" defer></script>
+  <script src="/static/js/merge_editor.js?v={{ assetVersion }}" defer></script>
+  <script src="/static/js/rebase_graph.js?v={{ assetVersion }}" defer></script>
+  <script src="/static/js/unit_picker.js?v={{ assetVersion }}" defer></script>
+  <script src="/static/js/curriculum_modification.js?v={{ assetVersion }}" defer></script>
+  <script src="/static/js/curriculum_graph.js?v={{ assetVersion }}" defer></script>
+  <script src="/static/vendor/katex/katex.min.js?v={{ assetVersion }}" defer></script>
+  <script src="/static/vendor/katex/auto-render.min.js?v={{ assetVersion }}" defer></script>
+  <script src="/static/vendor/highlight/highlight.min.js?v={{ assetVersion }}" defer></script>
+  <script src="/static/js/unit_content.js?v={{ assetVersion }}" defer></script>
+{{- end }}
