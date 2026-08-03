@@ -220,8 +220,8 @@
     if (root.matches && root.matches("[data-merge-editor]")) editors.push(root);
     if (root.querySelectorAll) editors.push.apply(editors, root.querySelectorAll("[data-merge-editor]"));
     editors.forEach(function (editor) {
-      if (editor.dataset.mergeEditorInitialized !== undefined) return;
-      editor.dataset.mergeEditorInitialized = "";
+      if (editor.mergeEditorInitialized) return;
+      editor.mergeEditorInitialized = true;
       editor.querySelector("[data-merge-result]").value = editor.querySelector("[data-merge-proposal-source]").value;
       renderComparison(editor);
     });
