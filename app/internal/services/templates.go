@@ -60,6 +60,9 @@ func LoadTemplates() (*template.Template, error) {
 	if _, err := templates.ParseGlob("web/templates/auth/*.html"); err != nil {
 		return nil, fmt.Errorf("parse auth templates: %w", err)
 	}
+	if _, err := templates.ParseGlob("web/templates/about/*.html"); err != nil {
+		return nil, fmt.Errorf("parse about templates: %w", err)
+	}
 	return templates, nil
 }
 

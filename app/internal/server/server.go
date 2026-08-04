@@ -66,6 +66,8 @@ func (server *Server) routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", server.health)
 	mux.HandleFunc("GET /", server.index)
+	mux.HandleFunc("GET /about", server.about)
+	mux.HandleFunc("GET /license", server.license)
 	mux.HandleFunc("GET /learn", server.learn)
 	mux.Handle("POST /learn/paths", requireUser(http.HandlerFunc(server.createLearningPath)))
 	mux.Handle("POST /learn/paths/{id}", requireUser(http.HandlerFunc(server.updateLearningPath)))

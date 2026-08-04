@@ -381,7 +381,9 @@ The platform is stewarded by a mission-driven, non-profit organisation. It is
 responsible for operation, moderation, initial coordination and the
 integrity of the public process, but it does not own academic truth.
 
-Its governance, funding and conflicts of interest are public. Curriculum content
-and contributions use explicit open licences, and exports allow the project to
-survive a change of operator. No university, company, sponsor or infrastructure
-provider can privately control the shared curriculum.
+Its governance, funding and conflicts of interest are public. Unless otherwise
+stated, original content created and published in Universal Curriculum uses the
+CC BY-SA 4.0 licence. Linked or embedded third-party material remains subject to
+its own copyright and terms of use. Exports allow the project to survive a
+change of operator. No university, company, sponsor or infrastructure provider
+can privately control the shared curriculum.

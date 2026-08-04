@@ -1,12 +1,21 @@
 package server
 
 import (
+	"net/http"
 	"strconv"
 
 	"universal-curriculum/internal/db"
 	"universal-curriculum/internal/models"
 	"universal-curriculum/internal/services"
 )
+
+func (server *Server) about(writer http.ResponseWriter, request *http.Request) {
+	server.renderUserPage(writer, request, "about.html", "about", false)
+}
+
+func (server *Server) license(writer http.ResponseWriter, request *http.Request) {
+	server.renderUserPage(writer, request, "license.html", "about", false)
+}
 
 type homeLearningUnitRecommendation struct {
 	models.Unit

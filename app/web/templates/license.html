@@ -1,0 +1,28 @@
+{{ define "license.html" -}}
+<!doctype html>
+<html lang="en">
+<head>{{ template "document-head" "License · Universal Curriculum" }}</head>
+<body>
+  <div class="app-shell" id="app-shell" data-panel-group>
+    {{ template "primary-navigation" . }}
+    <main class="pane-stack" id="workspace" data-shell-view="detail" data-document-title="License · Universal Curriculum" data-layout-panel data-panel-modes="mobile:20 content:34 wide:46" data-panel-required-mode="content" data-panel-fill data-panel-group>
+      <nav class="mobile-panel-breadcrumbs" data-mobile-panel-breadcrumbs aria-label="Current location" hidden></nav>
+      {{ template "about-index-pane" . }}
+      <section class="ui-pane" aria-labelledby="license-title" data-layout-panel data-panel-modes="collapsed:0 mobile:20 standard:42" data-panel-fill data-panel-breadcrumb="License">
+        <article class="ui-pane__inner about-document" data-pane-content-width="reading">
+          <h1 id="license-title">License</h1>
+          <p>Unless otherwise stated, original content created and published on Universal Curriculum is made available under the CC BY-SA 4.0 license.</p>
+          <aside class="license-summary" aria-labelledby="license-summary-title">
+            <h2 id="license-summary-title">What this license allows</h2>
+            <p>You may share and adapt the material for any purpose, including commercially, provided that you give appropriate credit, link to the license, indicate whether changes were made, and distribute adaptations under the same license.</p>
+            <p class="license-summary__links"><a href="https://creativecommons.org/licenses/by-sa/4.0/">Read the official license summary</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/legalcode">Read the legal code</a></p>
+          </aside>
+          <p>Linked or embedded external content, such as videos, web pages or documents, is not covered by this license and remains subject to its own copyright and terms of use.</p>
+        </article>
+      </section>
+    </main>
+  </div>
+  {{ template "shell-scripts" }}
+</body>
+</html>
+{{- end }}

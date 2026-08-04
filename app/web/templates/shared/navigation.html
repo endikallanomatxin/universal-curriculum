@@ -14,6 +14,10 @@
 <span class="material-symbols-rounded primary-menu__icon" aria-hidden="true">book_5</span>
 {{- end }}
 
+{{ define "icon-about" -}}
+<span class="material-symbols-rounded primary-menu__icon" aria-hidden="true">info</span>
+{{- end }}
+
 {{ define "shell-link-attributes" }}hx-get="{{ . }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true"{{ end }}
 
 {{ define "shell-link-attributes-without-view-transition" }}hx-get="{{ . }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML" hx-push-url="true"{{ end }}
@@ -71,6 +75,12 @@
           <a class="primary-menu__link primary-menu__link--learn primary-menu__link--session-action" href="/learn" {{ if eq .CurrentSection "learn" }}aria-current="page"{{ end }} {{ template "shell-link-attributes" "/learn" }} data-panel-navigation="workspace">
             {{ template "icon-learn" }}
             <span class="primary-menu__label">Learn</span>
+          </a>
+        </li>
+        <li class="primary-menu__about-item">
+          <a class="primary-menu__link primary-menu__link--about primary-menu__link--session-action" href="/about" {{ if eq .CurrentSection "about" }}aria-current="page"{{ end }} {{ template "shell-link-attributes" "/about" }} data-panel-navigation="workspace">
+            {{ template "icon-about" }}
+            <span class="primary-menu__label">About</span>
           </a>
         </li>
         {{ if and .User .User.IsAdmin }}

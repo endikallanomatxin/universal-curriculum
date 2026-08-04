@@ -509,7 +509,12 @@
   view-transition-name: learn-navigation;
 }
 
+.primary-menu__link--about .primary-menu__icon {
+  view-transition-name: about-navigation;
+}
+
 .primary-menu__learn-item,
+.primary-menu__about-item,
 .primary-menu__curriculum-modification-item,
 .primary-menu__account-item,
 .primary-menu__login-item,
@@ -523,6 +528,7 @@
 }
 
 .primary-menu__curriculum-modification-item,
+.primary-menu__about-item,
 .primary-menu__account-item,
 .primary-menu__login-item {
   margin-top: var(--space-4);
