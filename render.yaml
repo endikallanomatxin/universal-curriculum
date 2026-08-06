@@ -9,10 +9,11 @@ services:
     dockerContext: .
     preDeployCommand: /usr/local/bin/migrate up
     healthCheckPath: /health
-    disk:
-      name: uploads
-      mountPath: /app/uploads
-      sizeGB: 1
+    # Asset support is planned for 0.3.0. Enable the persistent disk then.
+    # disk:
+    #   name: uploads
+    #   mountPath: /app/uploads
+    #   sizeGB: 1
     envVars:
       - key: ENV
         value: prod

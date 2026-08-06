@@ -4,8 +4,9 @@ Open platform for collaboratively building and learning from a shared
 curriculum.
 
 The application is written in Go, uses PostgreSQL and is deployed to Render as
-a Docker web service. Files are accessed through an object-store abstraction
-and currently persisted on a mounted volume.
+a Docker web service. File access is prepared behind an object-store
+abstraction, but the 0.1.0 release does not store assets. Local storage is
+ephemeral in production until asset support is introduced in 0.3.0.
 
 ## Repository structure
 
@@ -34,7 +35,8 @@ podman compose -f compose.dev.yaml up --build
 ```
 
 The application is available at `http://localhost:8080`.
-Uploaded files persist in the Compose-managed `uploads` volume.
+Files written through the local object-store backend persist in the
+Compose-managed `uploads` volume.
 
 The development administrator is `admin@example.com` with password
 `administrator`. Production credentials are configured as secret values in

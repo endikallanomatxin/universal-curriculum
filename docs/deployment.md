@@ -4,8 +4,8 @@ Production is deployed to Render using `render.yaml`:
 
 - a Docker web service in Frankfurt;
 - a managed Render PostgreSQL database;
-- a persistent disk mounted at `/app/uploads` behind the object-store
-  abstraction;
+- local ephemeral storage at `/app/uploads` behind the object-store
+  abstraction, with a persistent disk configuration prepared for 0.3.0;
 - `/usr/local/bin/migrate up` before each deployment;
 - `/health` as the service health check;
 - database credentials supplied by Render;
@@ -32,5 +32,7 @@ been connected to the repository.
 TLS termination and proxying are handled by Render, not by the application.
 `TRUST_RENDER_PROXY_HEADERS` is enabled in the Blueprint so password-recovery
 rate limits use the original client address supplied by Render.
-The local storage backend is an implementation detail and can later be replaced
-with remote object storage without changing file-consuming services.
+The local storage backend is currently ephemeral in production because no
+feature stores assets yet. The persistent disk configuration can be enabled for
+0.3.0, or the backend can be replaced with remote object storage, without
+changing file-consuming services.
