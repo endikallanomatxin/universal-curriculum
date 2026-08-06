@@ -89,6 +89,8 @@ func (server *Server) routes() http.Handler {
 	mux.Handle("POST /auth/reset-password", resetPasswordHandler)
 	mux.HandleFunc("POST /auth/logout", server.logout)
 	mux.Handle("GET /account", requireUser(http.HandlerFunc(server.account)))
+	mux.Handle("POST /account/api-tokens", requireUser(http.HandlerFunc(server.createAPIToken)))
+	mux.Handle("POST /account/api-tokens/{id}/revoke", requireUser(http.HandlerFunc(server.revokeAPIToken)))
 	mux.Handle("GET /curriculum-modification", server.requireAdmin(http.HandlerFunc(server.curriculumModification)))
 	mux.Handle("POST /curriculum-modification/proposals", server.requireAdmin(http.HandlerFunc(server.createCurriculumProposal)))
 	mux.Handle("POST /curriculum-modification/proposals/{id}", server.requireAdmin(http.HandlerFunc(server.updateCurriculumProposal)))
@@ -141,10 +143,6 @@ func (server *Server) index(writer http.ResponseWriter, request *http.Request) {
 		}
 	}
 	server.render(writer, "index.html", data)
-}
-
-func (server *Server) account(writer http.ResponseWriter, request *http.Request) {
-	server.renderUserPage(writer, request, "account.html", "account", false)
 }
 
 func (server *Server) renderUserPage(writer http.ResponseWriter, request *http.Request, name, currentSection string, home bool) {

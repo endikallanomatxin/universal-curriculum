@@ -1,0 +1,148 @@
+package db
+
+import (
+	"crypto/sha256"
+	"database/sql"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"strings"
+	"time"
+
+	"universal-curriculum/internal/models"
+)
+
+const apiTokenMarker = "uc_api_"
+
+func CreateAPIToken(database *sql.DB, userID int64, name string) (*models.APIToken, error) {
+	secret, err := randomURLToken()
+	if err != nil {
+		return nil, err
+	}
+	raw := apiTokenMarker + secret
+	token := &models.APIToken{
+		UserID: userID,
+		Name:   strings.TrimSpace(name),
+		Prefix: apiTokenMarker + secret[:8],
+		Token:  raw,
+	}
+	err = database.QueryRow(`
+		INSERT INTO api_tokens (user_id, name, token_hash, token_prefix)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id, created_at
+	`, token.UserID, token.Name, hashAPIToken(raw), token.Prefix).Scan(
+		&token.ID, &token.CreatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("create API token: %w", err)
+	}
+	return token, nil
+}
+
+func ListAPITokens(database *sql.DB, userID int64) ([]models.APIToken, error) {
+	rows, err := database.Query(`
+		SELECT id, user_id, name, token_prefix, last_used_at, revoked_at, created_at
+		FROM api_tokens
+		WHERE user_id = $1
+		ORDER BY created_at DESC, id DESC
+	`, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list API tokens: %w", err)
+	}
+	defer rows.Close()
+	var tokens []models.APIToken
+	for rows.Next() {
+		var token models.APIToken
+		var lastUsedAt, revokedAt sql.NullTime
+		if err := rows.Scan(
+			&token.ID, &token.UserID, &token.Name, &token.Prefix,
+			&lastUsedAt, &revokedAt, &token.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan API token: %w", err)
+		}
+		if lastUsedAt.Valid {
+			token.LastUsedAt = &lastUsedAt.Time
+		}
+		if revokedAt.Valid {
+			token.RevokedAt = &revokedAt.Time
+		}
+		tokens = append(tokens, token)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate API tokens: %w", err)
+	}
+	return tokens, nil
+}
+
+func RevokeAPIToken(database *sql.DB, userID, tokenID int64) (bool, error) {
+	result, err := database.Exec(`
+		UPDATE api_tokens
+		SET revoked_at = NOW()
+		WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL
+	`, tokenID, userID)
+	if err != nil {
+		return false, fmt.Errorf("revoke API token: %w", err)
+	}
+	count, err := result.RowsAffected()
+	return count == 1, err
+}
+
+func AuthenticateAPIToken(database *sql.DB, raw string) (*models.User, error) {
+	if !validAPIToken(raw) {
+		return nil, nil
+	}
+	var user models.User
+	var alias sql.NullString
+	err := database.QueryRow(`
+		SELECT users.id, users.full_name, users.alias, authentication.email,
+		       users.is_admin, users.created_at, users.updated_at
+		FROM api_tokens token
+		JOIN users ON users.id = token.user_id
+		JOIN local_authentications authentication ON authentication.user_id = users.id
+		WHERE token.token_hash = $1 AND token.revoked_at IS NULL
+	`, hashAPIToken(raw)).Scan(
+		&user.ID, &user.FullName, &alias, &user.Email,
+		&user.IsAdmin, &user.CreatedAt, &user.UpdatedAt,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("authenticate API token: %w", err)
+	}
+	user.Alias = nullStringPointer(alias)
+	if _, err := database.Exec(`
+		UPDATE api_tokens
+		SET last_used_at = NOW()
+		WHERE token_hash = $1 AND revoked_at IS NULL
+		  AND (last_used_at IS NULL OR last_used_at < $2)
+	`, hashAPIToken(raw), time.Now().Add(-15*time.Minute)); err != nil {
+		return nil, fmt.Errorf("record API token use: %w", err)
+	}
+	return &user, nil
+}
+
+func hashAPIToken(token string) string {
+	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:])
+}
+
+func validAPIToken(token string) bool {
+	if !strings.HasPrefix(token, apiTokenMarker) {
+		return false
+	}
+	secret := strings.TrimPrefix(token, apiTokenMarker)
+	if len(secret) != 43 {
+		return false
+	}
+	for _, character := range secret {
+		if character >= 'a' && character <= 'z' ||
+			character >= 'A' && character <= 'Z' ||
+			character >= '0' && character <= '9' ||
+			character == '-' || character == '_' {
+			continue
+		}
+		return false
+	}
+	return true
+}

@@ -30,6 +30,43 @@
               <dd>{{ if .User.IsAdmin }}Administrator{{ else }}Member{{ end }}</dd>
             </div>
           </dl>
+
+          <section class="account-api" aria-labelledby="api-token-title">
+            <h2 id="api-token-title">API tokens</h2>
+            <p>Tokens inherit your current account permissions. Treat them like passwords.</p>
+            {{ if .NewAPIToken }}
+              <div class="account-api__secret" role="status">
+                <strong>Copy this token now. It will not be shown again.</strong>
+                <code>{{ .NewAPIToken }}</code>
+              </div>
+            {{ end }}
+            <form class="account-api__create" method="post" action="/account/api-tokens">
+              <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+              <label for="api-token-name">Token name</label>
+              <input id="api-token-name" name="name" required maxlength="100" placeholder="Local CLI">
+              <button class="primary-button" type="submit">Create token</button>
+              {{ if .TokenError }}<p class="form-error" role="alert">{{ .TokenError }}</p>{{ end }}
+            </form>
+            {{ if .APITokens }}
+              <ul class="account-api__tokens">
+                {{ range .APITokens }}
+                  <li>
+                    <div>
+                      <strong>{{ .Name }}</strong>
+                      <code>{{ .Prefix }}…</code>
+                      <small>Created {{ .CreatedAt.Format "2006-01-02" }}{{ if .LastUsedAt }} · last used {{ .LastUsedAt.Format "2006-01-02" }}{{ end }}{{ if .RevokedAt }} · revoked{{ end }}</small>
+                    </div>
+                    {{ if not .RevokedAt }}
+                      <form method="post" action="/account/api-tokens/{{ .ID }}/revoke">
+                        <input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}">
+                        <button class="secondary-button secondary-button--compact" type="submit">Revoke</button>
+                      </form>
+                    {{ end }}
+                  </li>
+                {{ end }}
+              </ul>
+            {{ end }}
+          </section>
         </div>
       </section>
     </main>

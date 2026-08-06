@@ -32,6 +32,17 @@ type User struct {
 	UpdatedAt time.Time
 }
 
+type APIToken struct {
+	ID         int64
+	UserID     int64
+	Name       string
+	Prefix     string
+	Token      string
+	LastUsedAt *time.Time
+	RevokedAt  *time.Time
+	CreatedAt  time.Time
+}
+
 type PasswordResetToken struct {
 	// Token is the raw one-time secret returned only when it is created.
 	// Persistence stores its hash, never this value.
