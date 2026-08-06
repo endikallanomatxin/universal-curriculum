@@ -8,9 +8,14 @@
     <main class="pane-stack" id="workspace" data-shell-view="detail" data-document-title="License · Universal Curriculum" data-layout-panel data-panel-modes="mobile:20 content:34 wide:46" data-panel-required-mode="content" data-panel-fill data-panel-group>
       <nav class="mobile-panel-breadcrumbs" data-mobile-panel-breadcrumbs aria-label="Current location" hidden></nav>
       {{ template "about-index-pane" . }}
-      <section class="ui-pane" aria-labelledby="license-title" data-layout-panel data-panel-modes="collapsed:0 mobile:20 standard:42" data-panel-fill data-panel-breadcrumb="License">
+      <section class="ui-pane" aria-labelledby="license-title" data-nested-panel data-panel-motion="horizontal" data-layout-panel data-panel-modes="collapsed:0 mobile:20 standard:42" data-panel-fill data-panel-breadcrumb="License">
         <article class="ui-pane__inner about-document" data-pane-content-width="reading">
-          <h1 id="license-title">License</h1>
+          <header class="about-document__header">
+            <h1 id="license-title">License</h1>
+            <a class="icon-button ui-pane__close" href="/about" hx-get="/about" hx-trigger="panel-close" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML" hx-push-url="true" data-panel-navigation="close" aria-label="Close license">
+              <span class="material-symbols-rounded" aria-hidden="true">close</span>
+            </a>
+          </header>
           <p>Unless otherwise stated, original content created and published on Universal Curriculum is made available under the CC BY-SA 4.0 license.</p>
           <aside class="license-summary" aria-labelledby="license-summary-title">
             <h2 id="license-summary-title">What this license allows</h2>

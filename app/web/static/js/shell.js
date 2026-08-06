@@ -46,7 +46,13 @@
     if (workspace.dataset.documentTitle) document.title = workspace.dataset.documentTitle;
 
     shell.querySelectorAll(".primary-menu__link[href]").forEach(function (link) {
-      const current = new URL(link.href, window.location.href).pathname === window.location.pathname;
+      const sectionPaths = (link.dataset.sectionPaths || new URL(link.href, window.location.href).pathname)
+        .split(/\s+/)
+        .filter(Boolean);
+      const current = sectionPaths.some(function (sectionPath) {
+        return window.location.pathname === sectionPath ||
+          window.location.pathname.startsWith(sectionPath + "/");
+      });
       if (current) link.setAttribute("aria-current", "page");
       else link.removeAttribute("aria-current");
     });

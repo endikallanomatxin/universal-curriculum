@@ -68,13 +68,16 @@
   min-height: 5rem;
 }
 
-.active-proposal-card,
+.active-proposal-card {
+  view-transition-class: layout-position;
+}
+
 .active-proposal-card__icon,
 .active-proposal-card__title,
 .active-proposal-card__rationale,
 .active-proposal-card__meta,
 #active-proposals-title {
-  view-transition-class: layout-position;
+  view-transition-class: layout-position non-scaling-content;
 }
 
 .active-proposal-card__identity {

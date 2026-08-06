@@ -8,10 +8,13 @@
     <main class="pane-stack" id="workspace" data-shell-view="detail" data-document-title="The case for a shared curriculum · Universal Curriculum" data-layout-panel data-panel-modes="mobile:20 content:34 wide:46" data-panel-required-mode="content" data-panel-fill data-panel-group>
       <nav class="mobile-panel-breadcrumbs" data-mobile-panel-breadcrumbs aria-label="Current location" hidden></nav>
       {{ template "about-index-pane" . }}
-      <section class="ui-pane" aria-labelledby="case-title" data-layout-panel data-panel-modes="collapsed:0 mobile:20 standard:42" data-panel-fill data-panel-breadcrumb="The case for a shared curriculum">
+      <section class="ui-pane" aria-labelledby="case-title" data-nested-panel data-panel-motion="horizontal" data-layout-panel data-panel-modes="collapsed:0 mobile:20 standard:42" data-panel-fill data-panel-breadcrumb="The case for a shared curriculum">
         <article class="ui-pane__inner about-page" data-pane-content-width="reading">
           <header class="about-page__header">
             <h1 id="case-title">The case for a shared curriculum</h1>
+            <a class="icon-button ui-pane__close" href="/about" hx-get="/about" hx-trigger="panel-close" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML" hx-push-url="true" data-panel-navigation="close" aria-label="Close the case for a shared curriculum">
+              <span class="material-symbols-rounded" aria-hidden="true">close</span>
+            </a>
           </header>
 
           <section id="information-access" aria-labelledby="information-access-title">

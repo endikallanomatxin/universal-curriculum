@@ -30,6 +30,7 @@
   min-height: 4.25rem;
   padding: var(--space-4);
   text-decoration: none;
+  view-transition-class: layout-position;
 }
 
 .about-index__page > .material-symbols-rounded {
@@ -55,9 +56,20 @@
   margin-top: 0.25rem;
 }
 
+.about-index__page > .material-symbols-rounded,
+.about-index__page strong,
+.about-index__page small {
+  view-transition-class: layout-position non-scaling-content;
+}
+
 .about-document p {
   line-height: 1.8;
   max-width: 42rem;
+}
+
+.about-document__header:has(> .ui-pane__close),
+.about-page__header:has(> .ui-pane__close) {
+  padding-inline-end: 3rem;
 }
 
 .license-summary {

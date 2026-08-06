@@ -974,12 +974,16 @@ button.primary-menu__link {
 ::view-transition-old(brand-u),
 ::view-transition-old(brand-c) {
   animation: none;
+  object-fit: none;
+  object-position: left top;
   opacity: 0;
 }
 
 ::view-transition-new(brand-u),
 ::view-transition-new(brand-c) {
   animation: none;
+  object-fit: none;
+  object-position: left top;
 }
 
 ::view-transition-group(*.persistent-shell-icon) {
@@ -1007,23 +1011,37 @@ button.primary-menu__link {
 
 ::view-transition-old(*.persistent-shell-icon) {
   animation: none;
+  object-fit: none;
+  object-position: left top;
   opacity: 0;
 }
 
 ::view-transition-new(*.persistent-shell-icon) {
   animation: none;
   mix-blend-mode: normal;
+  object-fit: none;
+  object-position: left top;
   opacity: 1;
 }
 
+::view-transition-old(home-navigation-content),
+::view-transition-old(detail-navigation-content),
+::view-transition-old(*.non-scaling-content),
 ::view-transition-old(*.matched-panel-content) {
   animation: none;
+  object-fit: none;
+  object-position: left top;
   opacity: 0;
 }
 
+::view-transition-new(home-navigation-content),
+::view-transition-new(detail-navigation-content),
+::view-transition-new(*.non-scaling-content),
 ::view-transition-new(*.matched-panel-content) {
   animation: none;
   mix-blend-mode: normal;
+  object-fit: none;
+  object-position: left top;
   opacity: 1;
 }
 
