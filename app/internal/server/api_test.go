@@ -1,12 +1,27 @@
 package server
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 )
+
+func TestEmbeddedOpenAPIContractMatchesCanonicalSource(t *testing.T) {
+	canonical, err := os.ReadFile("../../../docs/openapi.yaml")
+	if os.IsNotExist(err) {
+		t.Skip("canonical contract is outside this build context")
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(canonical, openAPIContract) {
+		t.Fatal("embedded OpenAPI contract differs from docs/openapi.yaml")
+	}
+}
 
 func TestExperimentalAPIInfoAndErrorsAreJSON(t *testing.T) {
 	application := (&Server{}).routes()
@@ -38,6 +53,17 @@ func TestAPIRejectsUnknownAndRepeatedQueryParameters(t *testing.T) {
 		if response.Code != http.StatusBadRequest || !strings.Contains(response.Body.String(), `"code":"invalid_query"`) {
 			t.Fatalf("%s response = %d %s", target, response.Code, response.Body.String())
 		}
+	}
+}
+
+func TestUnsupportedAPIMethodReturnsJSON(t *testing.T) {
+	request := httptest.NewRequest(http.MethodPatch, "/api/units", nil)
+	response := httptest.NewRecorder()
+	(&Server{}).routes().ServeHTTP(response, request)
+	if response.Code != http.StatusMethodNotAllowed ||
+		response.Header().Get("Content-Type") != "application/json; charset=utf-8" ||
+		!strings.Contains(response.Body.String(), `"code":"method_not_allowed"`) {
+		t.Fatalf("unsupported API method = %d %q %s", response.Code, response.Header().Get("Content-Type"), response.Body.String())
 	}
 }
 

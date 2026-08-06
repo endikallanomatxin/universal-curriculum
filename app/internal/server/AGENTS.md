@@ -7,8 +7,10 @@
 - Parse and validate input before changing domain state.
 - Prefer server-rendered HTML and use HTMX for fragment updates.
 - Return explicit HTTP errors without terminating the server.
-- Authenticate through the session middleware and require CSRF tokens for
-  state-changing requests made by authenticated users.
+- Web handlers authenticate through the session middleware and require CSRF
+  tokens for state-changing requests. API handlers follow
+  `docs/implementation/api.md`, authenticate only with personal bearer tokens
+  and do not accept cookie sessions.
 - Handler tests should emphasize authorization, parsing and validation, status
   and feedback, and important HTTP or HTMX response contracts. Avoid tests that
   only prove a handler forwards values to an already-covered dependency.

@@ -5,7 +5,7 @@ curriculum.
 
 The application is written in Go, uses PostgreSQL and is deployed to Render as
 a Docker web service. File access is prepared behind an object-store
-abstraction, but the 0.1.0 release does not store assets. Local storage is
+abstraction, but the 0.2.0 release does not store assets. Local storage is
 ephemeral in production until asset support is introduced in 0.3.0.
 
 ## Repository structure
@@ -69,6 +69,30 @@ podman compose -f compose.dev.yaml --profile test run --rm migration-tests
 ```
 
 See [`docs/deployment.md`](docs/deployment.md) for production deployment.
+
+## Experimental API
+
+Release 0.2.0 exposes the capabilities of the web application under `/api`.
+The API is experimental during the 0.x release line and may change between
+minor releases. It does not yet use a versioned path or promise backward
+compatibility.
+
+The canonical contract is [`docs/openapi.yaml`](docs/openapi.yaml) and is also
+served at `/api/openapi.yaml`. Public curriculum reads do not require an
+account. For private learning data or curriculum modification, create a
+personal token on the Account page and send it as a bearer token:
+
+```bash
+curl https://universalcurriculum.org/api/units?query=algebra
+
+curl \
+  -H "Authorization: Bearer $UC_API_TOKEN" \
+  https://universalcurriculum.org/api/learning-paths
+```
+
+Tokens inherit the account's current permissions. Their secrets are displayed
+once, so store them securely and revoke unused tokens from the Account page.
+Browser CORS access and token scopes are intentionally deferred.
 
 ## License
 

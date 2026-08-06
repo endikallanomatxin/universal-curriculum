@@ -86,11 +86,11 @@ func (server *Server) apiListUnits(writer http.ResponseWriter, request *http.Req
 		units = append(units, apiUnitSummary{ID: unit.ID, Name: unit.Name, Retired: unit.Retired})
 	}
 	total := len(units)
-	if offset > total {
-		offset = total
+	pageUnits := make([]apiUnitSummary, 0)
+	if offset < total {
+		end := min(offset+limit, total)
+		pageUnits = units[offset:end]
 	}
-	end := min(offset+limit, total)
-	pageUnits := units[offset:end]
 	writeAPIJSON(writer, http.StatusOK, struct {
 		Units []apiUnitSummary `json:"units"`
 		Page  apiPage          `json:"page"`

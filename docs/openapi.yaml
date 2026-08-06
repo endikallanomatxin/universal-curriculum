@@ -25,6 +25,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/APIInfo'
+  /openapi.yaml:
+    get:
+      operationId: getOpenAPI
+      summary: Download this release's canonical API contract
+      responses:
+        '200':
+          description: OpenAPI 3.1 document
+          content:
+            application/yaml:
+              schema: {type: string}
   /curriculum:
     get:
       tags: [Curriculum]
@@ -488,9 +498,11 @@ paths:
               properties:
                 source_unit_ids:
                   type: array
+                  uniqueItems: true
                   items: {type: integer, format: int64, minimum: 1}
                 target_unit_ids:
                   type: array
+                  uniqueItems: true
                   items: {type: integer, format: int64, minimum: 1}
       responses:
         '204': {description: Recognition recorded}
@@ -698,10 +710,12 @@ components:
         unit_id: {type: integer, format: int64}
         prerequisite_id: {type: integer, format: int64}
     DependencyInput:
-      allOf:
-        - $ref: '#/components/schemas/Dependency'
-        - type: object
-          additionalProperties: false
+      type: object
+      additionalProperties: false
+      required: [unit_id, prerequisite_id]
+      properties:
+        unit_id: {type: integer, format: int64, minimum: 1}
+        prerequisite_id: {type: integer, format: int64, minimum: 1}
     Curriculum:
       type: object
       required: [proposal_id, units, dependencies]
@@ -723,6 +737,7 @@ components:
         name: {type: string}
         target_unit_ids:
           type: array
+          uniqueItems: true
           items: {type: integer, format: int64, minimum: 1}
     LearningPath:
       type: object

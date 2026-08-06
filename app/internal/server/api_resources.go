@@ -7,17 +7,17 @@ import (
 )
 
 type apiProposal struct {
-	ID             int64               `json:"id"`
-	Title          string              `json:"title"`
-	Rationale      string              `json:"rationale"`
-	Status         string              `json:"status"`
-	BaseProposalID *int64              `json:"base_proposal_id"`
-	AuthorIDs      []int64             `json:"author_ids"`
-	AuthorName     string              `json:"author_name"`
-	ChangeCount    int                 `json:"change_count"`
-	CreatedAt      time.Time           `json:"created_at"`
-	AcceptedAt     *time.Time          `json:"accepted_at"`
-	Changes        []apiProposalChange `json:"changes,omitempty"`
+	ID             int64                `json:"id"`
+	Title          string               `json:"title"`
+	Rationale      string               `json:"rationale"`
+	Status         string               `json:"status"`
+	BaseProposalID *int64               `json:"base_proposal_id"`
+	AuthorIDs      []int64              `json:"author_ids"`
+	AuthorName     string               `json:"author_name"`
+	ChangeCount    int                  `json:"change_count"`
+	CreatedAt      time.Time            `json:"created_at"`
+	AcceptedAt     *time.Time           `json:"accepted_at"`
+	Changes        *[]apiProposalChange `json:"changes,omitempty"`
 }
 
 type apiProposalChange struct {
@@ -45,7 +45,8 @@ func newAPIProposal(proposal models.CurriculumProposal, includeChanges bool) api
 	if !includeChanges {
 		return resource
 	}
-	resource.Changes = make([]apiProposalChange, 0, len(proposal.Changes))
+	changes := make([]apiProposalChange, 0, len(proposal.Changes))
+	resource.Changes = &changes
 	resource.ChangeCount = len(proposal.Changes)
 	for _, change := range proposal.Changes {
 		item := apiProposalChange{
@@ -65,7 +66,7 @@ func newAPIProposal(proposal models.CurriculumProposal, includeChanges bool) api
 				item.Recognition.TargetUnitIDs = append(item.Recognition.TargetUnitIDs, unit.ID)
 			}
 		}
-		resource.Changes = append(resource.Changes, item)
+		*resource.Changes = append(*resource.Changes, item)
 	}
 	return resource
 }

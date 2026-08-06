@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -8,6 +9,21 @@ import (
 	"universal-curriculum/internal/models"
 	"universal-curriculum/internal/services"
 )
+
+func TestDetailedProposalIncludesEmptyChangesCollection(t *testing.T) {
+	encoded, err := json.Marshal(newAPIProposal(models.CurriculumProposal{}, true))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var resource map[string]any
+	if err := json.Unmarshal(encoded, &resource); err != nil {
+		t.Fatal(err)
+	}
+	changes, ok := resource["changes"].([]any)
+	if !ok || len(changes) != 0 {
+		t.Fatalf("detailed proposal = %s", encoded)
+	}
+}
 
 func TestAPIAdminAuthorizationUsesCurrentTokenOwnerPermission(t *testing.T) {
 	called := false

@@ -56,6 +56,10 @@ func TestExperimentalAPIEndToEnd(t *testing.T) {
 		ID int64 `json:"id"`
 	}
 	decodeAPIIntegrationResponse(t, unitResponse, &unit)
+	apiIntegrationRequest(t, application, token.Token, http.MethodPut,
+		fmt.Sprintf("/api/proposals/%d/units/%d", proposal.ID, unit.ID), map[string]any{
+			"name": "Practical API design", "content": "Learn how to design a practical API.",
+		}, http.StatusOK)
 
 	apiIntegrationRequest(t, application, token.Token, http.MethodPost,
 		fmt.Sprintf("/api/proposals/%d/publish", proposal.ID), nil, http.StatusOK)

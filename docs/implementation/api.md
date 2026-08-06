@@ -8,7 +8,10 @@ not promise compatibility with later minor releases. A stable, versioned path
 will be chosen before 1.0 when the resource model has enough operational use.
 
 `docs/openapi.yaml` is the canonical API contract. An implementation change is
-not complete until that document describes the resulting HTTP behaviour.
+not complete until that document describes the resulting HTTP behaviour. The
+server embeds a delivery copy at `app/internal/server/openapi.yaml` so the
+contract remains available in the minimal production image; release validation
+checks that the two files are identical.
 
 ## HTTP conventions
 
@@ -44,6 +47,10 @@ metadata.
 Cookie sessions and CSRF remain the web interface's authentication mechanism.
 They do not authenticate API requests. Likewise bearer tokens do not bypass
 CSRF on HTML form routes. CORS headers are not emitted in this release.
+
+Revoked tokens remain as account-visible audit metadata but can no longer
+authenticate. `last_used_at` is updated at most once every fifteen minutes to
+avoid turning every API read into a database write.
 
 ## Adapter boundary
 

@@ -33,6 +33,8 @@ The Go module lives in `app`. The usual dependency flow is:
   implementation documents instead of duplicating detailed mechanisms.
 - Keep documentation and applicable `AGENTS.md` files aligned with changes to
   architecture or conventions.
+- Keep future release descriptions in `docs/plan`; when a release is completed,
+  move its file to `docs/releases` in the release preparation commit.
 - After user feedback corrects an implementation, consider whether reusable
   repository knowledge available beforehand would have prevented the mistake.
   If so, update the applicable `AGENTS.md` or canonical implementation document
