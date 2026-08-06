@@ -26,6 +26,21 @@ func LockCurrentCurriculumProposal(q curriculumExecutor) (*int64, error) {
 	return &proposalID.Int64, nil
 }
 
+func GetCurrentCurriculumProposalID(q curriculumExecutor) (*int64, error) {
+	var proposalID sql.NullInt64
+	if err := q.QueryRow(`
+		SELECT proposal_id
+		FROM curriculum_projection_state
+		WHERE singleton = TRUE
+	`).Scan(&proposalID); err != nil {
+		return nil, fmt.Errorf("get curriculum projection: %w", err)
+	}
+	if !proposalID.Valid {
+		return nil, nil
+	}
+	return &proposalID.Int64, nil
+}
+
 func CreateDraftCurriculumProposal(q curriculumExecutor, proposal *models.CurriculumProposal) error {
 	err := q.QueryRow(`
 		INSERT INTO curriculum_proposals (title, rationale, status, base_proposal_id)
@@ -489,6 +504,65 @@ func ListCurriculumProposals(database *sql.DB, limit int) ([]models.CurriculumPr
 		return nil, fmt.Errorf("iterate curriculum proposals: %w", err)
 	}
 	return proposals, nil
+}
+
+func ListAcceptedCurriculumProposals(
+	database *sql.DB, limit, offset int,
+) ([]models.CurriculumProposal, int, error) {
+	var total int
+	if err := database.QueryRow(`
+		SELECT count(*) FROM curriculum_proposals WHERE status = 'accepted'
+	`).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count accepted curriculum proposals: %w", err)
+	}
+	rows, err := database.Query(`
+		SELECT proposal.id, authors.ids, authors.names,
+		       proposal.title, proposal.rationale, proposal.status,
+		       proposal.base_proposal_id,
+		       proposal.created_at, proposal.accepted_at,
+		       count(change.id)
+		FROM curriculum_proposals proposal
+		JOIN LATERAL (
+			SELECT array_agg(user_id ORDER BY users.full_name, user_id) AS ids,
+			       string_agg(users.full_name, ', ' ORDER BY users.full_name, user_id) AS names
+			FROM curriculum_proposal_authors
+			JOIN users ON users.id = user_id
+			WHERE proposal_id = proposal.id
+		) authors ON TRUE
+		LEFT JOIN curriculum_proposal_changes change ON change.proposal_id = proposal.id
+		WHERE proposal.status = 'accepted'
+		GROUP BY proposal.id, authors.ids, authors.names
+		ORDER BY proposal.accepted_at DESC, proposal.id DESC
+		LIMIT $1 OFFSET $2
+	`, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list accepted curriculum proposals: %w", err)
+	}
+	defer rows.Close()
+	var proposals []models.CurriculumProposal
+	for rows.Next() {
+		var proposal models.CurriculumProposal
+		var baseProposalID sql.NullInt64
+		var acceptedAt sql.NullTime
+		if err := rows.Scan(
+			&proposal.ID, pq.Array(&proposal.AuthorIDs), &proposal.AuthorName,
+			&proposal.Title, &proposal.Rationale, &proposal.Status,
+			&baseProposalID, &proposal.CreatedAt, &acceptedAt, &proposal.ChangeCount,
+		); err != nil {
+			return nil, 0, fmt.Errorf("scan accepted curriculum proposal: %w", err)
+		}
+		if baseProposalID.Valid {
+			proposal.BaseProposalID = &baseProposalID.Int64
+		}
+		if acceptedAt.Valid {
+			proposal.AcceptedAt = &acceptedAt.Time
+		}
+		proposals = append(proposals, proposal)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("iterate accepted curriculum proposals: %w", err)
+	}
+	return proposals, total, nil
 }
 
 func ListDraftCurriculumProposalsByAuthor(database *sql.DB, authorID int64) ([]models.CurriculumProposal, error) {

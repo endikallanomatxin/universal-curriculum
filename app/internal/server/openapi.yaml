@@ -1,0 +1,845 @@
+openapi: 3.1.0
+info:
+  title: Universal Curriculum experimental API
+  version: 0.2.0
+  description: |
+    Experimental API for the 0.x release line. This unversioned contract may
+    change between minor releases and does not yet provide compatibility
+    guarantees. Browser CORS access is not enabled.
+servers:
+  - url: /api
+security: []
+tags:
+  - name: Curriculum
+  - name: Learning
+  - name: Proposals
+paths:
+  /:
+    get:
+      operationId: getAPI
+      summary: Describe this experimental API
+      responses:
+        '200':
+          description: API metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIInfo'
+  /curriculum:
+    get:
+      tags: [Curriculum]
+      operationId: getCurriculum
+      summary: Get the current published curriculum
+      responses:
+        '200':
+          description: Current curriculum graph and publication
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Curriculum'
+        '500': {$ref: '#/components/responses/InternalError'}
+  /units:
+    get:
+      tags: [Curriculum]
+      operationId: listUnits
+      summary: Search and list current units
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - name: query
+          in: query
+          schema: {type: string, maxLength: 200}
+      responses:
+        '200':
+          description: Current units
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [units, page]
+                properties:
+                  units:
+                    type: array
+                    items: {$ref: '#/components/schemas/UnitSummary'}
+                  page: {$ref: '#/components/schemas/Page'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '500': {$ref: '#/components/responses/InternalError'}
+  /units/{unitId}:
+    parameters:
+      - $ref: '#/components/parameters/UnitID'
+    get:
+      tags: [Curriculum]
+      operationId: getUnit
+      summary: Get current unit content and relationships
+      responses:
+        '200':
+          description: Unit detail
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Unit'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/InternalError'}
+  /curriculum/proposals:
+    get:
+      tags: [Curriculum]
+      operationId: listAcceptedProposals
+      summary: List accepted publications newest first
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Accepted proposal history
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [proposals, page]
+                properties:
+                  proposals:
+                    type: array
+                    items: {$ref: '#/components/schemas/ProposalSummary'}
+                  page: {$ref: '#/components/schemas/Page'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '500': {$ref: '#/components/responses/InternalError'}
+  /curriculum/proposals/{proposalId}:
+    parameters:
+      - $ref: '#/components/parameters/ProposalID'
+    get:
+      tags: [Curriculum]
+      operationId: getAcceptedProposal
+      summary: Get one accepted publication and its changes
+      responses:
+        '200':
+          description: Accepted proposal
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Proposal'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/InternalError'}
+  /learning-paths:
+    get:
+      tags: [Learning]
+      operationId: listLearningPaths
+      security: [{bearerAuth: []}]
+      responses:
+        '200':
+          description: The token owner's learning paths
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [learning_paths]
+                properties:
+                  learning_paths:
+                    type: array
+                    items: {$ref: '#/components/schemas/LearningPath'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '500': {$ref: '#/components/responses/InternalError'}
+    post:
+      tags: [Learning]
+      operationId: createLearningPath
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/LearningPathInput'}
+      responses:
+        '201':
+          description: Created path
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/LearningPath'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '500': {$ref: '#/components/responses/InternalError'}
+  /learning-paths/{pathId}:
+    parameters:
+      - $ref: '#/components/parameters/PathID'
+    get:
+      tags: [Learning]
+      operationId: getLearningPath
+      security: [{bearerAuth: []}]
+      responses:
+        '200':
+          description: Owned learning path
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/LearningPath'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/InternalError'}
+    put:
+      tags: [Learning]
+      operationId: replaceLearningPath
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/LearningPathInput'}
+      responses:
+        '200':
+          description: Updated path
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/LearningPath'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/InternalError'}
+    delete:
+      tags: [Learning]
+      operationId: deleteLearningPath
+      security: [{bearerAuth: []}]
+      responses:
+        '204': {description: Deleted}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/InternalError'}
+  /recommendations:
+    get:
+      tags: [Learning]
+      operationId: listRecommendations
+      security: [{bearerAuth: []}]
+      responses:
+        '200':
+          description: Available next units grouped by learning path
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [recommendations]
+                properties:
+                  recommendations:
+                    type: array
+                    items: {$ref: '#/components/schemas/Recommendation'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '500': {$ref: '#/components/responses/InternalError'}
+  /progress:
+    get:
+      tags: [Learning]
+      operationId: getProgress
+      security: [{bearerAuth: []}]
+      responses:
+        '200':
+          description: Direct and recognized completion state
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [progress]
+                properties:
+                  progress:
+                    type: array
+                    items: {$ref: '#/components/schemas/Progress'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '500': {$ref: '#/components/responses/InternalError'}
+  /progress/{unitId}:
+    parameters:
+      - $ref: '#/components/parameters/UnitID'
+    put:
+      tags: [Learning]
+      operationId: setProgress
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [completed]
+              properties:
+                completed: {type: boolean}
+      responses:
+        '200':
+          description: Updated completion
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Progress'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/InternalError'}
+  /proposals:
+    get:
+      tags: [Proposals]
+      operationId: listProposals
+      security: [{bearerAuth: []}]
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - name: status
+          in: query
+          schema: {type: string, enum: [draft, accepted, rejected]}
+      responses:
+        '200':
+          description: Proposals visible to an administrator
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [proposals, page]
+                properties:
+                  proposals:
+                    type: array
+                    items: {$ref: '#/components/schemas/ProposalSummary'}
+                  page: {$ref: '#/components/schemas/Page'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '500': {$ref: '#/components/responses/InternalError'}
+    post:
+      tags: [Proposals]
+      operationId: createProposal
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ProposalInput'}
+      responses:
+        '201':
+          description: Created draft
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Proposal'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '500': {$ref: '#/components/responses/InternalError'}
+  /proposals/{proposalId}:
+    parameters:
+      - $ref: '#/components/parameters/ProposalID'
+    get:
+      tags: [Proposals]
+      operationId: getProposal
+      security: [{bearerAuth: []}]
+      responses:
+        '200':
+          description: Proposal detail
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Proposal'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/InternalError'}
+    put:
+      tags: [Proposals]
+      operationId: replaceProposalMetadata
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ProposalInput'}
+      responses:
+        '200':
+          description: Updated draft
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Proposal'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '500': {$ref: '#/components/responses/InternalError'}
+    delete:
+      tags: [Proposals]
+      operationId: deleteProposal
+      security: [{bearerAuth: []}]
+      responses:
+        '204': {description: Deleted draft}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '500': {$ref: '#/components/responses/InternalError'}
+  /proposals/{proposalId}/units:
+    parameters:
+      - $ref: '#/components/parameters/ProposalID'
+    post:
+      tags: [Proposals]
+      operationId: createProposalUnit
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [name, content]
+              properties:
+                name: {type: string}
+                content: {type: string}
+      responses:
+        '201':
+          description: Proposed unit
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Unit'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '500': {$ref: '#/components/responses/InternalError'}
+  /proposals/{proposalId}/units/{unitId}:
+    parameters:
+      - $ref: '#/components/parameters/ProposalID'
+      - $ref: '#/components/parameters/UnitID'
+    put:
+      tags: [Proposals]
+      operationId: replaceProposalUnit
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [name, content]
+              properties:
+                name: {type: string}
+                content: {type: string}
+      responses:
+        '200':
+          description: Updated proposed unit
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Unit'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '500': {$ref: '#/components/responses/InternalError'}
+    delete:
+      tags: [Proposals]
+      operationId: deleteProposalUnit
+      security: [{bearerAuth: []}]
+      responses:
+        '204': {description: Proposed deletion recorded}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '500': {$ref: '#/components/responses/InternalError'}
+  /proposals/{proposalId}/dependencies:
+    parameters:
+      - $ref: '#/components/parameters/ProposalID'
+    post:
+      tags: [Proposals]
+      operationId: addProposalDependency
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/DependencyInput'}
+      responses:
+        '204': {description: Dependency addition recorded}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '500': {$ref: '#/components/responses/InternalError'}
+    delete:
+      tags: [Proposals]
+      operationId: removeProposalDependency
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/DependencyInput'}
+      responses:
+        '204': {description: Dependency removal recorded}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '500': {$ref: '#/components/responses/InternalError'}
+  /proposals/{proposalId}/recognitions:
+    parameters:
+      - $ref: '#/components/parameters/ProposalID'
+    post:
+      tags: [Proposals]
+      operationId: addProposalRecognition
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [source_unit_ids, target_unit_ids]
+              properties:
+                source_unit_ids:
+                  type: array
+                  items: {type: integer, format: int64, minimum: 1}
+                target_unit_ids:
+                  type: array
+                  items: {type: integer, format: int64, minimum: 1}
+      responses:
+        '204': {description: Recognition recorded}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '500': {$ref: '#/components/responses/InternalError'}
+  /proposals/{proposalId}/changes/{changeId}:
+    parameters:
+      - $ref: '#/components/parameters/ProposalID'
+      - $ref: '#/components/parameters/ChangeID'
+    delete:
+      tags: [Proposals]
+      operationId: deleteProposalChange
+      security: [{bearerAuth: []}]
+      responses:
+        '204': {description: Change deleted}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/InternalError'}
+  /proposals/{proposalId}/rebase:
+    parameters:
+      - $ref: '#/components/parameters/ProposalID'
+    get:
+      tags: [Proposals]
+      operationId: getProposalRebase
+      security: [{bearerAuth: []}]
+      responses:
+        '200':
+          description: Rebase status and conflicts
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/RebasePlan'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/InternalError'}
+    post:
+      tags: [Proposals]
+      operationId: resolveProposalRebase
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [resolutions]
+              properties:
+                resolutions:
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [change_id, choice]
+                    properties:
+                      change_id: {type: integer, format: int64, minimum: 1}
+                      choice: {type: string, enum: [keep, drop, edit]}
+                      content: {type: string}
+      responses:
+        '200':
+          description: Updated proposal
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Proposal'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '500': {$ref: '#/components/responses/InternalError'}
+  /proposals/{proposalId}/publish:
+    parameters:
+      - $ref: '#/components/parameters/ProposalID'
+    post:
+      tags: [Proposals]
+      operationId: publishProposal
+      security: [{bearerAuth: []}]
+      responses:
+        '200':
+          description: Accepted proposal
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Proposal'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '500': {$ref: '#/components/responses/InternalError'}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: uc_api token
+  parameters:
+    Limit:
+      name: limit
+      in: query
+      schema: {type: integer, minimum: 1, maximum: 100, default: 25}
+    Offset:
+      name: offset
+      in: query
+      schema: {type: integer, minimum: 0, default: 0}
+    UnitID:
+      name: unitId
+      in: path
+      required: true
+      schema: {type: integer, format: int64, minimum: 1}
+    PathID:
+      name: pathId
+      in: path
+      required: true
+      schema: {type: integer, format: int64, minimum: 1}
+    ProposalID:
+      name: proposalId
+      in: path
+      required: true
+      schema: {type: integer, format: int64, minimum: 1}
+    ChangeID:
+      name: changeId
+      in: path
+      required: true
+      schema: {type: integer, format: int64, minimum: 1}
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorResponse'}
+    Unauthorized:
+      description: Missing or invalid bearer token
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorResponse'}
+    Forbidden:
+      description: The token owner lacks permission
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorResponse'}
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorResponse'}
+    Conflict:
+      description: Operation conflicts with current domain state
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorResponse'}
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorResponse'}
+  schemas:
+    APIInfo:
+      type: object
+      required: [name, release, status, documentation]
+      properties:
+        name: {type: string, const: Universal Curriculum API}
+        release: {type: string, const: 0.2.0}
+        status: {type: string, const: experimental}
+        documentation: {type: string, const: /api/openapi.yaml}
+    Page:
+      type: object
+      required: [limit, offset, count, has_more]
+      properties:
+        limit: {type: integer}
+        offset: {type: integer}
+        count: {type: integer}
+        has_more: {type: boolean}
+    UnitSummary:
+      type: object
+      required: [id, name, retired]
+      properties:
+        id: {type: integer, format: int64}
+        name: {type: string}
+        retired: {type: boolean}
+    Unit:
+      allOf:
+        - $ref: '#/components/schemas/UnitSummary'
+        - type: object
+          required: [content, prerequisite_ids, dependent_ids, created_at, updated_at]
+          properties:
+            content: {type: string, description: Markdown source}
+            prerequisite_ids:
+              type: array
+              items: {type: integer, format: int64}
+            dependent_ids:
+              type: array
+              items: {type: integer, format: int64}
+            created_at: {type: string, format: date-time}
+            updated_at: {type: string, format: date-time}
+    Dependency:
+      type: object
+      additionalProperties: false
+      required: [unit_id, prerequisite_id]
+      properties:
+        unit_id: {type: integer, format: int64}
+        prerequisite_id: {type: integer, format: int64}
+    DependencyInput:
+      allOf:
+        - $ref: '#/components/schemas/Dependency'
+        - type: object
+          additionalProperties: false
+    Curriculum:
+      type: object
+      required: [proposal_id, units, dependencies]
+      properties:
+        proposal_id:
+          type: [integer, 'null']
+          format: int64
+        units:
+          type: array
+          items: {$ref: '#/components/schemas/Unit'}
+        dependencies:
+          type: array
+          items: {$ref: '#/components/schemas/Dependency'}
+    LearningPathInput:
+      type: object
+      additionalProperties: false
+      required: [name, target_unit_ids]
+      properties:
+        name: {type: string}
+        target_unit_ids:
+          type: array
+          items: {type: integer, format: int64, minimum: 1}
+    LearningPath:
+      type: object
+      required: [id, name, target_units, created_at, updated_at]
+      properties:
+        id: {type: integer, format: int64}
+        name: {type: string}
+        target_units:
+          type: array
+          items: {$ref: '#/components/schemas/UnitSummary'}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    Recommendation:
+      type: object
+      required: [learning_path_id, learning_path_name, units]
+      properties:
+        learning_path_id: {type: integer, format: int64}
+        learning_path_name: {type: string}
+        units:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/UnitSummary'
+              - type: object
+                required: [reason]
+                properties:
+                  reason: {type: string, const: all prerequisites are completed}
+    Progress:
+      type: object
+      required: [unit_id, direct, recognized, completed]
+      properties:
+        unit_id: {type: integer, format: int64}
+        direct: {type: boolean}
+        recognized: {type: boolean}
+        completed: {type: boolean}
+    ProposalInput:
+      type: object
+      additionalProperties: false
+      required: [title, rationale]
+      properties:
+        title: {type: string}
+        rationale: {type: string}
+    ProposalSummary:
+      type: object
+      required: [id, title, rationale, status, author_ids, author_name, change_count, created_at]
+      properties:
+        id: {type: integer, format: int64}
+        title: {type: string}
+        rationale: {type: string}
+        status: {type: string, enum: [draft, accepted, rejected]}
+        base_proposal_id: {type: [integer, 'null'], format: int64}
+        author_ids:
+          type: array
+          items: {type: integer, format: int64}
+        author_name: {type: string}
+        change_count: {type: integer}
+        created_at: {type: string, format: date-time}
+        accepted_at: {type: [string, 'null'], format: date-time}
+    Proposal:
+      allOf:
+        - $ref: '#/components/schemas/ProposalSummary'
+        - type: object
+          required: [changes]
+          properties:
+            changes:
+              type: array
+              items: {$ref: '#/components/schemas/ProposalChange'}
+    ProposalChange:
+      type: object
+      required: [id, kind]
+      properties:
+        id: {type: integer, format: int64}
+        kind:
+          type: string
+          enum: [create_unit, rename_unit, update_content, delete_unit, add_dependency, remove_dependency, recognition]
+        unit_id: {type: integer, format: int64}
+        unit_name: {type: string}
+        unit_content: {type: string}
+        prerequisite_id: {type: integer, format: int64}
+        recognition:
+          type: object
+          required: [source_unit_ids, target_unit_ids]
+          properties:
+            source_unit_ids:
+              type: array
+              items: {type: integer, format: int64}
+            target_unit_ids:
+              type: array
+              items: {type: integer, format: int64}
+    RebasePlan:
+      type: object
+      required: [status, accepted_proposal_ids, conflicts]
+      properties:
+        status: {type: string, enum: [current, automatic, needs_review]}
+        accepted_proposal_ids:
+          type: array
+          items: {type: integer, format: int64}
+        conflicts:
+          type: array
+          items:
+            type: object
+            required: [change_id, accepted_proposal_ids]
+            properties:
+              change_id: {type: integer, format: int64}
+              accepted_proposal_ids:
+                type: array
+                items: {type: integer, format: int64}
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: {type: string}
+            message: {type: string}
+            fields:
+              type: object
+              additionalProperties: {type: string}
