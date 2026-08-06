@@ -9,9 +9,17 @@
           </header>
           <p class="about-index__introduction">Universal Curriculum is a platform for the collaborative development of a free, publicly accessible curriculum.</p>
           <nav class="about-index__navigation" aria-label="About pages">
+            <a class="about-index__page selectable-surface" href="/about/case" hx-get="/about/case" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true" data-panel-navigation="open-or-replace">
+              <span class="material-symbols-rounded" aria-hidden="true">lightbulb</span>
+              <span><strong>The case for a shared curriculum</strong><small>The educational problems behind the proposal</small></span>
+            </a>
+            <a class="about-index__page selectable-surface" href="/about/proposal" hx-get="/about/proposal" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true" data-panel-navigation="open-or-replace">
+              <span class="material-symbols-rounded" aria-hidden="true">graph_3</span>
+              <span><strong>The approach</strong><small>How the curriculum would be structured, developed and used</small></span>
+            </a>
             <a class="about-index__page selectable-surface" href="/license" hx-get="/license" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true" data-panel-navigation="open-or-replace">
               <span class="material-symbols-rounded" aria-hidden="true">license</span>
-              <span><strong>License</strong><small>Terms for using and contributing material</small></span>
+              <span><strong>License</strong><small>How original and external content is licensed</small></span>
             </a>
           </nav>
         </div>

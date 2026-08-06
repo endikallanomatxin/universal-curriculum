@@ -13,6 +13,14 @@ func (server *Server) about(writer http.ResponseWriter, request *http.Request) {
 	server.renderUserPage(writer, request, "about.html", "about", false)
 }
 
+func (server *Server) aboutCase(writer http.ResponseWriter, request *http.Request) {
+	server.renderUserPage(writer, request, "case.html", "about", false)
+}
+
+func (server *Server) aboutProposal(writer http.ResponseWriter, request *http.Request) {
+	server.renderUserPage(writer, request, "proposal.html", "about", false)
+}
+
 func (server *Server) license(writer http.ResponseWriter, request *http.Request) {
 	server.renderUserPage(writer, request, "license.html", "about", false)
 }

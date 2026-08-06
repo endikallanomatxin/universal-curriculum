@@ -1,0 +1,92 @@
+{{ define "proposal.html" -}}
+<!doctype html>
+<html lang="en">
+<head>{{ template "document-head" "The approach · Universal Curriculum" }}</head>
+<body>
+  <div class="app-shell" id="app-shell" data-panel-group>
+    {{ template "primary-navigation" . }}
+    <main class="pane-stack" id="workspace" data-shell-view="detail" data-document-title="The approach · Universal Curriculum" data-layout-panel data-panel-modes="mobile:20 content:34 wide:46" data-panel-required-mode="content" data-panel-fill data-panel-group>
+      <nav class="mobile-panel-breadcrumbs" data-mobile-panel-breadcrumbs aria-label="Current location" hidden></nav>
+      {{ template "about-index-pane" . }}
+      <section class="ui-pane" aria-labelledby="proposal-title" data-layout-panel data-panel-modes="collapsed:0 mobile:20 standard:42" data-panel-fill data-panel-breadcrumb="The approach">
+        <article class="ui-pane__inner about-page" data-pane-content-width="reading">
+          <header class="about-page__header">
+            <h1 id="proposal-title">The approach</h1>
+            <p>Universal Curriculum proposes one public, evolving curriculum that anyone can access and help develop, and that educational institutions can use as a common standard for certification.</p>
+          </header>
+
+          <section id="curriculum" aria-labelledby="curriculum-title">
+            <h2 id="curriculum-title">1. Curriculum structure</h2>
+            <p>The curriculum should support many different learning paths while reducing overlap and duplication. To make this possible, knowledge is organised as a directed acyclic graph, or DAG, made up of shared learning units and explicit dependencies between them.</p>
+            <p>Units are the nodes of the graph, and dependencies are its directed edges. A dependency from one unit to another means that the first should be understood before studying the second.</p>
+            <p>Each unit covers a small, independently learnable part of the curriculum and brings together its explanations and supporting resources.</p>
+            <p>English is the reference language for the curriculum. Machine translation can provide initial coverage, and contributors can correct it where necessary.</p>
+          </section>
+
+          <section id="learning" aria-labelledby="learning-title">
+            <h2 id="learning-title">2. Learning from the curriculum</h2>
+            <p>The published curriculum is freely accessible. Learners can browse the graph, search for units, inspect prerequisites and use its educational material.</p>
+
+            <section aria-labelledby="guidance-title">
+              <h3 id="guidance-title">Learning paths</h3>
+              <p>A learning path is a personal view of the curriculum organised around one or more target units. The platform identifies the knowledge those targets depend on and shows what can be studied next.</p>
+            </section>
+          </section>
+
+          <section id="development" aria-labelledby="development-title">
+            <h2 id="development-title">3. Curriculum development</h2>
+            <p>Users can prepare proposals, discuss alternatives and take part in decisions.</p>
+
+            <section aria-labelledby="proposals-title">
+              <h3 id="proposals-title">Proposals</h3>
+              <p>A proposal is a coherent collection of changes. It can modify units, their content and dependencies, and define how units from the previous version map onto the resulting curriculum.</p>
+            </section>
+
+            <section aria-labelledby="decisions-title">
+              <h3 id="decisions-title">Discussion and polls</h3>
+              <p>Submitted proposals open a public discussion.</p>
+              <p>Decisions are made through polls. A proposal with no competing alternative is voted against keeping the current curriculum unchanged. When incompatible proposals affect the same area, they are considered together so voters can compare them with each other and with the current curriculum.</p>
+              <p>A poll does not close simply because one option is temporarily ahead. It remains open for a minimum discussion period and until enough votes have been cast for the result to be statistically significant.</p>
+            </section>
+
+          </section>
+
+          <section id="institutions" aria-labelledby="institutions-title">
+            <h2 id="institutions-title">4. Certification</h2>
+            <p>Universal Curriculum focuses on developing the curriculum, not on certifying learners. Certification remains the responsibility of universities and other accountable institutions. Keeping these roles separate allows learning material to be designed for understanding rather than around a particular assessment.</p>
+
+            <p>Teachers can use units to prepare classes, recommend them as primary or supplementary material and contribute improvements.</p>
+            <p>Universities can adopt selected units and certify them after an exam, project or another suitable assessment. They may also offer assessment to independent learners.</p>
+            <p>Because units are fine-grained, some ways of learning become easier, or even possible, to certify:</p>
+            <ul>
+              <li>greater freedom to choose subjects instead of following a fixed degree programme;</li>
+              <li>mobility between universities;</li>
+              <li>project-based learning; and</li>
+              <li>internships and work experience in companies.</li>
+            </ul>
+          </section>
+
+          <section id="employment-guidance" aria-labelledby="employment-guidance-title">
+            <h2 id="employment-guidance-title">5. Employment</h2>
+            <p>Employers can describe opportunities using the units they require. Learners can then:</p>
+            <ul>
+              <li>select an opportunity and see the learning path towards it; or</li>
+              <li>see which opportunities relate to what they are already learning.</li>
+            </ul>
+            <p>The platform brings certifications together under a shared standard and allows employers to describe opportunities using the same units. This gives learners and teachers a clearer view of which knowledge and skills are needed, and gives education greater agility to adapt as those needs change.</p>
+          </section>
+
+          <section id="stewardship" aria-labelledby="stewardship-title">
+            <h2 id="stewardship-title">6. Stewardship</h2>
+            <p>Universal Curriculum should be operated by a non-profit organisation. Its governance, funding and conflicts of interest should be public.</p>
+            <p>The curriculum should remain openly licensed and easily exportable.</p>
+            <p>No university, company, sponsor or infrastructure provider should be able to take private control of it.</p>
+          </section>
+        </article>
+      </section>
+    </main>
+  </div>
+  {{ template "shell-scripts" }}
+</body>
+</html>
+{{- end }}

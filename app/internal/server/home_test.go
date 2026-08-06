@@ -38,6 +38,8 @@ func TestAboutPageIsPublicAndUsesShellNavigation(t *testing.T) {
 		`<title>About · Universal Curriculum</title>`,
 		`<h1 id="about-title">About</h1>`,
 		`Universal Curriculum is a platform for the collaborative development of a free, publicly accessible curriculum.`,
+		`href="/about/case"`,
+		`href="/about/proposal"`,
 		`href="/license"`,
 		`href="/about" aria-current="page"`,
 		`hx-get="/about"`,
@@ -48,7 +50,7 @@ func TestAboutPageIsPublicAndUsesShellNavigation(t *testing.T) {
 	}
 }
 
-func TestLicensePageIsPublic(t *testing.T) {
+func TestAboutDocumentsArePublic(t *testing.T) {
 	workingDirectory, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
@@ -63,15 +65,36 @@ func TestLicensePageIsPublic(t *testing.T) {
 		t.Fatal(err)
 	}
 	server := &Server{Templates: templates}
-	response := httptest.NewRecorder()
-	server.routes().ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/license", nil))
-	if response.Code != http.StatusOK {
-		t.Errorf("status = %d, want %d", response.Code, http.StatusOK)
-	}
-	for _, fragment := range []string{`<title>License · Universal Curriculum</title>`, `Unless otherwise stated`, `provided that you give appropriate credit`, `creativecommons.org/licenses/by-sa/4.0/`, `is not covered by this license`} {
-		if !strings.Contains(response.Body.String(), fragment) {
-			t.Errorf("response does not contain %q", fragment)
+	for _, test := range []struct {
+		path      string
+		fragments []string
+	}{
+		{path: "/about/case", fragments: []string{`<title>The case for a shared curriculum · Universal Curriculum</title>`, `Access to information is not access to education`, `Educational work does not accumulate as much as it could`, `Learning should not be shaped around certification`, `Qualifications lack a common reference`, `Education in a time of accelerating technological change`}},
+		{path: "/about/proposal", fragments: []string{`<title>The approach · Universal Curriculum</title>`, `Curriculum structure`, `Stewardship`}},
+		{path: "/license", fragments: []string{`<title>License · Universal Curriculum</title>`, `Unless otherwise stated`, `provided that you give appropriate credit`, `creativecommons.org/licenses/by-sa/4.0/`, `is not covered by this license`}},
+	} {
+		response := httptest.NewRecorder()
+		server.routes().ServeHTTP(response, httptest.NewRequest(http.MethodGet, test.path, nil))
+		if response.Code != http.StatusOK {
+			t.Errorf("GET %s status = %d, want %d", test.path, response.Code, http.StatusOK)
 		}
+		for _, fragment := range test.fragments {
+			if !strings.Contains(response.Body.String(), fragment) {
+				t.Errorf("GET %s response does not contain %q", test.path, fragment)
+			}
+		}
+	}
+}
+
+func TestOldManifestURLRedirectsToCase(t *testing.T) {
+	response := httptest.NewRecorder()
+	(&Server{}).routes().ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/about/manifest", nil))
+
+	if response.Code != http.StatusPermanentRedirect {
+		t.Fatalf("status = %d, want %d", response.Code, http.StatusPermanentRedirect)
+	}
+	if location := response.Header().Get("Location"); location != "/about/case" {
+		t.Fatalf("Location = %q, want /about/case", location)
 	}
 }
 
