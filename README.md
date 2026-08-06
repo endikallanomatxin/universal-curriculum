@@ -69,3 +69,14 @@ podman compose -f compose.dev.yaml --profile test run --rm migration-tests
 ```
 
 See [`docs/deployment.md`](docs/deployment.md) for production deployment.
+
+## License
+
+The Universal Curriculum software is licensed under the GNU Affero General
+Public License version 3 only (`AGPL-3.0-only`). See [LICENSE](LICENSE).
+
+Original curriculum content published through the platform is licensed
+separately under CC BY-SA 4.0 unless otherwise stated.
+
+See [LICENSING.md](LICENSING.md) for details about third-party components and
+trademarks.
