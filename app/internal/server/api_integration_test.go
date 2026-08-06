@@ -1,0 +1,143 @@
+package server
+
+import (
+	"bytes"
+	"database/sql"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"testing"
+	"time"
+
+	_ "github.com/lib/pq"
+	"universal-curriculum/internal/db/migrations"
+	"universal-curriculum/internal/services"
+)
+
+func TestExperimentalAPIEndToEnd(t *testing.T) {
+	database := openAPIIntegrationDatabase(t)
+	user, err := services.RegisterLocalUser(
+		database, "API Administrator", "api-admin@example.com", "long-enough-password",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.Exec(`UPDATE users SET is_admin = TRUE WHERE id = $1`, user.ID); err != nil {
+		t.Fatal(err)
+	}
+	token, err := services.CreateAPIToken(database, user.ID, "Integration test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var rawTokenRows int
+	if err := database.QueryRow(`SELECT count(*) FROM api_tokens WHERE token_hash = $1`, token.Token).Scan(&rawTokenRows); err != nil {
+		t.Fatal(err)
+	}
+	if rawTokenRows != 0 {
+		t.Fatal("raw API token was persisted")
+	}
+
+	application := (&Server{Database: database}).routes()
+	proposalResponse := apiIntegrationRequest(t, application, token.Token, http.MethodPost, "/api/proposals", map[string]any{
+		"title": "API curriculum", "rationale": "Exercise the complete API workflow.",
+	}, http.StatusCreated)
+	var proposal struct {
+		ID int64 `json:"id"`
+	}
+	decodeAPIIntegrationResponse(t, proposalResponse, &proposal)
+
+	unitResponse := apiIntegrationRequest(t, application, token.Token, http.MethodPost,
+		fmt.Sprintf("/api/proposals/%d/units", proposal.ID), map[string]any{
+			"name": "API design", "content": "Learn how to design an API.",
+		}, http.StatusCreated)
+	var unit struct {
+		ID int64 `json:"id"`
+	}
+	decodeAPIIntegrationResponse(t, unitResponse, &unit)
+
+	apiIntegrationRequest(t, application, token.Token, http.MethodPost,
+		fmt.Sprintf("/api/proposals/%d/publish", proposal.ID), nil, http.StatusOK)
+	apiIntegrationRequest(t, application, "", http.MethodGet,
+		fmt.Sprintf("/api/units/%d", unit.ID), nil, http.StatusOK)
+	apiIntegrationRequest(t, application, token.Token, http.MethodPost, "/api/learning-paths", map[string]any{
+		"name": "API path", "target_unit_ids": []int64{unit.ID},
+	}, http.StatusCreated)
+	progressResponse := apiIntegrationRequest(t, application, token.Token, http.MethodPut,
+		fmt.Sprintf("/api/progress/%d", unit.ID), map[string]any{"completed": true}, http.StatusOK)
+	var progress apiProgress
+	decodeAPIIntegrationResponse(t, progressResponse, &progress)
+	if !progress.Direct || !progress.Completed {
+		t.Fatalf("completion response = %#v", progress)
+	}
+
+	if err := services.RevokeAPIToken(database, user.ID, token.ID); err != nil {
+		t.Fatal(err)
+	}
+	apiIntegrationRequest(t, application, token.Token, http.MethodGet, "/api/progress", nil, http.StatusUnauthorized)
+}
+
+func openAPIIntegrationDatabase(t *testing.T) *sql.DB {
+	t.Helper()
+	connectionString := os.Getenv("TEST_DATABASE_URL")
+	if connectionString == "" {
+		t.Skip("set TEST_DATABASE_URL to run PostgreSQL API integration tests")
+	}
+	database, err := sql.Open("postgres", connectionString)
+	if err != nil {
+		t.Fatal(err)
+	}
+	database.SetMaxOpenConns(1)
+	schema := fmt.Sprintf("api_test_%d", time.Now().UnixNano())
+	if _, err := database.Exec("CREATE SCHEMA " + schema); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_, _ = database.Exec("DROP SCHEMA IF EXISTS " + schema + " CASCADE")
+		_ = database.Close()
+	})
+	if _, err := database.Exec("SET search_path TO " + schema); err != nil {
+		t.Fatal(err)
+	}
+	if err := migrations.Up(database); err != nil {
+		t.Fatal(err)
+	}
+	return database
+}
+
+func apiIntegrationRequest(
+	t *testing.T,
+	application http.Handler,
+	token, method, target string,
+	body any,
+	wantStatus int,
+) *httptest.ResponseRecorder {
+	t.Helper()
+	var encoded bytes.Buffer
+	if body != nil {
+		if err := json.NewEncoder(&encoded).Encode(body); err != nil {
+			t.Fatal(err)
+		}
+	}
+	request := httptest.NewRequest(method, target, &encoded)
+	if body != nil {
+		request.Header.Set("Content-Type", "application/json")
+	}
+	if token != "" {
+		request.Header.Set("Authorization", "Bearer "+token)
+	}
+	response := httptest.NewRecorder()
+	application.ServeHTTP(response, request)
+	if response.Code != wantStatus {
+		t.Fatalf("%s %s = %d, want %d: %s", method, target, response.Code, wantStatus, response.Body.String())
+	}
+	return response
+}
+
+func decodeAPIIntegrationResponse(t *testing.T, response *httptest.ResponseRecorder, target any) {
+	t.Helper()
+	if err := json.Unmarshal(response.Body.Bytes(), target); err != nil {
+		t.Fatalf("decode response %q: %v", response.Body.String(), err)
+	}
+}

@@ -239,6 +239,81 @@ func UpdateCurriculumUnitContent(database *sql.DB, authorID, proposalID, unitID 
 	return replaceUnitProposalChange(database, authorID, proposalID, unitID, "update_content", change)
 }
 
+// UpdateCurriculumUnitAndContent replaces both editable fields in one
+// transaction. It is used by representations that submit a complete unit
+// rather than the web interface's independent inline fields.
+func UpdateCurriculumUnitAndContent(
+	database *sql.DB, authorID, proposalID, unitID int64, name, content string,
+) error {
+	name = strings.TrimSpace(name)
+	content = strings.TrimSpace(content)
+	if name == "" {
+		return ErrUnitNameRequired
+	}
+	if content == "" {
+		return ErrUnitContentRequired
+	}
+	if err := EnsureCurriculumProposalReady(database, authorID, proposalID); err != nil {
+		return err
+	}
+	tx, err := beginCurriculumProposal(database)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	proposal, err := currentDraftCurriculumProposal(tx, authorID, proposalID)
+	if err != nil {
+		return err
+	}
+	var baseline *models.Unit
+	for _, change := range proposal.Changes {
+		if change.Kind == "delete_unit" && change.UnitID == unitID {
+			return ErrUnitNotFound
+		}
+		if change.Kind == "create_unit" && change.UnitID == unitID {
+			baseline = &models.Unit{ID: unitID, Name: change.UnitName, Content: change.UnitContent}
+		}
+	}
+	if baseline == nil {
+		baseline, err = db.GetUnit(tx, unitID)
+		if err != nil {
+			return err
+		}
+		if baseline == nil {
+			return ErrUnitNotFound
+		}
+	}
+	for _, kind := range []string{"rename_unit", "update_content"} {
+		authorized, err := db.DeleteDraftCurriculumProposalUnitChanges(
+			tx, proposalID, authorID, unitID, kind,
+		)
+		if err != nil {
+			return err
+		}
+		if !authorized {
+			return ErrProposalNotFound
+		}
+	}
+	if name != baseline.Name {
+		if err := db.AddDraftCurriculumProposalChange(tx, proposalID, authorID, &models.CurriculumProposalChange{
+			Kind: "rename_unit", UnitID: unitID, UnitName: name,
+		}); err != nil {
+			return err
+		}
+	}
+	if content != baseline.Content {
+		if err := db.AddDraftCurriculumProposalChange(tx, proposalID, authorID, &models.CurriculumProposalChange{
+			Kind: "update_content", UnitID: unitID, UnitContent: content,
+		}); err != nil {
+			return err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit curriculum unit replacement: %w", err)
+	}
+	return nil
+}
+
 func draftCreatedCurriculumUnit(database *sql.DB, authorID, proposalID, unitID int64) (*models.CurriculumProposalChange, error) {
 	proposal, err := db.GetCurriculumProposal(database, proposalID)
 	if err != nil {

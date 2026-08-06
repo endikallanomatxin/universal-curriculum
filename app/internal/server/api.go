@@ -92,7 +92,7 @@ func (server *Server) requireAPIToken(next http.Handler) http.Handler {
 			return
 		}
 		writer.Header().Set("Cache-Control", "private, no-store")
-		ctx := context.WithValue(request.Context(), apiUserContextKey{}, user)
+		ctx := withAPIUser(request, user)
 		next.ServeHTTP(writer, request.WithContext(ctx))
 	})
 }
@@ -113,12 +113,17 @@ func apiUser(request *http.Request) *models.User {
 	return user
 }
 
+func withAPIUser(request *http.Request, user *models.User) context.Context {
+	return context.WithValue(request.Context(), apiUserContextKey{}, user)
+}
+
 func writeAPIJSON(writer http.ResponseWriter, status int, value any) {
-	writer.Header().Set("Content-Type", "application/json; charset=utf-8")
-	writer.WriteHeader(status)
 	if status == http.StatusNoContent || value == nil {
+		writer.WriteHeader(status)
 		return
 	}
+	writer.Header().Set("Content-Type", "application/json; charset=utf-8")
+	writer.WriteHeader(status)
 	if err := json.NewEncoder(writer).Encode(value); err != nil {
 		log.Printf("encode API response: %v", err)
 	}

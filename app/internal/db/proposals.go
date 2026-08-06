@@ -611,6 +611,84 @@ func ListDraftCurriculumProposalsByAuthor(database *sql.DB, authorID int64) ([]m
 	return proposals, nil
 }
 
+func ListCurriculumProposalsForUser(
+	database *sql.DB, userID int64, status string, limit, offset int,
+) ([]models.CurriculumProposal, int, error) {
+	statusFilter := any(nil)
+	if status != "" {
+		statusFilter = status
+	}
+	var total int
+	if err := database.QueryRow(`
+		SELECT count(*)
+		FROM curriculum_proposals proposal
+		WHERE ($2::TEXT IS NULL OR proposal.status = $2)
+		  AND (
+			proposal.status <> 'draft'
+			OR EXISTS (
+				SELECT 1 FROM curriculum_proposal_authors
+				WHERE proposal_id = proposal.id AND user_id = $1
+			)
+		  )
+	`, userID, statusFilter).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count visible curriculum proposals: %w", err)
+	}
+	rows, err := database.Query(`
+		SELECT proposal.id, authors.ids, authors.names,
+		       proposal.title, proposal.rationale, proposal.status,
+		       proposal.base_proposal_id, proposal.created_at, proposal.accepted_at,
+		       count(change.id)
+		FROM curriculum_proposals proposal
+		JOIN LATERAL (
+			SELECT array_agg(user_id ORDER BY users.full_name, user_id) AS ids,
+			       string_agg(users.full_name, ', ' ORDER BY users.full_name, user_id) AS names
+			FROM curriculum_proposal_authors
+			JOIN users ON users.id = user_id
+			WHERE proposal_id = proposal.id
+		) authors ON TRUE
+		LEFT JOIN curriculum_proposal_changes change ON change.proposal_id = proposal.id
+		WHERE ($2::TEXT IS NULL OR proposal.status = $2)
+		  AND (
+			proposal.status <> 'draft'
+			OR EXISTS (
+				SELECT 1 FROM curriculum_proposal_authors
+				WHERE proposal_id = proposal.id AND user_id = $1
+			)
+		  )
+		GROUP BY proposal.id, authors.ids, authors.names
+		ORDER BY proposal.created_at DESC, proposal.id DESC
+		LIMIT $3 OFFSET $4
+	`, userID, statusFilter, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list visible curriculum proposals: %w", err)
+	}
+	defer rows.Close()
+	var proposals []models.CurriculumProposal
+	for rows.Next() {
+		var proposal models.CurriculumProposal
+		var baseProposalID sql.NullInt64
+		var acceptedAt sql.NullTime
+		if err := rows.Scan(
+			&proposal.ID, pq.Array(&proposal.AuthorIDs), &proposal.AuthorName,
+			&proposal.Title, &proposal.Rationale, &proposal.Status,
+			&baseProposalID, &proposal.CreatedAt, &acceptedAt, &proposal.ChangeCount,
+		); err != nil {
+			return nil, 0, fmt.Errorf("scan visible curriculum proposal: %w", err)
+		}
+		if baseProposalID.Valid {
+			proposal.BaseProposalID = &baseProposalID.Int64
+		}
+		if acceptedAt.Valid {
+			proposal.AcceptedAt = &acceptedAt.Time
+		}
+		proposals = append(proposals, proposal)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("iterate visible curriculum proposals: %w", err)
+	}
+	return proposals, total, nil
+}
+
 func listCurriculumProposalChanges(q curriculumExecutor, proposalID int64) ([]models.CurriculumProposalChange, error) {
 	rows, err := q.Query(`
 		SELECT id, proposal_id, kind, unit_id,
