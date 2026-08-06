@@ -1,0 +1,71 @@
+services:
+  - type: web
+    name: universal-curriculum-app
+    runtime: docker
+    rootDir: app
+    region: frankfurt
+    plan: starter
+    dockerfilePath: Dockerfile
+    dockerContext: .
+    preDeployCommand: /usr/local/bin/migrate up
+    healthCheckPath: /health
+    # Asset support is planned for 0.3.0. Enable the persistent disk then.
+    # disk:
+    #   name: uploads
+    #   mountPath: /app/uploads
+    #   sizeGB: 1
+    envVars:
+      - key: ENV
+        value: prod
+      - key: PORT
+        value: "8080"
+      - key: DB_SSLMODE
+        value: require
+      - key: STORAGE_BACKEND
+        value: local
+      - key: UPLOADS_FOLDER
+        value: /app/uploads
+      - key: TRUST_RENDER_PROXY_HEADERS
+        value: "true"
+      - key: APP_BASE_URL
+        value: https://universalcurriculum.org
+      - key: EMAIL_FROM
+        value: Universal Curriculum <no-reply@auth.universalcurriculum.org>
+      - key: RESEND_API_KEY
+        sync: false
+      - key: BOOTSTRAP_ADMIN_FULL_NAME
+        sync: false
+      - key: BOOTSTRAP_ADMIN_ALIAS
+        sync: false
+      - key: BOOTSTRAP_ADMIN_EMAIL
+        sync: false
+      - key: BOOTSTRAP_ADMIN_PASSWORD
+        sync: false
+      - key: DB_HOST
+        fromDatabase:
+          name: universal-curriculum-postgres
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: universal-curriculum-postgres
+          property: port
+      - key: DB_USER
+        fromDatabase:
+          name: universal-curriculum-postgres
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: universal-curriculum-postgres
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: universal-curriculum-postgres
+          property: database
+
+databases:
+  - name: universal-curriculum-postgres
+    plan: basic-256mb
+    databaseName: universal_curriculum
+    user: universal_curriculum
+    region: frankfurt
+    diskSizeGB: 1

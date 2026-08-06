@@ -1,0 +1,69 @@
+{{/* Learning path index pane. */}}
+{{ define "learning-path-index-pane" -}}
+      <section class="ui-pane learning-paths-pane" aria-labelledby="learning-paths-title" data-layout-panel data-panel-modes="collapsed:0 breadcrumb:4 mobile:20 content:24 wide:28" data-panel-required-mode="mobile" data-panel-fill data-panel-breadcrumb="Learning paths">
+        <div class="ui-pane__inner learning-paths pane-breadcrumb" data-pane-content-width="narrow">
+          <header class="learning-paths__header pane-breadcrumb__header">
+            <div>
+              <h1 id="learning-paths-title">Learning paths</h1>
+              <a class="pane-breadcrumb__title" href="/learn" {{ template "shell-link-attributes" "/learn" }}>Learning paths</a>
+            </div>
+          </header>
+          <p class="learning-path-list__heading">Views</p>
+          <div class="learning-path-list learning-path-list--cards">
+            <a class="learning-path-card selectable-surface {{ if .ExploreAll }}is-selected{{ end }}" href="/learn?path=all" hx-get="/learn?path=all" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true" data-panel-navigation="open-or-replace">
+              <span class="material-symbols-rounded" aria-hidden="true">graph_3</span>
+              <span><strong>Full curriculum</strong><small>Explore every unit</small></span>
+            </a>
+            {{ if .Paths }}
+              <a class="learning-path-card selectable-surface {{ if .CombinePaths }}is-selected{{ end }}" href="/learn?path=mine" hx-get="/learn?path=mine" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true" data-panel-navigation="open-or-replace">
+                <span class="material-symbols-rounded" aria-hidden="true">graph_1</span>
+                <span><strong>All my paths</strong><small>Combine {{ len .Paths }} {{ if eq (len .Paths) 1 }}path{{ else }}paths{{ end }}</small></span>
+              </a>
+            {{ end }}
+          </div>
+          {{ if .Paths }}
+            <p class="learning-path-list__heading learning-path-list__heading--paths">Your paths</p>
+            <div class="learning-path-list learning-path-list--cards">
+            {{ range .Paths }}
+              {{ $path := . }}
+              <article class="learning-path-card selectable-surface {{ if $.EditingPath }}{{ if eq $.EditingPath.ID $path.ID }}is-selected{{ end }}{{ else }}{{ with $.SelectedPath }}{{ if eq .ID $path.ID }}is-selected{{ end }}{{ end }}{{ end }}">
+                <a href="/learn?path={{ .ID }}" hx-get="/learn?path={{ .ID }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true" data-panel-navigation="open-or-replace">
+                  <span class="material-symbols-rounded" aria-hidden="true">route</span>
+                  <span>
+                    <strong>{{ .Name }}</strong>
+                    <small>{{ .UnitCount }} target {{ if eq .UnitCount 1 }}unit{{ else }}units{{ end }}</small>
+                  </span>
+                </a>
+                <a class="icon-button"
+                   href="/learn?edit={{ .ID }}"
+                   hx-get="/learn?edit={{ .ID }}"
+                   hx-target="#workspace"
+                   hx-select="#workspace"
+                   hx-swap="outerHTML"
+                   hx-push-url="true"
+                   data-panel-navigation="open"
+                   aria-label="Edit {{ .Name }}">
+                  <span class="material-symbols-rounded" aria-hidden="true">edit</span>
+                </a>
+              </article>
+            {{ end }}
+            </div>
+          {{ end }}
+          {{ if .User }}
+            <a class="pane-list-action"
+               href="/learn?edit=new"
+               hx-get="/learn?edit=new"
+               hx-target="#workspace"
+               hx-select="#workspace"
+               hx-swap="outerHTML"
+               hx-push-url="true"
+               data-panel-navigation="open">
+              <span class="material-symbols-rounded" aria-hidden="true">add</span>
+              New learning path
+            </a>
+          {{ else }}
+            <a class="learning-paths__signin" href="/auth/login">Log in to create personal paths</a>
+          {{ end }}
+        </div>
+      </section>
+{{- end }}

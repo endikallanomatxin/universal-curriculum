@@ -1,0 +1,136 @@
+/* Unit content editing controls and inline editor states. */
+.unit-content__editing-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 var(--space-5);
+}
+
+.unit-content__editing-actions form {
+  display: flex;
+  margin: 0;
+}
+
+.unit-content__inline-editor {
+  background: color-mix(in srgb, var(--color-surface) 65%, transparent);
+  border-block: 1px solid color-mix(in srgb, var(--color-ink) 12%, transparent);
+  margin: 0 0 var(--space-5);
+  padding: var(--space-4) 0;
+}
+
+.unit-content__inline-editor[hidden] {
+  display: none;
+}
+
+.unit-content [data-inline-editor-display][hidden] {
+  display: none;
+}
+
+.unit-content__inline-editor--rename {
+  background: transparent;
+  border: 0;
+  margin: 0 0 clamp(2rem, 7vh, 5rem);
+  padding: 0;
+  width: min(34rem, 100%);
+}
+
+.unit-content .unit-content__inline-editor--rename textarea {
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid var(--color-ink-strong);
+  border-radius: 0;
+  color: var(--color-ink-strong);
+  font-size: var(--font-size-pane-title);
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0 0 0.18em;
+  resize: none;
+}
+
+.unit-content .unit-content__inline-editor--rename textarea:focus {
+  background: transparent;
+}
+
+.unit-content__inline-editor--content {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  margin-top: 0;
+  overflow: visible;
+  padding: 0;
+}
+
+.unit-content .unit-content__inline-editor--content textarea {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  margin: 0;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+  resize: none;
+}
+
+.unit-content .unit-content__inline-editor--content textarea:focus {
+  background: transparent;
+  border-color: transparent;
+  outline: 0;
+}
+
+.unit-content__source-header {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+  padding: 0;
+}
+
+.unit-content__source-header > span {
+  align-items: center;
+  color: var(--color-muted);
+  display: inline-flex;
+  font-size: 0.72rem;
+  font-weight: 700;
+  gap: 0.35rem;
+}
+
+.unit-content__source-header .material-symbols-rounded {
+  font-size: 1rem;
+}
+
+.unit-content__source-header .unit-content__inline-actions {
+  flex-wrap: nowrap;
+}
+
+.editor-form.unit-content__inline-editor--content .unit-content__source-header .primary-button,
+.editor-form.unit-content__inline-editor--content .unit-content__source-header .secondary-button {
+  align-items: center;
+  display: inline-flex;
+  font-size: 0.72rem;
+  justify-content: center;
+  line-height: 1;
+  margin: 0;
+  min-height: 2rem;
+  padding: 0.42rem 0.65rem;
+}
+
+.unit-content__inline-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.unit-content__inline-actions .primary-button {
+  margin-top: var(--space-2);
+}

@@ -1,0 +1,50 @@
+{{/* Learning unit content pane. */}}
+{{ define "learning-unit-content-pane" -}}
+      {{ with .ContentUnit }}
+        <section class="ui-pane ui-pane--wide unit-content-pane" data-nested-panel data-panel-motion="horizontal" data-layout-panel data-panel-modes="collapsed:0 breadcrumb:4 mobile:20 content:32 wide:42" data-panel-required-mode="mobile" data-panel-fill data-panel-breadcrumb="{{ .Name }}" data-panel-close-query="content" aria-labelledby="unit-content-title">
+          <article class="ui-pane__inner unit-content" data-pane-content-width="reading">
+            <header class="nested-panel__header">
+              <div>
+                <p class="label">Unit content</p>
+                <h1 id="unit-content-title">{{ .Name }}</h1>
+              </div>
+              {{ if $.User }}
+                {{ template "unit-completion-form" $.ContentCompletion }}
+              {{ end }}
+              <button class="icon-button ui-pane__close" type="button" data-close-panel aria-label="Close unit content"><span class="material-symbols-rounded" aria-hidden="true">close</span></button>
+            </header>
+            <div class="unit-content__body">{{ renderUnitContent .Content }}</div>
+          </article>
+        </section>
+      {{ end }}
+{{- end }}
+
+{{ define "unit-completion-form" -}}
+  <form class="unit-completion"
+        id="unit-completion-{{ .UnitID }}"
+        action="/learn/units/{{ .UnitID }}/completion"
+        method="post"
+        hx-post="/learn/units/{{ .UnitID }}/completion"
+        hx-target="this"
+        hx-swap="outerHTML">
+    <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+    <input type="hidden" name="return_to" value="{{ .ReturnURL }}">
+    {{ if .Recognized }}
+      <button type="submit" name="completed" value="false" aria-pressed="true">
+        <span class="unit-completion__indicator is-completed is-recognized" aria-hidden="true"></span>
+        <span>Recognized</span>
+      </button>
+      <button class="unit-completion__literal" type="submit" name="completed" value="true">Complete current version</button>
+    {{ else }}
+      <button type="submit" name="completed" value="{{ if .Completed }}false{{ else }}true{{ end }}" aria-pressed="{{ if .Completed }}true{{ else }}false{{ end }}">
+        <span class="unit-completion__indicator {{ if .Completed }}is-completed{{ end }}" aria-hidden="true"></span>
+        <span>{{ if .Completed }}Completed{{ else }}Mark as completed{{ end }}</span>
+      </button>
+    {{ end }}
+  </form>
+{{- end }}
+
+{{ define "unit-completion-update" -}}
+{{ template "unit-completion-form" .Completion }}
+{{ template "curriculum-graph-anchor" .Anchor }}
+{{- end }}

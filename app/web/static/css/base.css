@@ -1,0 +1,107 @@
+:root {
+  color-scheme: light;
+  --color-ink: #2a2a2a;
+  --color-ink-strong: #17171b;
+  --color-muted: #6f6f72;
+  --color-surface: #ffffff;
+  --color-panel-start: #f7f7f7;
+  --color-panel-end: #f0f0f0;
+  --dependency-purple-hue: 286;
+  --color-dependency: oklch(0.52 0.16 var(--dependency-purple-hue));
+  --proposal-change-lightness: 0.6;
+  --proposal-change-chroma: 0.1;
+  --color-proposal-created: oklch(var(--proposal-change-lightness) var(--proposal-change-chroma) 160);
+  --color-proposal-deleted: oklch(var(--proposal-change-lightness) var(--proposal-change-chroma) 25);
+  --color-proposal-rename: oklch(var(--proposal-change-lightness) var(--proposal-change-chroma) 65);
+  --color-proposal-content: oklch(var(--proposal-change-lightness) var(--proposal-change-chroma) 250);
+  --color-proposal-dependency: oklch(var(--proposal-change-lightness) var(--proposal-change-chroma) var(--dependency-purple-hue));
+  --color-proposal-recognition: oklch(var(--proposal-change-lightness) var(--proposal-change-chroma) 95);
+  --color-danger: #c93341;
+  --color-selection-outline: oklch(0.58 0 0);
+  --radius-surface: 1rem;
+  --radius-control: 0.8rem;
+  --font-sans: Montserrat, Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-size-pane-title: clamp(2rem, 3vw, 3rem);
+  --font-size-section-title: 1.5rem;
+  --font-size-subsection-title: 1rem;
+  --space-1: 0.5rem;
+  --space-2: 0.75rem;
+  --space-3: 1rem;
+  --space-4: 1.5rem;
+  --space-5: 2rem;
+  --space-6: 3rem;
+  --sidebar-width: 13rem;
+  --motion-duration: 420ms;
+  --motion-easing: cubic-bezier(0.22, 1, 0.36, 1);
+  --panel-motion-duration: 260ms;
+  --panel-motion-easing: cubic-bezier(0.2, 0.7, 0.3, 1);
+  --panel-motion-distance: 3rem;
+  --mobile-panel-composition: 0;
+  font-family: var(--font-sans);
+  font-synthesis: none;
+  line-height: 1.5;
+  text-rendering: optimizeLegibility;
+}
+
+@media (max-width: 42rem) {
+  :root {
+    --mobile-panel-composition: 1;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--color-panel-end);
+}
+
+body {
+  background: var(--color-panel-start);
+  color: var(--color-ink);
+  margin: 0;
+  min-width: 20rem;
+}
+
+a {
+  color: inherit;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.2em;
+}
+
+button,
+input {
+  color: inherit;
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 0.2rem solid var(--color-ink-strong);
+  outline-offset: 0.2rem;
+}
+
+.visually-hidden {
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

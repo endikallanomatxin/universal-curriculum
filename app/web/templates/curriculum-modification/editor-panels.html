@@ -1,0 +1,169 @@
+{{/* Curriculum modification editing panels. */}}
+{{ define "curriculum-modification-editor-panels" -}}
+      <section class="ui-pane ui-pane--form" id="new-proposal-panel" data-nested-panel data-layout-panel data-panel-modes="collapsed:0 compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-breadcrumb="New proposal" hidden aria-labelledby="create-proposal-title">
+        <div class="ui-pane__inner nested-panel" data-pane-content-width="narrow">
+          <header class="nested-panel__header">
+            <div>
+              <h1 id="create-proposal-title">New proposal</h1>
+            </div>
+            <button class="icon-button ui-pane__close" type="button" data-close-panel aria-label="Close new proposal panel">
+              <span class="material-symbols-rounded" aria-hidden="true">close</span>
+            </button>
+          </header>
+          <p class="nested-panel__introduction">Create a focused workspace. Its changes will remain isolated until you publish the proposal.</p>
+          <form class="editor-form editor-form--panel" action="/curriculum-modification/proposals" method="post">
+            <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+            <label for="proposal-title">Title</label>
+            <input id="proposal-title" name="title" required maxlength="200" autocomplete="off" placeholder="Improve algebra foundations">
+            <label for="proposal-rationale">Purpose</label>
+            <textarea id="proposal-rationale" name="rationale" required rows="4" maxlength="1000" data-autoresize placeholder="Explain why these changes belong together"></textarea>
+            <button class="primary-button" type="submit">Create proposal</button>
+          </form>
+        </div>
+      </section>
+
+      <section class="ui-pane ui-pane--form" id="new-unit-panel" data-nested-panel data-layout-panel data-panel-modes="collapsed:0 compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-breadcrumb="New unit" hidden aria-labelledby="create-unit-title">
+        <div class="ui-pane__inner nested-panel" data-pane-content-width="narrow">
+          <header class="nested-panel__header">
+            <div>
+              <h1 id="create-unit-title">New unit</h1>
+            </div>
+            <button class="icon-button ui-pane__close" type="button" data-close-panel aria-label="Close new unit panel">
+              <span class="material-symbols-rounded" aria-hidden="true">close</span>
+            </button>
+          </header>
+          <p class="nested-panel__introduction">Add one teachable concept to the selected draft. The published curriculum will not change until the proposal is published.</p>
+          <form class="editor-form editor-form--panel" action="/curriculum-modification/units" method="post">
+            <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+            {{ if .ActiveProposal }}<input type="hidden" name="proposal_id" value="{{ .ActiveProposal.ID }}">{{ end }}
+            <label for="unit-name">Name</label>
+            <input id="unit-name" name="name" required maxlength="200" autocomplete="off">
+            <label for="unit-content">Content</label>
+            <p class="editor-form__hint">Markdown with $…$ or $$…$$ for LaTeX. Embed isolated HTML, CSS and JavaScript with a standard <code>&lt;iframe srcdoc="…"&gt;</code>.</p>
+            <textarea id="unit-content" name="content" required rows="10" data-autoresize placeholder="Write the first textual explanation for this unit."></textarea>
+            <button class="primary-button" type="submit" {{ if not .ActiveProposal }}disabled{{ end }}>Add to proposal</button>
+          </form>
+        </div>
+      </section>
+
+      <section class="ui-pane ui-pane--form" id="edit-dependencies-panel" data-nested-panel data-layout-panel data-panel-modes="collapsed:0 compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-breadcrumb="Dependencies" hidden aria-labelledby="edit-dependencies-title">
+        <div class="ui-pane__inner nested-panel" data-pane-content-width="narrow">
+          <header class="nested-panel__header">
+            <div>
+              <p class="label">Edit dependencies</p>
+              <h1 id="edit-dependencies-title" data-dependent-name>Unit</h1>
+            </div>
+            <button class="icon-button ui-pane__close" type="button" data-close-panel aria-label="Close dependencies panel">
+              <span class="material-symbols-rounded" aria-hidden="true">close</span>
+            </button>
+          </header>
+          <p class="nested-panel__introduction">Changes are added directly to the working proposal and remain isolated until it is published.</p>
+          <div data-unit-picker
+               data-dependency-unit-picker
+               data-unit-picker-empty-selection="No prerequisites selected.">
+          <section class="selection-editor" aria-labelledby="current-dependencies-title">
+            <div class="section-heading">
+              <div>
+                <p class="label">Current selection</p>
+                <h2 id="current-dependencies-title">Requires</h2>
+              </div>
+            </div>
+            <div class="selection-list" data-unit-picker-current></div>
+          </section>
+          <form class="editor-form editor-form--panel" action="/curriculum-modification/dependencies" method="post">
+            <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+            {{ if .ActiveProposal }}<input type="hidden" name="proposal_id" value="{{ .ActiveProposal.ID }}">{{ end }}
+            <input type="hidden" name="unit_id" value="" data-dependent-input>
+            <input type="hidden" name="prerequisite_id" value="" data-prerequisite-input>
+            <label for="prerequisite-unit-search">Add prerequisite</label>
+            <div class="unit-search search-control">
+              <span class="material-symbols-rounded unit-search__icon search-control__icon" aria-hidden="true">search</span>
+              <input id="prerequisite-unit-search" type="search" autocomplete="off" placeholder="Search units" data-unit-picker-input aria-controls="prerequisite-unit-results" aria-expanded="false">
+              <div class="unit-search__results search-control__results" id="prerequisite-unit-results" data-unit-picker-results hidden>
+                {{ range .Units }}
+                  <button type="button" data-unit-picker-option data-unit-id="{{ .ID }}" data-unit-name="{{ .Name }}">
+                    <strong>{{ .Name }}</strong>
+                  </button>
+                {{ end }}
+                <p class="unit-search__empty" data-unit-picker-empty hidden>No matching units.</p>
+              </div>
+            </div>
+          </form>
+          </div>
+          <form action="/curriculum-modification/dependencies/delete" method="post" data-remove-dependency-form>
+            <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+            {{ if .ActiveProposal }}<input type="hidden" name="proposal_id" value="{{ .ActiveProposal.ID }}">{{ end }}
+            <input type="hidden" name="unit_id" value="" data-remove-dependent-input>
+            <input type="hidden" name="prerequisite_id" value="" data-remove-prerequisite-input>
+          </form>
+        </div>
+      </section>
+
+      <section class="ui-pane ui-pane--form" id="new-recognition-panel" data-nested-panel data-layout-panel data-panel-modes="collapsed:0 compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-breadcrumb="Recognition" hidden aria-labelledby="create-recognition-title">
+        <div class="ui-pane__inner nested-panel" data-pane-content-width="narrow">
+          <header class="nested-panel__header">
+            <div>
+              <h1 id="create-recognition-title">Recognition</h1>
+            </div>
+            <button class="icon-button ui-pane__close" type="button" data-close-panel aria-label="Close recognition panel">
+              <span class="material-symbols-rounded" aria-hidden="true">close</span>
+            </button>
+          </header>
+          <p class="nested-panel__introduction">Completing every source will recognize every target. Direct progress remains attached to the curriculum state in which it was recorded.</p>
+          <form class="editor-form editor-form--panel" action="/curriculum-modification/recognitions" method="post">
+            <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+            {{ if .ActiveProposal }}<input type="hidden" name="proposal_id" value="{{ .ActiveProposal.ID }}">{{ end }}
+
+            <div data-unit-picker
+                 data-unit-picker-input-name="source_unit_ids"
+                 data-unit-picker-required-message="Select at least one source unit."
+                 data-unit-picker-empty-selection="No source units selected.">
+              <section class="selection-editor" aria-labelledby="recognition-sources-title">
+                <div class="section-heading">
+                  <div><h2 id="recognition-sources-title">Source knowledge</h2></div>
+                  <span data-unit-picker-count>0 selected</span>
+                </div>
+                <div class="selection-list" data-unit-picker-current></div>
+              </section>
+              <label for="recognition-source-search">Add source unit</label>
+              <div class="unit-search search-control">
+                <span class="material-symbols-rounded unit-search__icon search-control__icon" aria-hidden="true">search</span>
+                <input id="recognition-source-search" type="search" autocomplete="off" placeholder="Search published units" data-unit-picker-input aria-controls="recognition-source-results" aria-expanded="false">
+                <div class="unit-search__results search-control__results" id="recognition-source-results" data-unit-picker-results hidden>
+                  {{ range .RecognitionSources }}
+                    <button type="button" data-unit-picker-option data-unit-id="{{ .ID }}" data-unit-name="{{ .Name }}"><strong>{{ .Name }}</strong></button>
+                  {{ end }}
+                  <p class="unit-search__empty" data-unit-picker-empty hidden>No matching units.</p>
+                </div>
+              </div>
+            </div>
+
+            <div data-unit-picker
+                 data-unit-picker-input-name="target_unit_ids"
+                 data-unit-picker-required-message="Select at least one target unit."
+                 data-unit-picker-empty-selection="No target units selected.">
+              <section class="selection-editor" aria-labelledby="recognition-targets-title">
+                <div class="section-heading">
+                  <div><h2 id="recognition-targets-title">Recognized as</h2></div>
+                  <span data-unit-picker-count>0 selected</span>
+                </div>
+                <div class="selection-list" data-unit-picker-current></div>
+              </section>
+              <label for="recognition-target-search">Add target unit</label>
+              <div class="unit-search search-control">
+                <span class="material-symbols-rounded unit-search__icon search-control__icon" aria-hidden="true">search</span>
+                <input id="recognition-target-search" type="search" autocomplete="off" placeholder="Search resulting units" data-unit-picker-input aria-controls="recognition-target-results" aria-expanded="false">
+                <div class="unit-search__results search-control__results" id="recognition-target-results" data-unit-picker-results hidden>
+                  {{ range .RecognitionTargets }}
+                    <button type="button" data-unit-picker-option data-unit-id="{{ .ID }}" data-unit-name="{{ .Name }}"><strong>{{ .Name }}</strong></button>
+                  {{ end }}
+                  <p class="unit-search__empty" data-unit-picker-empty hidden>No matching units.</p>
+                </div>
+              </div>
+            </div>
+
+            <button class="primary-button" type="submit" {{ if not .ActiveProposal }}disabled{{ end }}>Add recognition</button>
+          </form>
+        </div>
+      </section>
+{{- end }}

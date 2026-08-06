@@ -1,0 +1,24 @@
+{{ define "login.html" -}}
+<!doctype html>
+<html lang="en">
+<head>{{ template "document-head" "Log in · Universal Curriculum" }}</head>
+<body>
+  <main class="auth-page">
+    <form class="auth-form" action="/auth/login" method="post">
+      <a class="brand" href="/">universal curriculum</a>
+      <h1>Log in</h1>
+      {{ if .Notice }}<p class="form-notice" role="status">{{ .Notice }}</p>{{ end }}
+      {{ if .Error }}<p class="form-error" role="alert">{{ .Error }}</p>{{ end }}
+      <input type="hidden" name="next" value="{{ .Next }}">
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" autocomplete="username" required autofocus>
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required>
+      <button class="primary-button" type="submit">Log in</button>
+      <p class="auth-alternative"><a href="/auth/forgot-password">Forgot your password?</a></p>
+      <p class="auth-alternative">New to Universal Curriculum? <a href="/auth/register?next={{ .Next }}">Create an account</a></p>
+    </form>
+  </main>
+</body>
+</html>
+{{- end }}

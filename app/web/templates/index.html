@@ -1,0 +1,13 @@
+{{ define "index.html" -}}
+<!doctype html>
+<html lang="en">
+<head>{{ template "document-head" "Universal Curriculum" }}</head>
+<body>
+  <div class="app-shell app-shell--home" id="app-shell" data-panel-group>
+    {{ template "primary-navigation" . }}
+    <main id="workspace" data-shell-view="home" data-document-title="Universal Curriculum" hidden></main>
+  </div>
+  {{ template "shell-scripts" }}
+</body>
+</html>
+{{- end }}

@@ -1,0 +1,51 @@
+{{/* Learning curriculum map pane. */}}
+{{ define "learning-curriculum-map-pane" -}}
+      {{ if .ShowGraph }}
+        <section class="ui-pane ui-pane--wide curriculum-map-pane" aria-labelledby="learn-graph-title" data-nested-panel data-panel-motion="horizontal" data-layout-panel data-panel-modes="collapsed:0 breadcrumb:4 mobile:20 content:34 wide:46" data-panel-required-mode="mobile" data-panel-fill data-panel-breadcrumb="Curriculum map">
+          <div class="ui-pane__inner learn-view pane-breadcrumb" data-pane-content-width="wide">
+            <header class="learn-heading learn-heading--closable pane-breadcrumb__header {{ if or .SelectedPath .CombinePaths }}learn-heading--path{{ end }}">
+              <div>
+                <p class="label">Learning path</p>
+                <h1 id="learn-graph-title">{{ if .SelectedPath }}{{ .SelectedPath.Name }}{{ else if .CombinePaths }}All my paths{{ else }}Full curriculum{{ end }}</h1>
+                <a class="pane-breadcrumb__title" href="/learn" {{ template "shell-link-attributes" "/learn" }}>{{ if .SelectedPath }}{{ .SelectedPath.Name }}{{ else if .CombinePaths }}All my paths{{ else }}Full curriculum{{ end }}</a>
+              </div>
+              <a class="icon-button ui-pane__close"
+                 href="/learn"
+                 hx-get="/learn"
+                 hx-trigger="panel-close"
+                 hx-target="#workspace"
+                 hx-select="#workspace"
+                 hx-swap="outerHTML"
+                 hx-push-url="true"
+                 data-panel-navigation="close"
+                 aria-label="Close learning path"><span class="material-symbols-rounded" aria-hidden="true">close</span></a>
+            </header>
+
+            <section class="curriculum-explorer" id="curriculum-explorer" aria-live="polite">
+              {{ if .Graph.Nodes }}
+                <nav class="learn-navigation" aria-label="Curriculum navigation">
+                  {{ if .FocusedUnit }}
+                    {{ if .SelectedPath }}
+                      <button class="secondary-button" type="button" hx-get="/learn?path={{ .SelectedPath.ID }}" hx-target="#curriculum-explorer" hx-select="#curriculum-explorer" hx-swap="outerHTML transition:true">
+                    {{ else }}
+                      <button class="secondary-button" type="button" hx-get="/learn?path=all" hx-target="#curriculum-explorer" hx-select="#curriculum-explorer" hx-swap="outerHTML transition:true">
+                    {{ end }}
+                      <span class="material-symbols-rounded" aria-hidden="true">zoom_out_map</span>
+                      Entire path
+                    </button>
+                  {{ else if or .SelectedPath .CombinePaths }}
+                    <p>Only units leading to the selected targets are shown.</p>
+                  {{ else }}
+                    <p>Choose an entry point to explore its neighbourhood.</p>
+                  {{ end }}
+                  {{ template "unit-navigation-search" .GraphSearch }}
+                </nav>
+                {{ template "curriculum-graph" .GraphView }}
+              {{ else }}
+                <div class="empty-state"><span class="material-symbols-rounded" aria-hidden="true">route</span><h2>This path has no visible units</h2><p>Edit it and select at least one target.</p></div>
+              {{ end }}
+            </section>
+          </div>
+        </section>
+      {{ end }}
+{{- end }}

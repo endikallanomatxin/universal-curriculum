@@ -1,0 +1,14 @@
+# HTTP server
+
+- Keep handlers focused on authorization, parsing, invoking operations and
+  rendering responses.
+- Direct database calls are acceptable only for simple one-to-one persistence.
+- Use services for business rules, coordinated operations and transactions.
+- Parse and validate input before changing domain state.
+- Prefer server-rendered HTML and use HTMX for fragment updates.
+- Return explicit HTTP errors without terminating the server.
+- Authenticate through the session middleware and require CSRF tokens for
+  state-changing requests made by authenticated users.
+- Handler tests should emphasize authorization, parsing and validation, status
+  and feedback, and important HTTP or HTMX response contracts. Avoid tests that
+  only prove a handler forwards values to an already-covered dependency.

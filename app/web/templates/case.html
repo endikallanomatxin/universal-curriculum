@@ -1,0 +1,59 @@
+{{ define "case.html" -}}
+<!doctype html>
+<html lang="en">
+<head>{{ template "document-head" "The case for a shared curriculum · Universal Curriculum" }}</head>
+<body>
+  <div class="app-shell" id="app-shell" data-panel-group>
+    {{ template "primary-navigation" . }}
+    <main class="pane-stack" id="workspace" data-shell-view="detail" data-document-title="The case for a shared curriculum · Universal Curriculum" data-layout-panel data-panel-modes="mobile:20 content:34 wide:46" data-panel-required-mode="content" data-panel-fill data-panel-group>
+      <nav class="mobile-panel-breadcrumbs" data-mobile-panel-breadcrumbs aria-label="Current location" hidden></nav>
+      {{ template "about-index-pane" . }}
+      <section class="ui-pane" aria-labelledby="case-title" data-nested-panel data-panel-motion="horizontal" data-layout-panel data-panel-modes="collapsed:0 mobile:20 standard:42" data-panel-fill data-panel-breadcrumb="The case for a shared curriculum">
+        <article class="ui-pane__inner about-page" data-pane-content-width="reading">
+          <header class="about-page__header">
+            <h1 id="case-title">The case for a shared curriculum</h1>
+            <a class="icon-button ui-pane__close" href="/about" hx-get="/about" hx-trigger="panel-close" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML" hx-push-url="true" data-panel-navigation="close" aria-label="Close the case for a shared curriculum">
+              <span class="material-symbols-rounded" aria-hidden="true">close</span>
+            </a>
+          </header>
+
+          <section id="information-access" aria-labelledby="information-access-title">
+            <h2 id="information-access-title">1. Access to information is not access to education</h2>
+            <p>Search engines, online resources and AI can answer individual questions almost immediately. Education, however, is built over time and needs structure and direction.</p>
+            <p>Universities provide one way to organise that process, but access remains limited by cost, location, admission, schedules and personal circumstances.</p>
+            <p>High-quality educational material is already widely available online. What is often missing is a coherent path through it.</p>
+          </section>
+
+          <section id="shared-work" aria-labelledby="shared-work-title">
+            <h2 id="shared-work-title">2. Educational work does not accumulate as much as it could</h2>
+            <p>Every year, some of society’s most knowledgeable people devote an enormous amount of time to preparing and teaching the same subjects at universities around the world. This involves extensive duplication of effort, leaving considerable room for improvement.</p>
+            <p>Not all explanations are equally useful, though. Exceptional teachers can make ideas that seemed inaccessible become clear and intuitive, but their impact is often limited to the students they happen to teach.</p>
+            <p>Even when such an explanation is published, it remains one resource among many. There is no shared mechanism that makes it the default starting point and allows later improvements to build on it.</p>
+          </section>
+
+          <section id="certification" aria-labelledby="certification-title">
+            <h2 id="certification-title">3. Learning should not be shaped around certification</h2>
+            <p>The same course is often responsible for both teaching and assessment. This can tie the learning process to the exam: material is organised around what will be tested, and students are encouraged to focus on passing rather than understanding.</p>
+            <p>Certification is definitely valuable, but it is not the purpose of education. Learning should be organised first around understanding, without being constrained by a particular assessment.</p>
+          </section>
+
+          <section id="comparable-qualifications" aria-labelledby="comparable-qualifications-title">
+            <h2 id="comparable-qualifications-title">4. Qualifications lack a common reference</h2>
+            <p>Degrees and courses are defined by each institution rather than against a shared standard. Equivalent knowledge can be divided, named and assessed differently across programmes.</p>
+            <p>Without a common reference, it is difficult to compare what different qualifications represent. This makes credentials less transparent to institutions, employers and learners and limits academic mobility.</p>
+          </section>
+
+          <section id="technological-change" aria-labelledby="technological-change-title">
+            <h2 id="technological-change-title">5. Education in a time of accelerating technological change</h2>
+            <p>University programmes require coordination and review, which protects their quality but also makes them slow to change. In fields where required knowledge evolves quickly, this creates a persistent gap between what education provides and what professional work demands.</p>
+            <p>Recent advances in AI are accelerating technological change. Keeping up with the knowledge needed to understand that change will become increasingly difficult as this acceleration continues. Education therefore needs to evolve far more rapidly than it does today.</p>
+          </section>
+
+        </article>
+      </section>
+    </main>
+  </div>
+  {{ template "shell-scripts" }}
+</body>
+</html>
+{{- end }}

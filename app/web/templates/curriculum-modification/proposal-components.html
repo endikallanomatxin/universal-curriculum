@@ -1,0 +1,16 @@
+{{ define "proposal-dependency-change" }}
+  <strong class="proposal-change__subject proposal-change__dependency">
+    <span>{{ if .PrerequisiteName }}{{ .PrerequisiteName }}{{ else }}Prerequisite unit{{ end }}</span>
+    <span class="proposal-change__dependency-direction" aria-label="{{ if eq .Kind "remove_dependency" }}no longer required by{{ else }}required by{{ end }}">
+      <span class="material-symbols-rounded" aria-hidden="true">trending_flat</span>
+      {{ if eq .Kind "remove_dependency" }}<span class="material-symbols-rounded proposal-change__dependency-remove" aria-hidden="true">close</span>{{ end }}
+    </span>
+    <span>{{ if .UnitName }}{{ .UnitName }}{{ else }}Dependent unit{{ end }}</span>
+  </strong>
+{{ end }}
+
+{{ define "proposal-metadata-save-status" -}}
+<span class="autosave-status proposal-metadata-save-status {{ if .Error }}is-error{{ end }}" id="proposal-metadata-save-status" role="status" aria-live="polite">
+  {{ template "autosave-status-content" . }}
+</span>
+{{- end }}
