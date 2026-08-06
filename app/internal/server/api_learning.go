@@ -346,6 +346,8 @@ func (server *Server) writeAPILearningPathError(writer http.ResponseWriter, err 
 		writeAPIError(writer, http.StatusNotFound, "learning_path_not_found", "The learning path was not found.", nil)
 	case errors.Is(err, services.ErrLearningPathNameRequired):
 		writeAPIError(writer, http.StatusBadRequest, "validation_failed", "The request is invalid.", map[string]string{"name": "is required"})
+	case errors.Is(err, services.ErrLearningPathNameTooLong):
+		writeAPIError(writer, http.StatusBadRequest, "validation_failed", "The request is invalid.", map[string]string{"name": "must not exceed 200 characters"})
 	case errors.Is(err, services.ErrLearningPathUnitsRequired):
 		writeAPIError(writer, http.StatusBadRequest, "validation_failed", "The request is invalid.", map[string]string{"target_unit_ids": "must contain at least one current unit"})
 	case errors.Is(err, services.ErrUnitNotFound):

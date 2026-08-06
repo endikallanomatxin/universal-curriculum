@@ -64,48 +64,57 @@ func Setup() (*Server, error) {
 
 func (server *Server) routes() http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /api", server.apiInfo)
-	mux.HandleFunc("GET /api/{$}", server.apiInfo)
-	mux.HandleFunc("POST /api", server.apiNotFound)
-	mux.HandleFunc("PUT /api", server.apiNotFound)
-	mux.HandleFunc("DELETE /api", server.apiNotFound)
-	mux.HandleFunc("PATCH /api", server.apiNotFound)
-	mux.HandleFunc("OPTIONS /api", server.apiNotFound)
-	mux.HandleFunc("GET /api/openapi.yaml", server.apiOpenAPI)
-	mux.HandleFunc("GET /api/curriculum", server.apiGetCurriculum)
-	mux.HandleFunc("GET /api/units", server.apiListUnits)
-	mux.HandleFunc("GET /api/units/{unitId}", server.apiGetUnit)
-	mux.HandleFunc("GET /api/curriculum/proposals", server.apiListAcceptedProposals)
-	mux.HandleFunc("GET /api/curriculum/proposals/{proposalId}", server.apiGetAcceptedProposal)
-	mux.Handle("GET /api/learning-paths", server.requireAPIToken(http.HandlerFunc(server.apiListLearningPaths)))
-	mux.Handle("POST /api/learning-paths", server.requireAPIToken(http.HandlerFunc(server.apiCreateLearningPath)))
-	mux.Handle("GET /api/learning-paths/{pathId}", server.requireAPIToken(http.HandlerFunc(server.apiGetLearningPath)))
-	mux.Handle("PUT /api/learning-paths/{pathId}", server.requireAPIToken(http.HandlerFunc(server.apiUpdateLearningPath)))
-	mux.Handle("DELETE /api/learning-paths/{pathId}", server.requireAPIToken(http.HandlerFunc(server.apiDeleteLearningPath)))
-	mux.Handle("GET /api/recommendations", server.requireAPIToken(http.HandlerFunc(server.apiListRecommendations)))
-	mux.Handle("GET /api/progress", server.requireAPIToken(http.HandlerFunc(server.apiGetProgress)))
-	mux.Handle("PUT /api/progress/{unitId}", server.requireAPIToken(http.HandlerFunc(server.apiSetProgress)))
-	mux.Handle("GET /api/proposals", server.requireAPIAdmin(http.HandlerFunc(server.apiListProposals)))
-	mux.Handle("POST /api/proposals", server.requireAPIAdmin(http.HandlerFunc(server.apiCreateProposal)))
-	mux.Handle("GET /api/proposals/{proposalId}", server.requireAPIAdmin(http.HandlerFunc(server.apiGetProposal)))
-	mux.Handle("PUT /api/proposals/{proposalId}", server.requireAPIAdmin(http.HandlerFunc(server.apiUpdateProposal)))
-	mux.Handle("DELETE /api/proposals/{proposalId}", server.requireAPIAdmin(http.HandlerFunc(server.apiDeleteProposal)))
-	mux.Handle("POST /api/proposals/{proposalId}/units", server.requireAPIAdmin(http.HandlerFunc(server.apiCreateProposalUnit)))
-	mux.Handle("PUT /api/proposals/{proposalId}/units/{unitId}", server.requireAPIAdmin(http.HandlerFunc(server.apiUpdateProposalUnit)))
-	mux.Handle("DELETE /api/proposals/{proposalId}/units/{unitId}", server.requireAPIAdmin(http.HandlerFunc(server.apiDeleteProposalUnit)))
-	mux.Handle("POST /api/proposals/{proposalId}/dependencies", server.requireAPIAdmin(http.HandlerFunc(server.apiAddProposalDependency)))
-	mux.Handle("DELETE /api/proposals/{proposalId}/dependencies", server.requireAPIAdmin(http.HandlerFunc(server.apiRemoveProposalDependency)))
-	mux.Handle("POST /api/proposals/{proposalId}/recognitions", server.requireAPIAdmin(http.HandlerFunc(server.apiAddProposalRecognition)))
-	mux.Handle("DELETE /api/proposals/{proposalId}/changes/{changeId}", server.requireAPIAdmin(http.HandlerFunc(server.apiDeleteProposalChange)))
-	mux.Handle("GET /api/proposals/{proposalId}/rebase", server.requireAPIAdmin(http.HandlerFunc(server.apiGetProposalRebase)))
-	mux.Handle("POST /api/proposals/{proposalId}/rebase", server.requireAPIAdmin(http.HandlerFunc(server.apiResolveProposalRebase)))
-	mux.Handle("POST /api/proposals/{proposalId}/publish", server.requireAPIAdmin(http.HandlerFunc(server.apiPublishProposal)))
-	mux.HandleFunc("GET /api/{path...}", server.apiNotFound)
-	mux.HandleFunc("POST /api/{path...}", server.apiNotFound)
-	mux.HandleFunc("PUT /api/{path...}", server.apiNotFound)
-	mux.HandleFunc("DELETE /api/{path...}", server.apiNotFound)
-	mux.HandleFunc("PATCH /api/{path...}", server.apiNotFound)
-	mux.HandleFunc("OPTIONS /api/{path...}", server.apiNotFound)
+	registerAPIRoute(mux, "/api", map[string]http.Handler{http.MethodGet: http.HandlerFunc(server.apiInfo)})
+	registerAPIRoute(mux, "/api/{$}", map[string]http.Handler{http.MethodGet: http.HandlerFunc(server.apiInfo)})
+	registerAPIRoute(mux, "/api/openapi.yaml", map[string]http.Handler{http.MethodGet: http.HandlerFunc(server.apiOpenAPI)})
+	registerAPIRoute(mux, "/api/curriculum", map[string]http.Handler{http.MethodGet: http.HandlerFunc(server.apiGetCurriculum)})
+	registerAPIRoute(mux, "/api/units", map[string]http.Handler{http.MethodGet: http.HandlerFunc(server.apiListUnits)})
+	registerAPIRoute(mux, "/api/units/{unitId}", map[string]http.Handler{http.MethodGet: http.HandlerFunc(server.apiGetUnit)})
+	registerAPIRoute(mux, "/api/curriculum/proposals", map[string]http.Handler{http.MethodGet: http.HandlerFunc(server.apiListAcceptedProposals)})
+	registerAPIRoute(mux, "/api/curriculum/proposals/{proposalId}", map[string]http.Handler{http.MethodGet: http.HandlerFunc(server.apiGetAcceptedProposal)})
+	registerAPIRoute(mux, "/api/learning-paths", map[string]http.Handler{
+		http.MethodGet:  server.requireAPIToken(http.HandlerFunc(server.apiListLearningPaths)),
+		http.MethodPost: server.requireAPIToken(http.HandlerFunc(server.apiCreateLearningPath)),
+	})
+	registerAPIRoute(mux, "/api/learning-paths/{pathId}", map[string]http.Handler{
+		http.MethodGet:    server.requireAPIToken(http.HandlerFunc(server.apiGetLearningPath)),
+		http.MethodPut:    server.requireAPIToken(http.HandlerFunc(server.apiUpdateLearningPath)),
+		http.MethodDelete: server.requireAPIToken(http.HandlerFunc(server.apiDeleteLearningPath)),
+	})
+	registerAPIRoute(mux, "/api/recommendations", map[string]http.Handler{http.MethodGet: server.requireAPIToken(http.HandlerFunc(server.apiListRecommendations))})
+	registerAPIRoute(mux, "/api/progress", map[string]http.Handler{http.MethodGet: server.requireAPIToken(http.HandlerFunc(server.apiGetProgress))})
+	registerAPIRoute(mux, "/api/progress/{unitId}", map[string]http.Handler{http.MethodPut: server.requireAPIToken(http.HandlerFunc(server.apiSetProgress))})
+	registerAPIRoute(mux, "/api/proposals", map[string]http.Handler{
+		http.MethodGet:  server.requireAPIAdmin(http.HandlerFunc(server.apiListProposals)),
+		http.MethodPost: server.requireAPIAdmin(http.HandlerFunc(server.apiCreateProposal)),
+	})
+	registerAPIRoute(mux, "/api/proposals/{proposalId}", map[string]http.Handler{
+		http.MethodGet:    server.requireAPIAdmin(http.HandlerFunc(server.apiGetProposal)),
+		http.MethodPut:    server.requireAPIAdmin(http.HandlerFunc(server.apiUpdateProposal)),
+		http.MethodDelete: server.requireAPIAdmin(http.HandlerFunc(server.apiDeleteProposal)),
+	})
+	registerAPIRoute(mux, "/api/proposals/{proposalId}/units", map[string]http.Handler{http.MethodPost: server.requireAPIAdmin(http.HandlerFunc(server.apiCreateProposalUnit))})
+	registerAPIRoute(mux, "/api/proposals/{proposalId}/units/{unitId}", map[string]http.Handler{
+		http.MethodPut:    server.requireAPIAdmin(http.HandlerFunc(server.apiUpdateProposalUnit)),
+		http.MethodDelete: server.requireAPIAdmin(http.HandlerFunc(server.apiDeleteProposalUnit)),
+	})
+	registerAPIRoute(mux, "/api/proposals/{proposalId}/dependencies", map[string]http.Handler{
+		http.MethodPost:   server.requireAPIAdmin(http.HandlerFunc(server.apiAddProposalDependency)),
+		http.MethodDelete: server.requireAPIAdmin(http.HandlerFunc(server.apiRemoveProposalDependency)),
+	})
+	registerAPIRoute(mux, "/api/proposals/{proposalId}/recognitions", map[string]http.Handler{http.MethodPost: server.requireAPIAdmin(http.HandlerFunc(server.apiAddProposalRecognition))})
+	registerAPIRoute(mux, "/api/proposals/{proposalId}/changes/{changeId}", map[string]http.Handler{http.MethodDelete: server.requireAPIAdmin(http.HandlerFunc(server.apiDeleteProposalChange))})
+	registerAPIRoute(mux, "/api/proposals/{proposalId}/rebase", map[string]http.Handler{
+		http.MethodGet:  server.requireAPIAdmin(http.HandlerFunc(server.apiGetProposalRebase)),
+		http.MethodPost: server.requireAPIAdmin(http.HandlerFunc(server.apiResolveProposalRebase)),
+	})
+	registerAPIRoute(mux, "/api/proposals/{proposalId}/publish", map[string]http.Handler{http.MethodPost: server.requireAPIAdmin(http.HandlerFunc(server.apiPublishProposal))})
+	for _, method := range apiRequestMethods {
+		if method == http.MethodHead {
+			continue
+		}
+		mux.HandleFunc(method+" /api/{path...}", server.apiNotFound)
+	}
 	mux.HandleFunc("GET /health", server.health)
 	mux.HandleFunc("GET /", server.index)
 	mux.HandleFunc("GET /about", server.about)

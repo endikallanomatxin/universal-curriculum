@@ -38,6 +38,23 @@ func TestExperimentalAPIEndToEnd(t *testing.T) {
 	if rawTokenRows != 0 {
 		t.Fatal("raw API token was persisted")
 	}
+	if _, err := database.Exec(`
+		CREATE FUNCTION reject_api_token_last_used_update() RETURNS trigger
+		LANGUAGE plpgsql AS $$
+		BEGIN
+			RAISE EXCEPTION 'last_used_at unavailable';
+		END;
+		$$
+	`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.Exec(`
+		CREATE TRIGGER api_token_last_used_update_fails
+		BEFORE UPDATE OF last_used_at ON api_tokens
+		FOR EACH ROW EXECUTE FUNCTION reject_api_token_last_used_update()
+	`); err != nil {
+		t.Fatal(err)
+	}
 
 	application := (&Server{Database: database}).routes()
 	proposalResponse := apiIntegrationRequest(t, application, token.Token, http.MethodPost, "/api/proposals", map[string]any{

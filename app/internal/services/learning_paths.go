@@ -13,8 +13,11 @@ import (
 var (
 	ErrLearningPathNotFound      = errors.New("learning path not found")
 	ErrLearningPathNameRequired  = errors.New("learning path name is required")
+	ErrLearningPathNameTooLong   = errors.New("learning path name must not exceed 200 characters")
 	ErrLearningPathUnitsRequired = errors.New("learning path requires at least one target unit")
 )
+
+const MaximumLearningPathNameLength = 200
 
 func CreateLearningPath(database *sql.DB, userID int64, name string, unitIDs []int64) (*models.LearningPath, error) {
 	path, unitIDs, err := validatedLearningPath(database, userID, 0, name, unitIDs)
@@ -73,6 +76,9 @@ func validatedLearningPath(
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, nil, ErrLearningPathNameRequired
+	}
+	if len([]rune(name)) > MaximumLearningPathNameLength {
+		return nil, nil, ErrLearningPathNameTooLong
 	}
 	seen := make(map[int64]bool, len(unitIDs))
 	validated := make([]int64, 0, len(unitIDs))

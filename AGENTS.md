@@ -65,6 +65,14 @@ Run from `app`:
 go test ./...
 ```
 
+Run the complete PostgreSQL integration suite from the repository root. This
+provides `TEST_DATABASE_URL`; running the same Go tests without it skips the
+database-backed cases:
+
+```bash
+podman compose -f compose.dev.yaml --profile test run --rm integration-tests
+```
+
 After changing migrations, also run from the repository root:
 
 ```bash

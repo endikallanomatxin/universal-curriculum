@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"universal-curriculum/internal/models"
 )
@@ -111,14 +110,12 @@ func AuthenticateAPIToken(database *sql.DB, raw string) (*models.User, error) {
 		return nil, fmt.Errorf("authenticate API token: %w", err)
 	}
 	user.Alias = nullStringPointer(alias)
-	if _, err := database.Exec(`
+	_, _ = database.Exec(`
 		UPDATE api_tokens
-		SET last_used_at = NOW()
+		SET last_used_at = clock_timestamp()
 		WHERE token_hash = $1 AND revoked_at IS NULL
-		  AND (last_used_at IS NULL OR last_used_at < $2)
-	`, hashAPIToken(raw), time.Now().Add(-15*time.Minute)); err != nil {
-		return nil, fmt.Errorf("record API token use: %w", err)
-	}
+		  AND (last_used_at IS NULL OR last_used_at < clock_timestamp() - INTERVAL '15 minutes')
+	`, hashAPIToken(raw))
 	return &user, nil
 }
 

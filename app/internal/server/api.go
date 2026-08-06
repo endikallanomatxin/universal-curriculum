@@ -23,6 +23,18 @@ const (
 	apiRequestLimit = 1 << 20
 )
 
+var apiRequestMethods = []string{
+	http.MethodGet,
+	http.MethodHead,
+	http.MethodPost,
+	http.MethodPut,
+	http.MethodDelete,
+	http.MethodPatch,
+	http.MethodOptions,
+	http.MethodConnect,
+	http.MethodTrace,
+}
+
 // openAPIContract is a generated delivery copy of docs/openapi.yaml.
 //
 //go:embed openapi.yaml
@@ -63,13 +75,38 @@ func (server *Server) apiOpenAPI(writer http.ResponseWriter, _ *http.Request) {
 	_, _ = writer.Write(openAPIContract)
 }
 
-func (server *Server) apiNotFound(writer http.ResponseWriter, request *http.Request) {
-	if request.Method != http.MethodGet && request.Method != http.MethodPost &&
-		request.Method != http.MethodPut && request.Method != http.MethodDelete {
-		writeAPIError(writer, http.StatusMethodNotAllowed, "method_not_allowed", "The method is not supported.", nil)
-		return
-	}
+func (server *Server) apiNotFound(writer http.ResponseWriter, _ *http.Request) {
 	writeAPIError(writer, http.StatusNotFound, "not_found", "The API resource was not found.", nil)
+}
+
+func registerAPIRoute(mux *http.ServeMux, path string, handlers map[string]http.Handler) {
+	allowed := make([]string, 0, len(handlers)+1)
+	for _, method := range apiRequestMethods {
+		handler := handlers[method]
+		if handler != nil {
+			mux.Handle(method+" "+path, handler)
+			allowed = append(allowed, method)
+			if method == http.MethodGet {
+				allowed = append(allowed, http.MethodHead)
+			}
+			continue
+		}
+		if method == http.MethodHead && handlers[http.MethodGet] != nil {
+			continue
+		}
+	}
+
+	allow := strings.Join(allowed, ", ")
+	methodNotAllowed := http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		writer.Header().Set("Allow", allow)
+		writeAPIError(writer, http.StatusMethodNotAllowed, "method_not_allowed", "The method is not supported.", nil)
+	})
+	for _, method := range apiRequestMethods {
+		if handlers[method] != nil || method == http.MethodHead && handlers[http.MethodGet] != nil {
+			continue
+		}
+		mux.Handle(method+" "+path, methodNotAllowed)
+	}
 }
 
 func (server *Server) requireAPIToken(next http.Handler) http.Handler {

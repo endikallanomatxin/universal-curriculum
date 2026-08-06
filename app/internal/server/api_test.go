@@ -57,13 +57,33 @@ func TestAPIRejectsUnknownAndRepeatedQueryParameters(t *testing.T) {
 }
 
 func TestUnsupportedAPIMethodReturnsJSON(t *testing.T) {
-	request := httptest.NewRequest(http.MethodPatch, "/api/units", nil)
+	application := (&Server{}).routes()
+	for _, test := range []struct {
+		method string
+		target string
+		allow  string
+	}{
+		{http.MethodPost, "/api/units", "GET, HEAD"},
+		{http.MethodPatch, "/api/units", "GET, HEAD"},
+		{http.MethodTrace, "/api/units", "GET, HEAD"},
+		{http.MethodHead, "/api/progress/1", "PUT"},
+	} {
+		request := httptest.NewRequest(test.method, test.target, nil)
+		response := httptest.NewRecorder()
+		application.ServeHTTP(response, request)
+		if response.Code != http.StatusMethodNotAllowed ||
+			response.Header().Get("Allow") != test.allow ||
+			response.Header().Get("Content-Type") != "application/json; charset=utf-8" ||
+			!strings.Contains(response.Body.String(), `"code":"method_not_allowed"`) {
+			t.Fatalf("unsupported API method = %d, allow %q, content type %q: %s", response.Code, response.Header().Get("Allow"), response.Header().Get("Content-Type"), response.Body.String())
+		}
+	}
+
+	request := httptest.NewRequest(http.MethodPost, "/api/unknown", nil)
 	response := httptest.NewRecorder()
-	(&Server{}).routes().ServeHTTP(response, request)
-	if response.Code != http.StatusMethodNotAllowed ||
-		response.Header().Get("Content-Type") != "application/json; charset=utf-8" ||
-		!strings.Contains(response.Body.String(), `"code":"method_not_allowed"`) {
-		t.Fatalf("unsupported API method = %d %q %s", response.Code, response.Header().Get("Content-Type"), response.Body.String())
+	application.ServeHTTP(response, request)
+	if response.Code != http.StatusNotFound || !strings.Contains(response.Body.String(), `"code":"not_found"`) {
+		t.Fatalf("unknown API resource = %d %s", response.Code, response.Body.String())
 	}
 }
 

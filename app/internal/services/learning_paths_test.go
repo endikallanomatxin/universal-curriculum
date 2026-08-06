@@ -1,10 +1,21 @@
 package services
 
 import (
+	"errors"
+	"strings"
 	"testing"
 
 	"universal-curriculum/internal/models"
 )
+
+func TestLearningPathNameLengthValidationPrecedesPersistence(t *testing.T) {
+	_, err := CreateLearningPath(
+		nil, 1, strings.Repeat("a", MaximumLearningPathNameLength+1), []int64{1},
+	)
+	if !errors.Is(err, ErrLearningPathNameTooLong) {
+		t.Fatalf("long learning path name error = %v", err)
+	}
+}
 
 func TestCurriculumPathSubgraphContainsTargetsAndEveryPrerequisite(t *testing.T) {
 	graph := &models.CurriculumGraph{

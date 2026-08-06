@@ -62,6 +62,13 @@ go build ./cmd/server
 go build ./cmd/migrate
 ```
 
+Run the complete PostgreSQL integration suite, including the API workflow, from
+the repository root:
+
+```bash
+podman compose -f compose.dev.yaml --profile test run --rm integration-tests
+```
+
 Run PostgreSQL migration tests from the repository root:
 
 ```bash

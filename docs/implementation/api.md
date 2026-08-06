@@ -58,3 +58,7 @@ API handlers own JSON parsing, authorization, resource representation and HTTP
 status selection. They call the existing services for coordinated curriculum
 and learning workflows. Public one-to-one reads and token persistence may call
 the database package directly.
+
+The API's PostgreSQL workflow is exercised by the Compose `integration-tests`
+service documented in the repository README. A plain `go test ./...` without
+`TEST_DATABASE_URL` intentionally skips database-backed integration cases.

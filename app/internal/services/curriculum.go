@@ -13,17 +13,26 @@ import (
 var (
 	ErrUnitNotFound               = errors.New("curriculum unit not found")
 	ErrUnitNameRequired           = errors.New("unit name is required")
+	ErrUnitNameTooLong            = errors.New("unit name must not exceed 200 characters")
 	ErrUnitContentRequired        = errors.New("unit content is required")
 	ErrDependencyExists           = errors.New("unit dependency already exists")
 	ErrDependencyNotFound         = errors.New("unit dependency not found")
 	ErrDependencyCycle            = errors.New("unit dependency creates a cycle")
 	ErrProposalNotFound           = errors.New("draft curriculum proposal not found")
 	ErrProposalTitleRequired      = errors.New("proposal title is required")
+	ErrProposalTitleTooLong       = errors.New("proposal title must not exceed 200 characters")
 	ErrProposalRationaleRequired  = errors.New("proposal rationale is required")
+	ErrProposalRationaleTooLong   = errors.New("proposal rationale must not exceed 1000 characters")
 	ErrProposalEmpty              = errors.New("curriculum proposal has no changes")
 	ErrProposalOutdated           = errors.New("curriculum proposal is not based on the current curriculum")
 	ErrRecognitionSourcesRequired = errors.New("recognition requires at least one source")
 	ErrRecognitionTargetsRequired = errors.New("recognition requires at least one target")
+)
+
+const (
+	MaximumUnitNameLength          = 200
+	MaximumProposalTitleLength     = 200
+	MaximumProposalRationaleLength = 1000
 )
 
 type UnitIsPrerequisiteError struct{ DependentNames []string }
@@ -129,11 +138,11 @@ func DeleteCurriculumProposal(database *sql.DB, authorID, proposalID int64) erro
 }
 
 func CreateCurriculumUnit(database *sql.DB, authorID, proposalID int64, name, content string) (*models.Unit, error) {
-	name = strings.TrimSpace(name)
-	content = strings.TrimSpace(content)
-	if name == "" {
-		return nil, ErrUnitNameRequired
+	name, err := validateUnitName(name)
+	if err != nil {
+		return nil, err
 	}
+	content = strings.TrimSpace(content)
 	if content == "" {
 		return nil, ErrUnitContentRequired
 	}
@@ -164,9 +173,9 @@ func CreateCurriculumUnit(database *sql.DB, authorID, proposalID int64, name, co
 }
 
 func UpdateCurriculumUnit(database *sql.DB, authorID, proposalID, unitID int64, name string) error {
-	name = strings.TrimSpace(name)
-	if name == "" {
-		return ErrUnitNameRequired
+	name, err := validateUnitName(name)
+	if err != nil {
+		return err
 	}
 	if err := EnsureCurriculumProposalReady(database, authorID, proposalID); err != nil {
 		return err
@@ -245,11 +254,11 @@ func UpdateCurriculumUnitContent(database *sql.DB, authorID, proposalID, unitID 
 func UpdateCurriculumUnitAndContent(
 	database *sql.DB, authorID, proposalID, unitID int64, name, content string,
 ) error {
-	name = strings.TrimSpace(name)
-	content = strings.TrimSpace(content)
-	if name == "" {
-		return ErrUnitNameRequired
+	name, err := validateUnitName(name)
+	if err != nil {
+		return err
 	}
+	content = strings.TrimSpace(content)
 	if content == "" {
 		return ErrUnitContentRequired
 	}
@@ -900,10 +909,27 @@ func validateProposalMetadata(title, rationale string) (string, string, error) {
 	if title == "" {
 		return "", "", ErrProposalTitleRequired
 	}
+	if len([]rune(title)) > MaximumProposalTitleLength {
+		return "", "", ErrProposalTitleTooLong
+	}
 	if rationale == "" {
 		return "", "", ErrProposalRationaleRequired
 	}
+	if len([]rune(rationale)) > MaximumProposalRationaleLength {
+		return "", "", ErrProposalRationaleTooLong
+	}
 	return title, rationale, nil
+}
+
+func validateUnitName(name string) (string, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return "", ErrUnitNameRequired
+	}
+	if len([]rune(name)) > MaximumUnitNameLength {
+		return "", ErrUnitNameTooLong
+	}
+	return name, nil
 }
 
 func replaceUnitProposalChange(database *sql.DB, authorID, proposalID, unitID int64, kind string, change *models.CurriculumProposalChange) error {
