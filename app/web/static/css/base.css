@@ -80,6 +80,10 @@ button {
   cursor: pointer;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 :focus-visible {
   outline: 0.2rem solid var(--color-ink-strong);
   outline-offset: 0.2rem;

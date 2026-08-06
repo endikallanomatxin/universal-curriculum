@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -24,6 +25,9 @@ type Server struct {
 	ObjectStore services.ObjectStore
 	EmailSender services.EmailSender
 	Handler     http.Handler
+
+	accountAPITokenFlashMu sync.Mutex
+	accountAPITokenFlashes map[int64]accountAPITokenFlash
 }
 
 func Setup() (*Server, error) {

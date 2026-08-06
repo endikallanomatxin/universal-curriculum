@@ -39,7 +39,6 @@ type APIToken struct {
 	Prefix     string
 	Token      string
 	LastUsedAt *time.Time
-	RevokedAt  *time.Time
 	CreatedAt  time.Time
 }
 

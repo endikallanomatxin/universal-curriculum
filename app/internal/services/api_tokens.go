@@ -29,11 +29,11 @@ func CreateAPIToken(database *sql.DB, userID int64, name string) (*models.APITok
 }
 
 func RevokeAPIToken(database *sql.DB, userID, tokenID int64) error {
-	revoked, err := db.RevokeAPIToken(database, userID, tokenID)
+	deleted, err := db.DeleteAPIToken(database, userID, tokenID)
 	if err != nil {
 		return err
 	}
-	if !revoked {
+	if !deleted {
 		return ErrAPITokenNotFound
 	}
 	return nil

@@ -96,6 +96,55 @@ func TestApplicationNavigationRespectsAdminPermission(t *testing.T) {
 	}
 }
 
+func TestAccountAPITokenCreationUsesNestedPanel(t *testing.T) {
+	templates := loadTestTemplates(t)
+	render := func(extra map[string]any) string {
+		data := map[string]any{
+			"User":      &models.User{FullName: "Example User", Email: "user@example.com"},
+			"CSRFToken": "csrf-token",
+		}
+		for key, value := range extra {
+			data[key] = value
+		}
+		return renderTemplate(t, templates, "account.html", data)
+	}
+
+	closed := render(nil)
+	if !strings.Contains(closed, `aria-expanded="false"`) ||
+		!strings.Contains(closed, `data-panel-breadcrumb="New API token" hidden`) {
+		t.Fatal("API token panel is not initially closed")
+	}
+
+	output := render(map[string]any{"TokenError": "token name is required"})
+
+	for _, fragment := range []string{
+		`data-open-panel="new-api-token-panel"`,
+		`aria-controls="new-api-token-panel"`,
+		`aria-expanded="true"`,
+		`id="new-api-token-panel"`,
+		`data-api-token-panel data-nested-panel`,
+		`data-close-panel aria-label="Close API token panel"`,
+		`name="csrf_token" value="csrf-token"`,
+		`role="alert">token name is required`,
+	} {
+		if !strings.Contains(output, fragment) {
+			t.Errorf("API token panel does not contain %q", fragment)
+		}
+	}
+	if strings.Contains(output, `data-panel-breadcrumb="New API token" hidden`) {
+		t.Fatal("API token panel remains hidden after validation fails")
+	}
+
+	created := render(map[string]any{"NewAPIToken": "uc_api_secret"})
+	if !strings.Contains(created, `API token created`) ||
+		!strings.Contains(created, `role="status"`) ||
+		!strings.Contains(created, `data-copy-api-token`) ||
+		!strings.Contains(created, `data-api-token-form hidden`) ||
+		!strings.Contains(created, `uc_api_secret`) {
+		t.Fatal("new API token is not shown with copy controls in the open panel")
+	}
+}
+
 func TestLearningPathPanelHasCloseNavigation(t *testing.T) {
 	templates := loadTestTemplates(t)
 	output := renderTemplate(t, templates, "learn.html", map[string]any{

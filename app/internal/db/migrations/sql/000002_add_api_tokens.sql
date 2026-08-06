@@ -8,7 +8,6 @@ CREATE TABLE api_tokens (
     token_hash TEXT NOT NULL UNIQUE CHECK (char_length(token_hash) = 64),
     token_prefix TEXT NOT NULL CHECK (token_prefix LIKE 'uc_api_%'),
     last_used_at TIMESTAMPTZ,
-    revoked_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

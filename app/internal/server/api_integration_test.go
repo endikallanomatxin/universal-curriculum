@@ -96,6 +96,13 @@ func TestExperimentalAPIEndToEnd(t *testing.T) {
 	if err := services.RevokeAPIToken(database, user.ID, token.ID); err != nil {
 		t.Fatal(err)
 	}
+	var remainingTokens int
+	if err := database.QueryRow(`SELECT count(*) FROM api_tokens WHERE id = $1`, token.ID).Scan(&remainingTokens); err != nil {
+		t.Fatal(err)
+	}
+	if remainingTokens != 0 {
+		t.Fatal("revoked API token was not deleted")
+	}
 	apiIntegrationRequest(t, application, token.Token, http.MethodGet, "/api/progress", nil, http.StatusUnauthorized)
 }
 

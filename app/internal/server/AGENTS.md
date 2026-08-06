@@ -5,6 +5,9 @@
 - Direct database calls are acceptable only for simple one-to-one persistence.
 - Use services for business rules, coordinated operations and transactions.
 - Parse and validate input before changing domain state.
+- Redirect successful browser form submissions to a GET. When the following
+  page must reveal one-time data, keep it in short-lived server-side state
+  rather than a URL or client-readable cookie.
 - Prefer server-rendered HTML and use HTMX for fragment updates.
 - Return explicit HTTP errors without terminating the server.
 - Web handlers authenticate through the session middleware and require CSRF

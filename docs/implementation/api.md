@@ -48,9 +48,9 @@ Cookie sessions and CSRF remain the web interface's authentication mechanism.
 They do not authenticate API requests. Likewise bearer tokens do not bypass
 CSRF on HTML form routes. CORS headers are not emitted in this release.
 
-Revoked tokens remain as account-visible audit metadata but can no longer
-authenticate. `last_used_at` is updated at most once every fifteen minutes to
-avoid turning every API read into a database write.
+Revoking a token deletes its credential row immediately; historical token
+metadata is not retained in this table. `last_used_at` is updated at most once
+every fifteen minutes to avoid turning every API read into a database write.
 
 ## Adapter boundary
 

@@ -4,11 +4,20 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"time"
 
 	"universal-curriculum/internal/db"
 	"universal-curriculum/internal/models"
 	"universal-curriculum/internal/services"
 )
+
+const accountAPITokenFlashLifetime = 5 * time.Minute
+
+type accountAPITokenFlash struct {
+	NewToken string
+	Error    string
+	Expires  time.Time
+}
 
 type accountPageData struct {
 	userPageData
@@ -18,7 +27,9 @@ type accountPageData struct {
 }
 
 func (server *Server) account(writer http.ResponseWriter, request *http.Request) {
-	server.renderAccount(writer, request, http.StatusOK, "", "")
+	userID, _ := services.SessionUserID(request)
+	flash := server.takeAccountAPITokenFlash(userID)
+	server.renderAccount(writer, request, http.StatusOK, flash.NewToken, flash.Error)
 }
 
 func (server *Server) createAPIToken(writer http.ResponseWriter, request *http.Request) {
@@ -34,7 +45,8 @@ func (server *Server) createAPIToken(writer http.ResponseWriter, request *http.R
 	userID, _ := services.SessionUserID(request)
 	token, err := services.CreateAPIToken(server.Database, userID, request.FormValue("name"))
 	if errors.Is(err, services.ErrAPITokenNameRequired) || errors.Is(err, services.ErrAPITokenNameTooLong) {
-		server.renderAccount(writer, request, http.StatusBadRequest, "", err.Error())
+		server.setAccountAPITokenFlash(userID, accountAPITokenFlash{Error: err.Error()})
+		http.Redirect(writer, request, "/account", http.StatusSeeOther)
 		return
 	}
 	if err != nil {
@@ -42,7 +54,8 @@ func (server *Server) createAPIToken(writer http.ResponseWriter, request *http.R
 		http.Error(writer, "Unable to create API token", http.StatusInternalServerError)
 		return
 	}
-	server.renderAccount(writer, request, http.StatusCreated, token.Token, "")
+	server.setAccountAPITokenFlash(userID, accountAPITokenFlash{NewToken: token.Token})
+	http.Redirect(writer, request, "/account", http.StatusSeeOther)
 }
 
 func (server *Server) revokeAPIToken(writer http.ResponseWriter, request *http.Request) {
@@ -90,4 +103,31 @@ func (server *Server) renderAccount(writer http.ResponseWriter, request *http.Re
 		userPageData: page,
 		APITokens:    tokens, NewAPIToken: rawToken, TokenError: tokenError,
 	})
+}
+
+func (server *Server) setAccountAPITokenFlash(userID int64, flash accountAPITokenFlash) {
+	now := time.Now()
+	server.accountAPITokenFlashMu.Lock()
+	defer server.accountAPITokenFlashMu.Unlock()
+	if server.accountAPITokenFlashes == nil {
+		server.accountAPITokenFlashes = make(map[int64]accountAPITokenFlash)
+	}
+	for existingUserID, existing := range server.accountAPITokenFlashes {
+		if !existing.Expires.After(now) {
+			delete(server.accountAPITokenFlashes, existingUserID)
+		}
+	}
+	flash.Expires = now.Add(accountAPITokenFlashLifetime)
+	server.accountAPITokenFlashes[userID] = flash
+}
+
+func (server *Server) takeAccountAPITokenFlash(userID int64) accountAPITokenFlash {
+	server.accountAPITokenFlashMu.Lock()
+	defer server.accountAPITokenFlashMu.Unlock()
+	flash, ok := server.accountAPITokenFlashes[userID]
+	delete(server.accountAPITokenFlashes, userID)
+	if !ok || !flash.Expires.After(time.Now()) {
+		return accountAPITokenFlash{}
+	}
+	return flash
 }

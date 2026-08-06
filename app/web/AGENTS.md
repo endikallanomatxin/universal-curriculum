@@ -51,6 +51,8 @@
   `hx-target` and `hx-swap` contract. Replace the narrowest stable fragment
   that owns the changed state.
 - Preserve relevant focus, scroll, selection and editor state across swaps.
+- Keep the HTML `hidden` attribute authoritative over component layout rules;
+  hidden controls and panels must never be revealed by a `display` declaration.
 - Verify loading, empty, validation and error states, keyboard operation, and
   narrow-container behavior for changed interactions.
 

@@ -71,35 +71,61 @@
 .account-api {
   border-top: 1px solid var(--color-panel-end);
   display: grid;
-  gap: var(--space-3);
+  gap: 0;
   margin-top: var(--space-5);
   padding-top: var(--space-5);
 }
 
-.account-api__secret,
-.account-api__create {
-  display: grid;
-  gap: var(--space-2);
+.account-api__heading {
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: var(--space-1);
+}
+
+.account-api__heading .secondary-button {
+  flex: 0 0 auto;
+}
+
+.account-api__introduction {
+  color: var(--color-muted);
+  margin: 0;
 }
 
 .account-api__secret {
   background: var(--color-panel-start);
   border-radius: var(--radius-control);
+  display: grid;
+  gap: var(--space-2);
   overflow-wrap: anywhere;
   padding: var(--space-3);
 }
 
-.account-api__create input {
-  border: 1px solid var(--color-panel-end);
-  border-radius: var(--radius-control);
-  padding: 0.75rem;
+.account-api__secret-value {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.account-api__secret-value code {
+  flex: 1 1 16rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.account-api__copy-status {
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  margin: 0;
+  min-height: 1.2em;
 }
 
 .account-api__tokens {
   display: grid;
   gap: var(--space-2);
   list-style: none;
-  margin: 0;
+  margin: var(--space-2) 0 0;
   padding: 0;
 }
 
@@ -111,12 +137,20 @@
 
 .account-api__tokens li {
   align-items: center;
-  border-top: 1px solid var(--color-panel-end);
+  background: color-mix(in srgb, var(--color-ink) 2%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-ink) 8%, transparent);
+  border-radius: var(--radius-surface);
   justify-content: space-between;
-  padding-top: var(--space-2);
+  padding: var(--space-3);
 }
 
 .account-api__tokens li > div {
   align-items: flex-start;
   flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.account-api__tokens code {
+  overflow-wrap: anywhere;
 }

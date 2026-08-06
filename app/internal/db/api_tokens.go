@@ -40,7 +40,7 @@ func CreateAPIToken(database *sql.DB, userID int64, name string) (*models.APITok
 
 func ListAPITokens(database *sql.DB, userID int64) ([]models.APIToken, error) {
 	rows, err := database.Query(`
-		SELECT id, user_id, name, token_prefix, last_used_at, revoked_at, created_at
+		SELECT id, user_id, name, token_prefix, last_used_at, created_at
 		FROM api_tokens
 		WHERE user_id = $1
 		ORDER BY created_at DESC, id DESC
@@ -52,18 +52,15 @@ func ListAPITokens(database *sql.DB, userID int64) ([]models.APIToken, error) {
 	var tokens []models.APIToken
 	for rows.Next() {
 		var token models.APIToken
-		var lastUsedAt, revokedAt sql.NullTime
+		var lastUsedAt sql.NullTime
 		if err := rows.Scan(
 			&token.ID, &token.UserID, &token.Name, &token.Prefix,
-			&lastUsedAt, &revokedAt, &token.CreatedAt,
+			&lastUsedAt, &token.CreatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("scan API token: %w", err)
 		}
 		if lastUsedAt.Valid {
 			token.LastUsedAt = &lastUsedAt.Time
-		}
-		if revokedAt.Valid {
-			token.RevokedAt = &revokedAt.Time
 		}
 		tokens = append(tokens, token)
 	}
@@ -73,14 +70,13 @@ func ListAPITokens(database *sql.DB, userID int64) ([]models.APIToken, error) {
 	return tokens, nil
 }
 
-func RevokeAPIToken(database *sql.DB, userID, tokenID int64) (bool, error) {
+func DeleteAPIToken(database *sql.DB, userID, tokenID int64) (bool, error) {
 	result, err := database.Exec(`
-		UPDATE api_tokens
-		SET revoked_at = NOW()
-		WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL
+		DELETE FROM api_tokens
+		WHERE id = $1 AND user_id = $2
 	`, tokenID, userID)
 	if err != nil {
-		return false, fmt.Errorf("revoke API token: %w", err)
+		return false, fmt.Errorf("delete API token: %w", err)
 	}
 	count, err := result.RowsAffected()
 	return count == 1, err
@@ -98,7 +94,7 @@ func AuthenticateAPIToken(database *sql.DB, raw string) (*models.User, error) {
 		FROM api_tokens token
 		JOIN users ON users.id = token.user_id
 		JOIN local_authentications authentication ON authentication.user_id = users.id
-		WHERE token.token_hash = $1 AND token.revoked_at IS NULL
+		WHERE token.token_hash = $1
 	`, hashAPIToken(raw)).Scan(
 		&user.ID, &user.FullName, &alias, &user.Email,
 		&user.IsAdmin, &user.CreatedAt, &user.UpdatedAt,
@@ -113,7 +109,7 @@ func AuthenticateAPIToken(database *sql.DB, raw string) (*models.User, error) {
 	_, _ = database.Exec(`
 		UPDATE api_tokens
 		SET last_used_at = clock_timestamp()
-		WHERE token_hash = $1 AND revoked_at IS NULL
+		WHERE token_hash = $1
 		  AND (last_used_at IS NULL OR last_used_at < clock_timestamp() - INTERVAL '15 minutes')
 	`, hashAPIToken(raw))
 	return &user, nil
