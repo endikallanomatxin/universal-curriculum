@@ -1,0 +1,27 @@
+{{ define "oauth-authorize.html" -}}
+<!doctype html>
+<html lang="en">
+<head>{{ template "document-head" "Authorize client · Universal Curriculum" }}</head>
+<body>
+  <main class="auth-page">
+    <form class="auth-form" action="/oauth/authorize" method="post">
+      <a class="brand" href="/">universal curriculum</a>
+      <h1>Authorize {{ .ClientName }}</h1>
+      <p>This client will be able to read your learning data and act with your current account permissions. Administrator actions remain subject to server-side authorization.</p>
+      <p><strong>Publishing is consequential.</strong> Only approve clients you trust.</p>
+      <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+      <input type="hidden" name="response_type" value="code">
+      <input type="hidden" name="client_id" value="{{ .ClientID }}">
+      <input type="hidden" name="redirect_uri" value="{{ .RedirectURI }}">
+      <input type="hidden" name="state" value="{{ .State }}">
+      <input type="hidden" name="resource" value="{{ .Resource }}">
+      <input type="hidden" name="scope" value="{{ .Scope }}">
+      <input type="hidden" name="code_challenge" value="{{ .CodeChallenge }}">
+      <input type="hidden" name="code_challenge_method" value="S256">
+      <button class="primary-button" type="submit" name="decision" value="allow">Authorize</button>
+      <button type="submit" name="decision" value="deny">Cancel</button>
+    </form>
+  </main>
+</body>
+</html>
+{{- end }}

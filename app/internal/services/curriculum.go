@@ -508,6 +508,66 @@ func AddCurriculumRecognition(
 	return nil
 }
 
+// EnsureCurriculumRecognition adds a recognition only when the draft does not
+// already contain the same source and target sets. It gives retrying adapters
+// an idempotent application operation without changing the lower-level add
+// semantics used by the web and REST interfaces.
+func EnsureCurriculumRecognition(
+	database *sql.DB,
+	authorID, proposalID int64,
+	sourceUnitIDs, targetUnitIDs []int64,
+) error {
+	sources := uniquePositiveIDs(sourceUnitIDs)
+	targets := uniquePositiveIDs(targetUnitIDs)
+	if len(sources) == 0 {
+		return ErrRecognitionSourcesRequired
+	}
+	if len(targets) == 0 {
+		return ErrRecognitionTargetsRequired
+	}
+	if err := EnsureCurriculumProposalReady(database, authorID, proposalID); err != nil {
+		return err
+	}
+	proposal, err := db.GetCurriculumProposal(database, proposalID)
+	if err != nil {
+		return err
+	}
+	if proposal == nil || proposal.Status != "draft" || !proposal.HasAuthor(authorID) {
+		return ErrProposalNotFound
+	}
+	for _, change := range proposal.Changes {
+		if sameRecognitionUnitIDs(change.Recognition, sources, targets) {
+			return nil
+		}
+	}
+	return AddCurriculumRecognition(database, authorID, proposalID, sources, targets)
+}
+
+func sameRecognitionUnitIDs(recognition *models.Recognition, sourceIDs, targetIDs []int64) bool {
+	if recognition == nil || len(recognition.Sources) != len(sourceIDs) || len(recognition.Targets) != len(targetIDs) {
+		return false
+	}
+	sources := make(map[int64]bool, len(sourceIDs))
+	for _, id := range sourceIDs {
+		sources[id] = true
+	}
+	for _, unit := range recognition.Sources {
+		if !sources[unit.ID] {
+			return false
+		}
+	}
+	targets := make(map[int64]bool, len(targetIDs))
+	for _, id := range targetIDs {
+		targets[id] = true
+	}
+	for _, unit := range recognition.Targets {
+		if !targets[unit.ID] {
+			return false
+		}
+	}
+	return true
+}
+
 func uniquePositiveIDs(ids []int64) []int64 {
 	unique := make([]int64, 0, len(ids))
 	seen := make(map[int64]bool, len(ids))
@@ -561,6 +621,25 @@ func RemoveUnitDependency(database *sql.DB, authorID, proposalID, unitID, prereq
 		return ErrUnitNotFound
 	}
 	return setUnitDependency(database, authorID, proposalID, unitID, prerequisiteID, false)
+}
+
+// SetUnitDependency converges a dependency to the requested state. Repeating
+// the same operation is a successful no-op.
+func SetUnitDependency(
+	database *sql.DB, authorID, proposalID, unitID, prerequisiteID int64, desired bool,
+) error {
+	if desired {
+		err := AddUnitDependency(database, authorID, proposalID, unitID, prerequisiteID)
+		if errors.Is(err, ErrDependencyExists) {
+			return nil
+		}
+		return err
+	}
+	err := RemoveUnitDependency(database, authorID, proposalID, unitID, prerequisiteID)
+	if errors.Is(err, ErrDependencyNotFound) {
+		return nil
+	}
+	return err
 }
 
 func setUnitDependency(database *sql.DB, authorID, proposalID, unitID, prerequisiteID int64, desired bool) error {

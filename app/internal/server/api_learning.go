@@ -174,42 +174,22 @@ func (server *Server) apiListRecommendations(writer http.ResponseWriter, request
 		return
 	}
 	user := apiUser(request)
-	paths, err := db.ListLearningPaths(server.Database, user.ID)
+	recommendationModels, err := services.LearningRecommendations(server.Database, user.ID)
 	if err != nil {
-		log.Printf("API list paths for recommendations: %v", err)
+		log.Printf("API load learning recommendations: %v", err)
 		writeAPIInternalError(writer)
 		return
 	}
-	graph, err := db.GetCurriculumGraph(server.Database)
-	if err != nil {
-		log.Printf("API load curriculum for recommendations: %v", err)
-		writeAPIInternalError(writer)
-		return
-	}
-	completed, err := db.CompletedUnitIDs(server.Database, user.ID)
-	if err != nil {
-		log.Printf("API load progress for recommendations: %v", err)
-		writeAPIInternalError(writer)
-		return
-	}
-	recommendations := make([]apiRecommendation, 0, len(paths))
-	for _, path := range paths {
-		targetIDs := make([]int64, 0, len(path.Units))
-		for _, unit := range path.Units {
-			targetIDs = append(targetIDs, unit.ID)
-		}
-		available, pending := services.AvailableLearningPathUnits(graph, targetIDs, completed)
-		if pending == 0 || len(available) == 0 {
-			continue
-		}
+	recommendations := make([]apiRecommendation, 0, len(recommendationModels))
+	for _, model := range recommendationModels {
 		recommendation := apiRecommendation{
-			LearningPathID: path.ID, LearningPathName: path.Name,
-			Units: make([]apiRecommendedUnit, 0, len(available)),
+			LearningPathID: model.LearningPathID, LearningPathName: model.LearningPathName,
+			Units: make([]apiRecommendedUnit, 0, len(model.Units)),
 		}
-		for _, unit := range available {
+		for _, unit := range model.Units {
 			recommendation.Units = append(recommendation.Units, apiRecommendedUnit{
 				apiUnitSummary: apiUnitSummary{ID: unit.ID, Name: unit.Name, Retired: unit.Retired},
-				Reason:         "all prerequisites are completed",
+				Reason:         unit.Reason,
 			})
 		}
 		recommendations = append(recommendations, recommendation)
@@ -261,29 +241,18 @@ func (server *Server) apiSetProgress(writer http.ResponseWriter, request *http.R
 		writeAPIError(writer, http.StatusBadRequest, "validation_failed", "completed is required", map[string]string{"completed": "is required"})
 		return
 	}
-	unit, err := db.GetUnit(server.Database, unitID)
-	if err != nil {
-		log.Printf("API get unit for progress: %v", err)
-		writeAPIInternalError(writer)
-		return
-	}
-	if unit == nil {
+	user := apiUser(request)
+	status, err := services.SetUnitProgress(server.Database, user.ID, unitID, *input.Completed)
+	if errors.Is(err, services.ErrUnitNotFound) {
 		writeAPIError(writer, http.StatusNotFound, "unit_not_found", "The curriculum unit was not found.", nil)
 		return
 	}
-	user := apiUser(request)
-	if err := db.SetUnitCompleted(server.Database, user.ID, unitID, *input.Completed); err != nil {
+	if err != nil {
 		log.Printf("API set progress: %v", err)
 		writeAPIInternalError(writer)
 		return
 	}
-	statuses, err := db.UnitCompletionStatuses(server.Database, user.ID)
-	if err != nil {
-		log.Printf("API reload progress: %v", err)
-		writeAPIInternalError(writer)
-		return
-	}
-	writeAPIJSON(writer, http.StatusOK, newAPIProgress(unitID, statuses[unitID]))
+	writeAPIJSON(writer, http.StatusOK, newAPIProgress(unitID, status))
 }
 
 func newAPILearningPath(path models.LearningPath) apiLearningPath {

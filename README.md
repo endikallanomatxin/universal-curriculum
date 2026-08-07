@@ -16,7 +16,8 @@ ephemeral in production until asset support is introduced in 0.3.0.
   - `internal/models/`: domain models
   - `internal/db/`: PostgreSQL access and Goose migrations
   - `internal/services/`: business workflows
-  - `internal/server/`: HTTP server, configuration and handlers
+  - `internal/server/`: HTTP server, configuration, web/REST and OAuth handlers
+  - `internal/mcpadapter/`: agent-oriented MCP adapter
   - `web/`: templates and static assets
 - `docs/`: product and deployment documentation
 - `compose.dev.yaml`: local development environment
@@ -100,6 +101,19 @@ curl \
 Tokens inherit the account's current permissions. Their secrets are displayed
 once, so store them securely and revoke unused tokens from the Account page.
 Browser CORS access and token scopes are intentionally deferred.
+
+## MCP for AI clients
+
+Universal Curriculum also exposes an authenticated MCP server at `/mcp` for
+ChatGPT, Codex, Claude and other MCP-compatible clients. MCP is an
+agent-oriented adapter over the same services as the web application and REST
+API; it does not replace `/api` or call back into it.
+
+Clients with configurable headers can use an Account-page personal token as
+`Authorization: Bearer …`. Remote clients can use the advertised OAuth 2.1
+authorization-code flow with PKCE and Client ID Metadata Documents. See
+[`docs/implementation/mcp.md`](docs/implementation/mcp.md) for setup, the
+conceptual tool/resource surface and security limitations.
 
 ## License
 

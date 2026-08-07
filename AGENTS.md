@@ -4,7 +4,7 @@
 
 The Go module lives in `app`. The usual dependency flow is:
 
-`server → services → db → models`
+`web/REST/MCP adapters → services → db → models`
 
 - Handlers own HTTP concerns: authorization, parsing and responses.
 - A handler may call `db` directly for a simple one-to-one persistence
@@ -14,6 +14,9 @@ The Go module lives in `app`. The usual dependency flow is:
 - Database code uses raw PostgreSQL queries.
 - Schema changes use Goose migrations.
 - Read `docs/specification.md` before changing product behaviour.
+- Keep web, REST and MCP as sibling adapters. An adapter must not call another
+  adapter; shared workflows belong in services. MCP details are documented in
+  `docs/implementation/mcp.md`.
 
 ## Repository rules
 

@@ -1,9 +1,7 @@
 package db
 
 import (
-	"crypto/sha256"
 	"database/sql"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
@@ -116,8 +114,7 @@ func AuthenticateAPIToken(database *sql.DB, raw string) (*models.User, error) {
 }
 
 func hashAPIToken(token string) string {
-	sum := sha256.Sum256([]byte(token))
-	return hex.EncodeToString(sum[:])
+	return hashTokenSecret(token)
 }
 
 func validAPIToken(token string) bool {

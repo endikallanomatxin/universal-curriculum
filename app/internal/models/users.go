@@ -50,6 +50,22 @@ type PasswordResetToken struct {
 	ExpiresAt time.Time
 }
 
+type OAuthAuthorizationGrant struct {
+	UserID        int64
+	ClientID      string
+	RedirectURI   string
+	Resource      string
+	Scope         string
+	CodeChallenge string
+}
+
+type OAuthTokenPair struct {
+	AccessToken  string
+	RefreshToken string
+	ExpiresIn    int
+	Scope        string
+}
+
 func (user User) DisplayName() string {
 	if user.Alias != nil {
 		return *user.Alias

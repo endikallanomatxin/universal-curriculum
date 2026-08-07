@@ -14,17 +14,19 @@ import (
 	"time"
 
 	"universal-curriculum/internal/db"
+	"universal-curriculum/internal/mcpadapter"
 	"universal-curriculum/internal/models"
 	"universal-curriculum/internal/services"
 )
 
 type Server struct {
-	Config      Config
-	Database    *sql.DB
-	Templates   *template.Template
-	ObjectStore services.ObjectStore
-	EmailSender services.EmailSender
-	Handler     http.Handler
+	Config       Config
+	Database     *sql.DB
+	Templates    *template.Template
+	ObjectStore  services.ObjectStore
+	EmailSender  services.EmailSender
+	Handler      http.Handler
+	OAuthClients OAuthClientMetadataResolver
 
 	accountAPITokenFlashMu sync.Mutex
 	accountAPITokenFlashes map[int64]accountAPITokenFlash
@@ -68,6 +70,17 @@ func Setup() (*Server, error) {
 
 func (server *Server) routes() http.Handler {
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /.well-known/oauth-protected-resource", server.oauthProtectedResourceMetadata)
+	mux.HandleFunc("GET /.well-known/oauth-protected-resource/mcp", server.oauthProtectedResourceMetadata)
+	mux.HandleFunc("GET /.well-known/oauth-authorization-server", server.oauthAuthorizationServerMetadata)
+	mux.HandleFunc("GET /oauth/authorize", server.oauthAuthorize)
+	mux.HandleFunc("POST /oauth/authorize", server.oauthAuthorize)
+	mux.HandleFunc("POST /oauth/token", server.oauthToken)
+	mux.HandleFunc("POST /oauth/revoke", server.oauthRevoke)
+	mcpHandler := mcpadapter.NewHandler(server.Database, server.Config.AppBaseURL)
+	for _, method := range apiRequestMethods {
+		mux.Handle(method+" /mcp", mcpHandler)
+	}
 	registerAPIRoute(mux, "/api", map[string]http.Handler{http.MethodGet: http.HandlerFunc(server.apiInfo)})
 	registerAPIRoute(mux, "/api/{$}", map[string]http.Handler{http.MethodGet: http.HandlerFunc(server.apiInfo)})
 	registerAPIRoute(mux, "/api/openapi.yaml", map[string]http.Handler{http.MethodGet: http.HandlerFunc(server.apiOpenAPI)})

@@ -11,9 +11,11 @@
 - Prefer server-rendered HTML and use HTMX for fragment updates.
 - Return explicit HTTP errors without terminating the server.
 - Web handlers authenticate through the session middleware and require CSRF
-  tokens for state-changing requests. API handlers follow
+  tokens for state-changing requests. REST handlers follow
   `docs/implementation/api.md`, authenticate only with personal bearer tokens
-  and do not accept cookie sessions.
+  and do not accept cookie sessions. MCP is a sibling adapter documented in
+  `docs/implementation/mcp.md`; this package owns its OAuth discovery,
+  authorization and consent HTTP endpoints.
 - Handler tests should emphasize authorization, parsing and validation, status
   and feedback, and important HTTP or HTMX response contracts. Avoid tests that
   only prove a handler forwards values to an already-covered dependency.
