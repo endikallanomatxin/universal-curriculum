@@ -83,7 +83,9 @@ func newServer(application *adapter) *mcp.Server {
 	application.addResources(server)
 	application.addReadTools(server)
 	application.addLearningTools(server)
-	application.addProposalTools(server)
+	if application.user != nil && application.user.IsAdmin {
+		application.addProposalTools(server)
+	}
 	return server
 }
 

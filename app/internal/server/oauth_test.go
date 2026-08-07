@@ -68,7 +68,7 @@ func TestOAuthAuthorizationRequiresConsentAndPreservesState(t *testing.T) {
 		Config: Config{AppBaseURL: "https://curriculum.example"},
 		OAuthClients: staticOAuthClientResolver{metadata: &OAuthClientMetadata{
 			ClientID: clientID, ClientName: "Example agent", RedirectURIs: []string{redirectURI},
-			TokenEndpointAuthMethod: "none",
+			TokenEndpointAuthMethodsSupported: []string{"none", "private_key_jwt"},
 		}},
 	}
 	templates, err := services.LoadTemplates()
@@ -160,7 +160,7 @@ func TestOAuthAuthorizationCodeFlowWithPostgreSQL(t *testing.T) {
 		Database: database,
 		OAuthClients: staticOAuthClientResolver{metadata: &OAuthClientMetadata{
 			ClientID: clientID, ClientName: "Example agent", RedirectURIs: []string{redirectURI},
-			TokenEndpointAuthMethod: "none",
+			TokenEndpointAuthMethodsSupported: []string{"none"},
 		}},
 	}
 	values := validOAuthAuthorizationValues(clientID, redirectURI)
@@ -232,6 +232,59 @@ func TestOAuthAuthorizationCodeFlowWithPostgreSQL(t *testing.T) {
 	authenticated, err := db.AuthenticateOAuthAccessToken(database, tokenBody.AccessToken, "https://curriculum.example/mcp")
 	if err != nil || authenticated != nil {
 		t.Fatalf("revoked token authentication = %#v, %v", authenticated, err)
+	}
+}
+
+func TestOAuthAuthorizationRequiresPublicClientAuthenticationSupport(t *testing.T) {
+	clientID := "https://chat.example/oauth-client.json"
+	redirectURI := "https://chat.example/oauth/callback"
+	tests := []struct {
+		name     string
+		metadata *OAuthClientMetadata
+		wantOK   bool
+	}{
+		{
+			name: "current CIMD list",
+			metadata: &OAuthClientMetadata{
+				ClientID: clientID, ClientName: "Current client", RedirectURIs: []string{redirectURI},
+				TokenEndpointAuthMethodsSupported: []string{"none", "private_key_jwt"},
+			},
+			wantOK: true,
+		},
+		{
+			name: "legacy singular field",
+			metadata: &OAuthClientMetadata{
+				ClientID: clientID, ClientName: "Legacy client", RedirectURIs: []string{redirectURI},
+				TokenEndpointAuthMethod: "none",
+			},
+			wantOK: true,
+		},
+		{
+			name: "no public method",
+			metadata: &OAuthClientMetadata{
+				ClientID: clientID, ClientName: "Confidential client", RedirectURIs: []string{redirectURI},
+				TokenEndpointAuthMethodsSupported: []string{"private_key_jwt"},
+			},
+		},
+		{
+			name: "missing methods",
+			metadata: &OAuthClientMetadata{
+				ClientID: clientID, ClientName: "Ambiguous client", RedirectURIs: []string{redirectURI},
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			server := &Server{
+				Config:       Config{AppBaseURL: "https://curriculum.example"},
+				OAuthClients: staticOAuthClientResolver{metadata: test.metadata},
+			}
+			request := httptest.NewRequest(http.MethodGet, "/oauth/authorize?"+validOAuthAuthorizationValues(clientID, redirectURI).Encode(), nil)
+			_, err := server.validateOAuthAuthorizationRequest(request)
+			if (err == nil) != test.wantOK {
+				t.Fatalf("validateOAuthAuthorizationRequest() error = %v, want success %t", err, test.wantOK)
+			}
+		})
 	}
 }
 

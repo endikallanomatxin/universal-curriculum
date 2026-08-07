@@ -92,23 +92,30 @@ func TestDiscoveryAdvertisesAgentGuidanceResourcesAndTools(t *testing.T) {
 		`"confirmed"`, `"expected_title"`)
 }
 
-func TestNonAdministratorCannotUseProposalMutation(t *testing.T) {
+func TestNonAdministratorDiscoversOnlyAvailableTools(t *testing.T) {
 	session, closeSession := connectTestMCP(t, &models.User{ID: 9})
 	defer closeSession()
-	result, err := session.CallTool(context.Background(), &mcp.CallToolParams{
-		Name: "create_proposal", Arguments: map[string]any{
-			"title": "Not authorized", "rationale": "Permission is enforced before persistence.",
-		},
-	})
+	result, err := session.ListTools(context.Background(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !result.IsError {
-		t.Fatalf("result = %#v", result)
+	if len(result.Tools) != 10 {
+		t.Fatalf("tool count = %d, want 10", len(result.Tools))
 	}
-	encoded, _ := json.Marshal(result.StructuredContent)
-	if !strings.Contains(string(encoded), `"code":"permission_denied"`) {
-		t.Fatalf("structured error = %s", encoded)
+	for _, tool := range result.Tools {
+		if strings.Contains(tool.Name, "proposal") {
+			t.Errorf("non-administrator discovered %q", tool.Name)
+		}
+	}
+}
+
+func TestProposalHandlersStillEnforceAdministratorPermission(t *testing.T) {
+	application := &adapter{user: &models.User{ID: 9}}
+	result, output, err := application.createProposal(context.Background(), nil, createProposalInput{
+		Title: "Not authorized", Rationale: "Permission remains enforced below discovery.",
+	})
+	if err != nil || result == nil || !result.IsError || output.Error == nil || output.Error.Code != "permission_denied" {
+		t.Fatalf("createProposal() = %#v, %#v, %v", result, output, err)
 	}
 }
 

@@ -50,9 +50,13 @@ Parameterized reads and actions are tools. The current conceptual groups are:
 - learning: `get_learning_paths`, `create_learning_path`,
   `update_learning_path`, `delete_learning_path`, `get_progress`,
   `set_progress`, `get_recommendations`;
-- proposals: list, inspect, create, update and delete proposals; create, update
+- administrator-only proposals: list, inspect, create, update and delete proposals; create, update
   and delete proposal units; converge a dependency; ensure a recognition;
   delete a proposal change; inspect and resolve rebase state; and publish.
+
+Proposal tools are registered only for administrators. Their handlers still
+enforce administrator permission and draft authorship so discovery filtering is
+an ergonomic optimization rather than an authorization boundary.
 
 Every tool has an explicit input and output schema. Results use an `ok` envelope
 with either structured `data` or a structured error containing `code`,
@@ -93,6 +97,9 @@ The authorization server supports current Client ID Metadata Documents (CIMD)
 for public clients. The `client_id` must be a public HTTPS metadata URL whose
 document identifies itself and lists the exact redirect URI. Metadata fetching
 blocks loopback, private and link-local destinations and revalidates redirects.
+The document must list `none` in
+`token_endpoint_auth_methods_supported`; the legacy singular
+`token_endpoint_auth_method: "none"` remains accepted for compatibility.
 Dynamic Client Registration and client secrets are not implemented.
 
 Both credential forms resolve the user and current `is_admin` permission on

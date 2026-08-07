@@ -24,12 +24,13 @@ import (
 const oauthScope = "mcp"
 
 type OAuthClientMetadata struct {
-	ClientID                string   `json:"client_id"`
-	ClientName              string   `json:"client_name"`
-	RedirectURIs            []string `json:"redirect_uris"`
-	TokenEndpointAuthMethod string   `json:"token_endpoint_auth_method,omitempty"`
-	GrantTypes              []string `json:"grant_types,omitempty"`
-	ResponseTypes           []string `json:"response_types,omitempty"`
+	ClientID                          string   `json:"client_id"`
+	ClientName                        string   `json:"client_name"`
+	RedirectURIs                      []string `json:"redirect_uris"`
+	TokenEndpointAuthMethodsSupported []string `json:"token_endpoint_auth_methods_supported,omitempty"`
+	TokenEndpointAuthMethod           string   `json:"token_endpoint_auth_method,omitempty"`
+	GrantTypes                        []string `json:"grant_types,omitempty"`
+	ResponseTypes                     []string `json:"response_types,omitempty"`
 }
 
 type OAuthClientMetadataResolver interface {
@@ -169,7 +170,7 @@ func (server *Server) validateOAuthAuthorizationRequest(request *http.Request) (
 		!slices.Contains(metadata.RedirectURIs, input.RedirectURI) {
 		return nil, errors.New("client metadata does not match request")
 	}
-	if metadata.TokenEndpointAuthMethod != "" && metadata.TokenEndpointAuthMethod != "none" {
+	if !supportsPublicClientAuthentication(metadata) {
 		return nil, errors.New("only public OAuth clients are supported")
 	}
 	if len(metadata.GrantTypes) > 0 && !slices.Contains(metadata.GrantTypes, "authorization_code") {
@@ -183,6 +184,13 @@ func (server *Server) validateOAuthAuthorizationRequest(request *http.Request) (
 	}
 	input.ClientName = strings.TrimSpace(metadata.ClientName)
 	return input, nil
+}
+
+func supportsPublicClientAuthentication(metadata *OAuthClientMetadata) bool {
+	if len(metadata.TokenEndpointAuthMethodsSupported) > 0 {
+		return slices.Contains(metadata.TokenEndpointAuthMethodsSupported, "none")
+	}
+	return metadata.TokenEndpointAuthMethod == "none"
 }
 
 func (server *Server) redirectOAuthAuthorization(

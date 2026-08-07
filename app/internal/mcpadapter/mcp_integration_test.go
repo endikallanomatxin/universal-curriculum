@@ -85,11 +85,14 @@ func TestMCPAgentWorkflowWithPostgreSQL(t *testing.T) {
 	if !otherPaths.OK || len(otherPaths.Data.LearningPaths) != 0 {
 		t.Fatalf("another user's learning paths leaked: %#v", otherPaths)
 	}
-	denied := callIntegrationTool[proposal](t, learnerSession, "create_proposal", map[string]any{
-		"title": "Unauthorized", "rationale": "Must not pass adapter authorization.",
-	})
-	if denied.OK || denied.Error == nil || denied.Error.Code != "permission_denied" {
-		t.Fatalf("non-admin proposal result = %#v", denied)
+	learnerTools, err := learnerSession.ListTools(context.Background(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tool := range learnerTools.Tools {
+		if tool.Name == "create_proposal" {
+			t.Fatal("non-administrator discovered create_proposal")
+		}
 	}
 
 	adminSession, closeAdmin := connectIntegrationMCP(t, database, admin)
@@ -152,12 +155,6 @@ func TestMCPAgentWorkflowWithPostgreSQL(t *testing.T) {
 	})
 	if unconfirmed.OK || unconfirmed.Error.Code != "confirmation_required" {
 		t.Fatalf("unconfirmed publication = %#v", unconfirmed)
-	}
-	unauthorizedPublication := callIntegrationTool[proposal](t, learnerSession, "publish_proposal", map[string]any{
-		"proposal_id": proposalID, "expected_title": proposalResult.Data.Title, "confirmed": true,
-	})
-	if unauthorizedPublication.OK || unauthorizedPublication.Error == nil || unauthorizedPublication.Error.Code != "permission_denied" {
-		t.Fatalf("unauthorized publication = %#v", unauthorizedPublication)
 	}
 	published := callIntegrationTool[proposal](t, adminSession, "publish_proposal", map[string]any{
 		"proposal_id": proposalID, "expected_title": proposalResult.Data.Title, "confirmed": true,
