@@ -27,19 +27,20 @@ var (
 
 type adapter struct {
 	database *sql.DB
-	user     *models.User
 	baseURL  string
 }
 
+type servers struct {
+	standard *mcp.Server
+	admin    *mcp.Server
+}
+
 func NewHandler(database *sql.DB, baseURL string) http.Handler {
+	application := &adapter{database: database, baseURL: strings.TrimRight(baseURL, "/")}
+	servers := newServers(application)
 	resourceURL := strings.TrimRight(baseURL, "/") + "/mcp"
 	stream := mcp.NewStreamableHTTPHandler(func(request *http.Request) *mcp.Server {
-		info := auth.TokenInfoFromContext(request.Context())
-		var user *models.User
-		if info != nil {
-			user, _ = info.Extra["user"].(*models.User)
-		}
-		return newServer(&adapter{database: database, user: user, baseURL: strings.TrimRight(baseURL, "/")})
+		return servers.forToken(auth.TokenInfoFromContext(request.Context()))
 	}, &mcp.StreamableHTTPOptions{
 		Stateless: true, JSONResponse: true, MaxRequestBodyBytes: 1 << 20,
 		PropagateRequestCancellation: true,
@@ -69,7 +70,21 @@ func NewHandler(database *sql.DB, baseURL string) http.Handler {
 	return originProtection.Handler(protected)
 }
 
-func newServer(application *adapter) *mcp.Server {
+func newServers(application *adapter) servers {
+	return servers{
+		standard: newServer(application, false),
+		admin:    newServer(application, true),
+	}
+}
+
+func (servers servers) forToken(info *auth.TokenInfo) *mcp.Server {
+	if userFromTokenInfo(info).IsAdmin {
+		return servers.admin
+	}
+	return servers.standard
+}
+
+func newServer(application *adapter, admin bool) *mcp.Server {
 	server := mcp.NewServer(&mcp.Implementation{
 		Name: "universal-curriculum", Title: "Universal Curriculum", Version: "0.2.2",
 		Description: "Agent-oriented access to Universal Curriculum.", WebsiteURL: application.baseURL,
@@ -83,10 +98,28 @@ func newServer(application *adapter) *mcp.Server {
 	application.addResources(server)
 	application.addReadTools(server)
 	application.addLearningTools(server)
-	if application.user != nil && application.user.IsAdmin {
+	if admin {
 		application.addProposalTools(server)
 	}
 	return server
+}
+
+func userFromTokenInfo(info *auth.TokenInfo) *models.User {
+	if info == nil {
+		return &models.User{}
+	}
+	user, _ := info.Extra["user"].(*models.User)
+	if user == nil {
+		return &models.User{}
+	}
+	return user
+}
+
+func userFromRequest(request *mcp.CallToolRequest) *models.User {
+	if request == nil || request.Extra == nil {
+		return &models.User{}
+	}
+	return userFromTokenInfo(request.Extra.TokenInfo)
 }
 
 func addTool[In, Out any](
@@ -144,12 +177,13 @@ func internalFailure[T any](operation string, err error) (*mcp.CallToolResult, t
 	return failed[T]("internal_error", "The operation could not be completed.", nil)
 }
 
-func requireAdmin[T any](application *adapter) (*mcp.CallToolResult, toolOutput[T], error, bool) {
-	if application.user != nil && application.user.IsAdmin {
-		return nil, toolOutput[T]{}, nil, true
+func requireAdmin[T any](request *mcp.CallToolRequest) (*mcp.CallToolResult, toolOutput[T], error, *models.User) {
+	user := userFromRequest(request)
+	if user.IsAdmin {
+		return nil, toolOutput[T]{}, nil, user
 	}
 	result, output, err := failed[T]("permission_denied", "Administrator permission is required.", nil)
-	return result, output, err, false
+	return result, output, err, nil
 }
 
 func constrainSchema(schema *jsonschema.Schema) {

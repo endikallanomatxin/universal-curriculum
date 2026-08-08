@@ -118,14 +118,19 @@ func (application *adapter) addProposalTools(server *mcp.Server) {
 	addTool(server, "publish_proposal", "Publish curriculum proposal", "Publishes an authored draft into the shared curriculum. Call only after an explicit user request; confirmed and the current title are required.", mutation("Publish curriculum proposal", true, true), application.publishProposal)
 }
 
-func (application *adapter) listProposals(_ context.Context, _ *mcp.CallToolRequest, input listProposalsInput) (*mcp.CallToolResult, toolOutput[proposalsOutput], error) {
-	if result, output, err, allowed := requireAdmin[proposalsOutput](application); !allowed {
+func (application *adapter) listProposals(_ context.Context, request *mcp.CallToolRequest, input listProposalsInput) (*mcp.CallToolResult, toolOutput[proposalsOutput], error) {
+	if result, output, err, user := requireAdmin[proposalsOutput](request); user == nil {
 		return result, output, err
+	} else {
+		return application.listProposalsForUser(user.ID, input)
 	}
+}
+
+func (application *adapter) listProposalsForUser(userID int64, input listProposalsInput) (*mcp.CallToolResult, toolOutput[proposalsOutput], error) {
 	if input.Limit == 0 {
 		input.Limit = 25
 	}
-	models, total, err := db.ListCurriculumProposalsForUser(application.database, application.user.ID, input.Status, input.Limit, input.Offset)
+	models, total, err := db.ListCurriculumProposalsForUser(application.database, userID, input.Status, input.Limit, input.Offset)
 	if err != nil {
 		return internalFailure[proposalsOutput]("list proposals", err)
 	}
@@ -136,121 +141,132 @@ func (application *adapter) listProposals(_ context.Context, _ *mcp.CallToolRequ
 	return ok(result)
 }
 
-func (application *adapter) getProposal(_ context.Context, _ *mcp.CallToolRequest, input proposalIDInput) (*mcp.CallToolResult, toolOutput[proposal], error) {
-	if result, output, err, allowed := requireAdmin[proposal](application); !allowed {
+func (application *adapter) getProposal(_ context.Context, request *mcp.CallToolRequest, input proposalIDInput) (*mcp.CallToolResult, toolOutput[proposal], error) {
+	if result, output, err, user := requireAdmin[proposal](request); user == nil {
 		return result, output, err
+	} else {
+		model, err := application.visibleProposal(user.ID, input.ProposalID)
+		if err != nil {
+			return curriculumFailure[proposal]("get proposal", err)
+		}
+		return ok(newProposal(*model, true))
 	}
-	model, err := application.visibleProposal(input.ProposalID)
-	if err != nil {
-		return curriculumFailure[proposal]("get proposal", err)
-	}
-	return ok(newProposal(*model, true))
 }
 
-func (application *adapter) createProposal(_ context.Context, _ *mcp.CallToolRequest, input createProposalInput) (*mcp.CallToolResult, toolOutput[proposal], error) {
-	if result, output, err, allowed := requireAdmin[proposal](application); !allowed {
+func (application *adapter) createProposal(_ context.Context, request *mcp.CallToolRequest, input createProposalInput) (*mcp.CallToolResult, toolOutput[proposal], error) {
+	if result, output, err, user := requireAdmin[proposal](request); user == nil {
 		return result, output, err
+	} else {
+		created, err := services.CreateCurriculumProposal(application.database, user.ID, input.Title, input.Rationale)
+		if err != nil {
+			return curriculumFailure[proposal]("create proposal", err)
+		}
+		return application.reloadProposal(created.ID)
 	}
-	created, err := services.CreateCurriculumProposal(application.database, application.user.ID, input.Title, input.Rationale)
-	if err != nil {
-		return curriculumFailure[proposal]("create proposal", err)
-	}
-	return application.reloadProposal(created.ID)
 }
 
-func (application *adapter) updateProposal(_ context.Context, _ *mcp.CallToolRequest, input updateProposalInput) (*mcp.CallToolResult, toolOutput[proposal], error) {
-	if result, output, err, allowed := requireAdmin[proposal](application); !allowed {
+func (application *adapter) updateProposal(_ context.Context, request *mcp.CallToolRequest, input updateProposalInput) (*mcp.CallToolResult, toolOutput[proposal], error) {
+	if result, output, err, user := requireAdmin[proposal](request); user == nil {
 		return result, output, err
+	} else {
+		err := services.UpdateCurriculumProposal(application.database, user.ID, input.ProposalID, input.Title, input.Rationale)
+		if err != nil {
+			return curriculumFailure[proposal]("update proposal", err)
+		}
+		return application.reloadProposal(input.ProposalID)
 	}
-	err := services.UpdateCurriculumProposal(application.database, application.user.ID, input.ProposalID, input.Title, input.Rationale)
-	if err != nil {
-		return curriculumFailure[proposal]("update proposal", err)
-	}
-	return application.reloadProposal(input.ProposalID)
 }
 
-func (application *adapter) deleteProposal(_ context.Context, _ *mcp.CallToolRequest, input proposalIDInput) (*mcp.CallToolResult, toolOutput[deleteOutput], error) {
-	if result, output, err, allowed := requireAdmin[deleteOutput](application); !allowed {
-		return result, output, err
+func (application *adapter) deleteProposal(_ context.Context, request *mcp.CallToolRequest, input proposalIDInput) (*mcp.CallToolResult, toolOutput[deleteOutput], error) {
+	result, output, authErr, user := requireAdmin[deleteOutput](request)
+	if user == nil {
+		return result, output, authErr
 	}
-	err := services.DeleteCurriculumProposal(application.database, application.user.ID, input.ProposalID)
+	err := services.DeleteCurriculumProposal(application.database, user.ID, input.ProposalID)
 	if err != nil {
 		return curriculumFailure[deleteOutput]("delete proposal", err)
 	}
 	return ok(deleteOutput{Deleted: true})
 }
 
-func (application *adapter) createProposalUnit(_ context.Context, _ *mcp.CallToolRequest, input createProposalUnitInput) (*mcp.CallToolResult, toolOutput[unit], error) {
-	if result, output, err, allowed := requireAdmin[unit](application); !allowed {
-		return result, output, err
+func (application *adapter) createProposalUnit(_ context.Context, request *mcp.CallToolRequest, input createProposalUnitInput) (*mcp.CallToolResult, toolOutput[unit], error) {
+	result, output, authErr, user := requireAdmin[unit](request)
+	if user == nil {
+		return result, output, authErr
 	}
-	created, err := services.CreateCurriculumUnit(application.database, application.user.ID, input.ProposalID, input.Name, input.Content)
+	created, err := services.CreateCurriculumUnit(application.database, user.ID, input.ProposalID, input.Name, input.Content)
 	if err != nil {
 		return curriculumFailure[unit]("create proposal unit", err)
 	}
 	return application.proposalUnit(input.ProposalID, created.ID)
 }
 
-func (application *adapter) updateProposalUnit(_ context.Context, _ *mcp.CallToolRequest, input updateProposalUnitInput) (*mcp.CallToolResult, toolOutput[unit], error) {
-	if result, output, err, allowed := requireAdmin[unit](application); !allowed {
-		return result, output, err
+func (application *adapter) updateProposalUnit(_ context.Context, request *mcp.CallToolRequest, input updateProposalUnitInput) (*mcp.CallToolResult, toolOutput[unit], error) {
+	result, output, authErr, user := requireAdmin[unit](request)
+	if user == nil {
+		return result, output, authErr
 	}
-	err := services.UpdateCurriculumUnitAndContent(application.database, application.user.ID, input.ProposalID, input.UnitID, input.Name, input.Content)
+	err := services.UpdateCurriculumUnitAndContent(application.database, user.ID, input.ProposalID, input.UnitID, input.Name, input.Content)
 	if err != nil {
 		return curriculumFailure[unit]("update proposal unit", err)
 	}
 	return application.proposalUnit(input.ProposalID, input.UnitID)
 }
 
-func (application *adapter) deleteProposalUnit(_ context.Context, _ *mcp.CallToolRequest, input proposalUnitIDInput) (*mcp.CallToolResult, toolOutput[deleteOutput], error) {
-	if result, output, err, allowed := requireAdmin[deleteOutput](application); !allowed {
-		return result, output, err
+func (application *adapter) deleteProposalUnit(_ context.Context, request *mcp.CallToolRequest, input proposalUnitIDInput) (*mcp.CallToolResult, toolOutput[deleteOutput], error) {
+	result, output, authErr, user := requireAdmin[deleteOutput](request)
+	if user == nil {
+		return result, output, authErr
 	}
-	err := services.DeleteCurriculumUnit(application.database, application.user.ID, input.ProposalID, input.UnitID)
+	err := services.DeleteCurriculumUnit(application.database, user.ID, input.ProposalID, input.UnitID)
 	if err != nil {
 		return curriculumFailure[deleteOutput]("delete proposal unit", err)
 	}
 	return ok(deleteOutput{Deleted: true})
 }
 
-func (application *adapter) setProposalDependency(_ context.Context, _ *mcp.CallToolRequest, input setDependencyInput) (*mcp.CallToolResult, toolOutput[dependencyState], error) {
-	if result, output, err, allowed := requireAdmin[dependencyState](application); !allowed {
-		return result, output, err
+func (application *adapter) setProposalDependency(_ context.Context, request *mcp.CallToolRequest, input setDependencyInput) (*mcp.CallToolResult, toolOutput[dependencyState], error) {
+	result, output, authErr, user := requireAdmin[dependencyState](request)
+	if user == nil {
+		return result, output, authErr
 	}
-	err := services.SetUnitDependency(application.database, application.user.ID, input.ProposalID, input.UnitID, input.PrerequisiteID, input.Present)
+	err := services.SetUnitDependency(application.database, user.ID, input.ProposalID, input.UnitID, input.PrerequisiteID, input.Present)
 	if err != nil {
 		return curriculumFailure[dependencyState]("set proposal dependency", err)
 	}
 	return ok(dependencyState{UnitID: input.UnitID, PrerequisiteID: input.PrerequisiteID, Present: input.Present})
 }
 
-func (application *adapter) addProposalRecognition(_ context.Context, _ *mcp.CallToolRequest, input addRecognitionInput) (*mcp.CallToolResult, toolOutput[proposal], error) {
-	if result, output, err, allowed := requireAdmin[proposal](application); !allowed {
-		return result, output, err
+func (application *adapter) addProposalRecognition(_ context.Context, request *mcp.CallToolRequest, input addRecognitionInput) (*mcp.CallToolResult, toolOutput[proposal], error) {
+	result, output, authErr, user := requireAdmin[proposal](request)
+	if user == nil {
+		return result, output, authErr
 	}
-	err := services.EnsureCurriculumRecognition(application.database, application.user.ID, input.ProposalID, input.SourceUnitIDs, input.TargetUnitIDs)
+	err := services.EnsureCurriculumRecognition(application.database, user.ID, input.ProposalID, input.SourceUnitIDs, input.TargetUnitIDs)
 	if err != nil {
 		return curriculumFailure[proposal]("add proposal recognition", err)
 	}
 	return application.reloadProposal(input.ProposalID)
 }
 
-func (application *adapter) deleteProposalChange(_ context.Context, _ *mcp.CallToolRequest, input changeIDInput) (*mcp.CallToolResult, toolOutput[proposal], error) {
-	if result, output, err, allowed := requireAdmin[proposal](application); !allowed {
-		return result, output, err
+func (application *adapter) deleteProposalChange(_ context.Context, request *mcp.CallToolRequest, input changeIDInput) (*mcp.CallToolResult, toolOutput[proposal], error) {
+	result, output, authErr, user := requireAdmin[proposal](request)
+	if user == nil {
+		return result, output, authErr
 	}
-	err := services.DeleteCurriculumProposalChange(application.database, application.user.ID, input.ProposalID, input.ChangeID)
+	err := services.DeleteCurriculumProposalChange(application.database, user.ID, input.ProposalID, input.ChangeID)
 	if err != nil {
 		return curriculumFailure[proposal]("delete proposal change", err)
 	}
 	return application.reloadProposal(input.ProposalID)
 }
 
-func (application *adapter) getProposalRebase(_ context.Context, _ *mcp.CallToolRequest, input proposalIDInput) (*mcp.CallToolResult, toolOutput[rebasePlan], error) {
-	if result, output, err, allowed := requireAdmin[rebasePlan](application); !allowed {
-		return result, output, err
+func (application *adapter) getProposalRebase(_ context.Context, request *mcp.CallToolRequest, input proposalIDInput) (*mcp.CallToolResult, toolOutput[rebasePlan], error) {
+	result, output, authErr, user := requireAdmin[rebasePlan](request)
+	if user == nil {
+		return result, output, authErr
 	}
-	model, err := application.editableProposal(input.ProposalID)
+	model, err := application.editableProposal(user.ID, input.ProposalID)
 	if err != nil {
 		return curriculumFailure[rebasePlan]("get proposal rebase", err)
 	}
@@ -261,11 +277,12 @@ func (application *adapter) getProposalRebase(_ context.Context, _ *mcp.CallTool
 	return ok(newRebasePlan(plan))
 }
 
-func (application *adapter) resolveProposalRebase(_ context.Context, _ *mcp.CallToolRequest, input resolveRebaseInput) (*mcp.CallToolResult, toolOutput[proposal], error) {
-	if result, output, err, allowed := requireAdmin[proposal](application); !allowed {
-		return result, output, err
+func (application *adapter) resolveProposalRebase(_ context.Context, request *mcp.CallToolRequest, input resolveRebaseInput) (*mcp.CallToolResult, toolOutput[proposal], error) {
+	result, output, authErr, user := requireAdmin[proposal](request)
+	if user == nil {
+		return result, output, authErr
 	}
-	model, err := application.editableProposal(input.ProposalID)
+	model, err := application.editableProposal(user.ID, input.ProposalID)
 	if err != nil {
 		return curriculumFailure[proposal]("inspect proposal rebase", err)
 	}
@@ -283,28 +300,29 @@ func (application *adapter) resolveProposalRebase(_ context.Context, _ *mcp.Call
 		}
 		resolutions[resolution.ChangeID] = services.CurriculumProposalRebaseResolution{Choice: resolution.Choice, Content: resolution.Content}
 	}
-	err = services.ResolveCurriculumProposalRebase(application.database, application.user.ID, input.ProposalID, resolutions)
+	err = services.ResolveCurriculumProposalRebase(application.database, user.ID, input.ProposalID, resolutions)
 	if err != nil {
 		return curriculumFailure[proposal]("resolve proposal rebase", err)
 	}
 	return application.reloadProposal(input.ProposalID)
 }
 
-func (application *adapter) publishProposal(_ context.Context, _ *mcp.CallToolRequest, input publishProposalInput) (*mcp.CallToolResult, toolOutput[proposal], error) {
-	if result, output, err, allowed := requireAdmin[proposal](application); !allowed {
-		return result, output, err
+func (application *adapter) publishProposal(_ context.Context, request *mcp.CallToolRequest, input publishProposalInput) (*mcp.CallToolResult, toolOutput[proposal], error) {
+	result, output, authErr, user := requireAdmin[proposal](request)
+	if user == nil {
+		return result, output, authErr
 	}
 	if !input.Confirmed {
 		return failed[proposal]("confirmation_required", "Publication requires confirmed=true after an explicit user request.", map[string]string{"confirmed": "must be true"})
 	}
-	model, err := application.editableProposal(input.ProposalID)
+	model, err := application.editableProposal(user.ID, input.ProposalID)
 	if err != nil {
 		return curriculumFailure[proposal]("inspect proposal before publication", err)
 	}
 	if strings.TrimSpace(input.ExpectedTitle) != model.Title {
 		return failed[proposal]("confirmation_mismatch", "expected_title does not match the current proposal title. Inspect the proposal again.", map[string]string{"expected_title": "does not match"})
 	}
-	summary, err := services.PublishCurriculumProposal(application.database, application.user.ID, input.ProposalID)
+	summary, err := services.PublishCurriculumProposal(application.database, user.ID, input.ProposalID)
 	if err != nil {
 		return curriculumFailure[proposal]("publish proposal", err)
 	}
@@ -314,23 +332,23 @@ func (application *adapter) publishProposal(_ context.Context, _ *mcp.CallToolRe
 	return application.reloadProposal(input.ProposalID)
 }
 
-func (application *adapter) visibleProposal(id int64) (*models.CurriculumProposal, error) {
+func (application *adapter) visibleProposal(userID, id int64) (*models.CurriculumProposal, error) {
 	model, err := db.GetCurriculumProposal(application.database, id)
 	if err != nil {
 		return nil, err
 	}
-	if model == nil || model.Status == "draft" && !model.HasAuthor(application.user.ID) {
+	if model == nil || model.Status == "draft" && !model.HasAuthor(userID) {
 		return nil, services.ErrProposalNotFound
 	}
 	return model, nil
 }
 
-func (application *adapter) editableProposal(id int64) (*models.CurriculumProposal, error) {
-	model, err := application.visibleProposal(id)
+func (application *adapter) editableProposal(userID, id int64) (*models.CurriculumProposal, error) {
+	model, err := application.visibleProposal(userID, id)
 	if err != nil {
 		return nil, err
 	}
-	if model.Status != "draft" || !model.HasAuthor(application.user.ID) {
+	if model.Status != "draft" || !model.HasAuthor(userID) {
 		return nil, services.ErrProposalNotFound
 	}
 	return model, nil

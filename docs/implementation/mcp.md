@@ -22,6 +22,11 @@ Only `POST /mcp` carries protocol messages; unsupported methods receive `405`.
 The endpoint intentionally does not provide server-initiated subscriptions or
 an autonomous Universal Curriculum agent.
 
+The transport reuses two immutable MCP server catalogs, one with the regular
+tools and one with the administrator tools. Authentication selects the catalog
+for each request, while tool handlers read the current user from that request's
+SDK `TokenInfo`; no server instance contains request-specific identity.
+
 ## Instructions and resources
 
 Server discovery advertises concise instructions that establish the important
