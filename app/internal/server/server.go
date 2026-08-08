@@ -14,8 +14,9 @@ import (
 	"time"
 
 	"universal-curriculum/internal/db"
-	"universal-curriculum/internal/mcpadapter"
 	"universal-curriculum/internal/models"
+	"universal-curriculum/internal/server/mcpadapter"
+	"universal-curriculum/internal/server/views"
 	"universal-curriculum/internal/services"
 )
 
@@ -41,7 +42,7 @@ func Setup() (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	templates, err := services.LoadTemplates()
+	templates, err := views.LoadTemplates()
 	if err != nil {
 		_ = database.Close()
 		return nil, err

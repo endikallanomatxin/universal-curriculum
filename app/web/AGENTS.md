@@ -4,7 +4,7 @@
 
 - Use server-rendered templates and HTMX for progressive enhancement.
 - Keep the interface accessible without JavaScript where practical.
-- Load templates through `services.LoadTemplates`.
+- Load templates through `server/views.LoadTemplates`.
 - Reference CSS and JavaScript with the shared `assetVersion`; it is generated
   from the contents of `web/static`, so asset changes invalidate browser caches
   after an application restart.
@@ -20,7 +20,7 @@
   feature-specific variants.
 - Keep top-level page templates compositional. Put substantial feature
   fragments in the matching template subdirectory and load that directory
-  explicitly through `services.LoadTemplates`.
+  explicitly through `server/views.LoadTemplates`.
 - Build pages from system-wide interaction and visual primitives. Reuse and
   extend shared CSS, JavaScript and template fragments instead of creating
   page-specific versions of an existing concept.

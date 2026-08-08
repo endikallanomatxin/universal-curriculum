@@ -10,7 +10,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"universal-curriculum/internal/db"
-	"universal-curriculum/internal/guidance"
+	"universal-curriculum/internal/server/guidance"
 )
 
 func (application *adapter) addResources(server *mcp.Server) {

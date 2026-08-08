@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"universal-curriculum/internal/models"
-	"universal-curriculum/internal/services"
+	"universal-curriculum/internal/server/views"
 )
 
 func TestCurriculumGraphViewPreparesConsumerSpecificNodes(t *testing.T) {
@@ -101,7 +101,7 @@ func TestSharedCurriculumGraphTemplateRendersPreparedView(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chdir(workingDirectory) })
 
-	templates, err := services.LoadTemplates()
+	templates, err := views.LoadTemplates()
 	if err != nil {
 		t.Fatal(err)
 	}

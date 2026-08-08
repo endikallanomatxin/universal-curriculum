@@ -1,4 +1,11 @@
-# HTTP server
+# Server and presentation
+
+- Keep web, REST and MCP as sibling adapters within this layer. Shared
+  workflows belong in `services`; shared presentation code belongs in a
+  focused subpackage here.
+- `mcpadapter` owns MCP transport, resources and tools. `views` owns template
+  loading and HTML/Markdown rendering. `guidance` owns the canonical embedded
+  documentation served by web and MCP.
 
 - Keep handlers focused on authorization, parsing, invoking operations and
   rendering responses.
@@ -13,8 +20,8 @@
 - Web handlers authenticate through the session middleware and require CSRF
   tokens for state-changing requests. REST handlers follow
   `docs/implementation/api.md`, authenticate only with personal bearer tokens
-  and do not accept cookie sessions. MCP is a sibling adapter documented in
-  `docs/implementation/mcp.md`; this package owns its OAuth discovery,
+  and do not accept cookie sessions. MCP is documented in
+  `docs/implementation/mcp.md`; the root server package owns its OAuth discovery,
   authorization and consent HTTP endpoints.
 - Handler tests should emphasize authorization, parsing and validation, status
   and feedback, and important HTTP or HTMX response contracts. Avoid tests that

@@ -1,4 +1,4 @@
-package services
+package views
 
 import (
 	"crypto/sha256"

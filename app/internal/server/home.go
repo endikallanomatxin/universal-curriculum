@@ -6,8 +6,9 @@ import (
 	"strconv"
 
 	"universal-curriculum/internal/db"
-	"universal-curriculum/internal/guidance"
 	"universal-curriculum/internal/models"
+	"universal-curriculum/internal/server/guidance"
+	"universal-curriculum/internal/server/views"
 	"universal-curriculum/internal/services"
 )
 
@@ -45,7 +46,7 @@ func (server *Server) documentation(writer http.ResponseWriter, request *http.Re
 			return
 		}
 		view.Page = &page
-		view.Rendered = services.RenderUnitContent(page.Content)
+		view.Rendered = views.RenderUnitContent(page.Content)
 		view.Title = page.Title + " · Universal Curriculum"
 		server.render(writer, "documentation-page.html", view)
 		return

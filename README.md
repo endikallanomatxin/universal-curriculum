@@ -16,8 +16,7 @@ ephemeral in production until asset support is introduced in 0.3.0.
   - `internal/models/`: domain models
   - `internal/db/`: PostgreSQL access and Goose migrations
   - `internal/services/`: business workflows
-  - `internal/server/`: HTTP server, configuration, web/REST and OAuth handlers
-  - `internal/mcpadapter/`: agent-oriented MCP adapter
+  - `internal/server/`: web, REST and MCP adapters, shared guidance and presentation rendering
   - `web/`: templates and static assets
 - `docs/`: product and deployment documentation
 - `compose.dev.yaml`: local development environment

@@ -1,4 +1,4 @@
-package services
+package views
 
 import (
 	"bytes"
@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"universal-curriculum/internal/models"
+	"universal-curriculum/internal/services"
 )
 
 func TestLoadTemplatesCompilesAndRendersRepresentativePages(t *testing.T) {
@@ -412,13 +413,13 @@ func TestCurriculumProposalRendersRebaseResolutionInUnifiedWorkspace(t *testing.
 			ID: 12, Title: "Improve energy", Rationale: "Clarify the unit.", Status: "draft",
 			Changes: []models.CurriculumProposalChange{change},
 		},
-		"ProposalRebase": &CurriculumProposalRebasePlan{
-			Status: ProposalRebaseNeedsReview,
-			Conflicts: []CurriculumProposalRebaseConflict{{
+		"ProposalRebase": &services.CurriculumProposalRebasePlan{
+			Status: services.ProposalRebaseNeedsReview,
+			Conflicts: []services.CurriculumProposalRebaseConflict{{
 				Change:       change,
 				AcceptedUnit: &models.Unit{ID: 7, Name: "Energy", Content: "Accepted energy content."},
 				Units:        []models.Unit{{ID: 7, Name: "Energy"}},
-				AcceptedWork: []CurriculumProposalRebaseAcceptedWork{{
+				AcceptedWork: []services.CurriculumProposalRebaseAcceptedWork{{
 					Proposal: models.CurriculumProposal{ID: 11, Title: "Update physics", Status: "accepted"},
 					Changes:  []models.CurriculumProposalChange{{ID: 30, Kind: "update_content", UnitID: 7, UnitName: "Energy"}},
 				}},
@@ -498,7 +499,7 @@ func loadTestTemplates(t *testing.T) *template.Template {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Chdir("../.."); err != nil {
+	if err := os.Chdir("../../.."); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Chdir(workingDirectory) })
