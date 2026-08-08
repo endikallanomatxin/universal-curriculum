@@ -280,6 +280,18 @@
     if (!url.searchParams.has(queryParameter)) return;
     url.searchParams.delete(queryParameter);
     window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+    document.querySelectorAll("[data-panel-close-query-link]").forEach(function (link) {
+      const parameters = (link.dataset.panelCloseQueryLink || "").trim().split(/\s+/);
+      if (!parameters.includes(queryParameter)) return;
+      ["href", "hx-get"].forEach(function (attribute) {
+        const value = link.getAttribute(attribute);
+        if (!value) return;
+        const target = new URL(value, window.location.origin);
+        if (!target.searchParams.has(queryParameter)) return;
+        target.searchParams.delete(queryParameter);
+        link.setAttribute(attribute, target.pathname + target.search + target.hash);
+      });
+    });
   }
 
   function resolvedNavigationMode(trigger) {
