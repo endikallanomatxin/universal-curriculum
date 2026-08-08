@@ -127,6 +127,7 @@ func TestSharedCurriculumGraphTemplateRendersPreparedView(t *testing.T) {
 		`id="test-graph-arrow-proposed"`,
 		`href="/learn?unit=1"`,
 		`href="/learn?unit=1&amp;content=1"`,
+		`data-panel-close-query-link="content"`,
 		`aria-label="Open content for Foundations"`,
 		`aria-current="page"`,
 		`aria-describedby="test-graph-description"`,

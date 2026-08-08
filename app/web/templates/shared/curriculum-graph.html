@@ -17,6 +17,7 @@
          hx-swap="outerHTML transition:true"
          hx-push-url="true"
          data-graph-search-option
+         data-panel-close-query-link="content"
          data-unit-name="{{ .Name }}">{{ .Name }}</a>
     {{ end }}
     <p data-graph-search-empty hidden>No matching units</p>
@@ -67,6 +68,7 @@
              hx-select="#workspace"
              hx-swap="outerHTML transition:true"
              hx-push-url="true"
+             data-panel-close-query-link="content"
              {{ if .IsCurrent }}aria-current="page"{{ end }}>
             <span class="curriculum-graph__name">{{ .Name }}</span>
           </a>

@@ -119,6 +119,10 @@ client-only `data-open-panel` state only for short-lived auxiliary panels whose
 loss on reload is intentional. If such a server-rendered detail closes locally
 to preserve a custom exit transition, the close must also remove its identifying
 query parameter from the current history entry once the transition completes.
+Navigation links whose server-rendered behavior depends on that open state mark
+the parameter with `data-panel-close-query-link`; the shared close restores
+their closed-state URLs at the same time so the retained DOM cannot reopen the
+detail unintentionally.
 
 `web/static/js/panels.js` owns this interaction. New panel interactions should
 reuse its declarative triggers and stable panel boundaries rather than adding
