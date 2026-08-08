@@ -43,6 +43,10 @@
   width: 100%;
 }
 
+.pane-navigation-card--text-only {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .pane-navigation-card > .material-symbols-rounded {
   align-self: start;
   color: var(--color-muted);
