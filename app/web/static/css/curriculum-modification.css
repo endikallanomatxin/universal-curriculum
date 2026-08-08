@@ -124,6 +124,41 @@
   margin-top: var(--space-2);
 }
 
+.proposal-change-summary {
+  align-items: center;
+  display: inline-flex;
+  gap: var(--space-2);
+}
+
+.proposal-change-summary__count {
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.proposal-change-summary__count--created {
+  color: var(--color-proposal-created);
+}
+
+.proposal-change-summary__count--deleted {
+  color: var(--color-proposal-deleted);
+}
+
+.proposal-change-summary__count--renamed {
+  color: var(--color-proposal-rename);
+}
+
+.proposal-change-summary__count--content {
+  color: var(--color-proposal-content);
+}
+
+.proposal-change-summary__count--dependency {
+  color: var(--color-proposal-dependency);
+}
+
+.proposal-change-summary__count--recognition {
+  color: var(--color-proposal-recognition);
+}
+
 @container active-proposal-card (min-width: 22rem) {
   .active-proposal-card__identity {
     column-gap: var(--space-2);

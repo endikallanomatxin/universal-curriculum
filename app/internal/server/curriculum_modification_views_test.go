@@ -1,11 +1,28 @@
 package server
 
 import (
+	"reflect"
 	"testing"
 
 	"universal-curriculum/internal/models"
 	"universal-curriculum/internal/services"
 )
+
+func TestCurriculumProposalChangeSummaryGroupsAndOrdersKinds(t *testing.T) {
+	summary := curriculumProposalChangeSummary(map[string]int{
+		"recognition": 1, "remove_dependency": 2, "add_dependency": 1,
+		"create_unit": 2, "update_content": 1,
+	})
+	want := []curriculumProposalChangeCountView{
+		{Kind: "created", Count: 2, Label: "unit creations"},
+		{Kind: "content", Count: 1, Label: "content update"},
+		{Kind: "dependency", Count: 3, Label: "dependency changes"},
+		{Kind: "recognition", Count: 1, Label: "recognition"},
+	}
+	if !reflect.DeepEqual(summary, want) {
+		t.Fatalf("change summary = %#v, want %#v", summary, want)
+	}
+}
 
 func TestCurriculumUnitViewsConnectBothDirections(t *testing.T) {
 	graph := &models.CurriculumGraph{

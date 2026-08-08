@@ -3,17 +3,18 @@ package models
 import "time"
 
 type CurriculumProposal struct {
-	ID             int64
-	AuthorIDs      []int64
-	AuthorName     string
-	Title          string
-	Rationale      string
-	Status         string
-	BaseProposalID *int64
-	CreatedAt      time.Time
-	AcceptedAt     *time.Time
-	Changes        []CurriculumProposalChange
-	ChangeCount    int
+	ID               int64
+	AuthorIDs        []int64
+	AuthorName       string
+	Title            string
+	Rationale        string
+	Status           string
+	BaseProposalID   *int64
+	CreatedAt        time.Time
+	AcceptedAt       *time.Time
+	Changes          []CurriculumProposalChange
+	ChangeCount      int
+	ChangeKindCounts map[string]int
 }
 
 func (proposal CurriculumProposal) HasAuthor(userID int64) bool {

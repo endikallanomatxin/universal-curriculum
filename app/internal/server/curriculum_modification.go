@@ -145,6 +145,7 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 		}
 		draftViews = append(draftViews, curriculumDraftProposalView{
 			CurriculumProposal: draftProposals[index], RebaseStatus: plan.Status,
+			ChangeSummary: curriculumProposalChangeSummary(draftProposals[index].ChangeKindCounts),
 		})
 	}
 	history, rootDrafts := curriculumProposalHistory(proposals, draftViews)
