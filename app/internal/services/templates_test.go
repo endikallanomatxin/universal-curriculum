@@ -111,13 +111,19 @@ func TestAccountAPITokenCreationUsesNestedPanel(t *testing.T) {
 
 	closed := render(nil)
 	if !strings.Contains(closed, `aria-expanded="false"`) ||
+		!strings.Contains(closed, `id="external-access-panel"`) ||
+		!strings.Contains(closed, `data-panel-breadcrumb="External access" hidden`) ||
 		!strings.Contains(closed, `data-panel-breadcrumb="New API token" hidden`) {
-		t.Fatal("API token panel is not initially closed")
+		t.Fatal("external access panels are not initially closed")
 	}
 
 	output := render(map[string]any{"TokenError": "token name is required"})
 
 	for _, fragment := range []string{
+		`data-open-panel="external-access-panel"`,
+		`aria-controls="external-access-panel"`,
+		`id="external-access-panel" data-nested-panel data-panel-motion="horizontal"`,
+		`data-close-panel data-close-descendants aria-label="Close external access panel"`,
 		`data-open-panel="new-api-token-panel"`,
 		`aria-controls="new-api-token-panel"`,
 		`aria-expanded="true"`,
@@ -133,6 +139,9 @@ func TestAccountAPITokenCreationUsesNestedPanel(t *testing.T) {
 	}
 	if strings.Contains(output, `data-panel-breadcrumb="New API token" hidden`) {
 		t.Fatal("API token panel remains hidden after validation fails")
+	}
+	if strings.Contains(output, `data-panel-breadcrumb="External access" hidden`) {
+		t.Fatal("external access panel remains hidden with its child open")
 	}
 
 	created := render(map[string]any{"NewAPIToken": "uc_api_secret"})

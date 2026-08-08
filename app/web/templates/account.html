@@ -31,17 +31,61 @@
             </div>
           </dl>
 
-          <section class="account-api" aria-labelledby="api-token-title">
-            <div class="section-heading account-api__heading">
+          <button class="account-access-summary pane-navigation-card selectable-surface" type="button" data-open-panel="external-access-panel" aria-controls="external-access-panel" aria-expanded="{{ if or .TokenError .NewAPIToken }}true{{ else }}false{{ end }}">
+            <span class="material-symbols-rounded" aria-hidden="true">hub</span>
+            <span>
+              <strong>External access</strong>
+              <small>Connected apps and API tokens</small>
+            </span>
+          </button>
+        </div>
+      </section>
+
+      <section class="ui-pane" id="external-access-panel" data-nested-panel data-panel-motion="horizontal" data-layout-panel data-panel-modes="collapsed:0 compact:18 standard:32" data-panel-required-mode="standard" data-panel-fill data-panel-breadcrumb="External access" {{ if not (or .TokenError .NewAPIToken) }}hidden{{ end }} aria-labelledby="external-access-title">
+        <div class="ui-pane__inner nested-panel" data-pane-content-width="standard">
+          <header class="nested-panel__header">
+            <div><h1 id="external-access-title">External access</h1></div>
+            <button class="icon-button ui-pane__close" type="button" data-close-panel data-close-descendants aria-label="Close external access panel">
+              <span class="material-symbols-rounded" aria-hidden="true">close</span>
+            </button>
+          </header>
+
+          <section class="account-access" aria-labelledby="connected-apps-title">
+            <div class="section-heading account-access__heading">
+              <h2 id="connected-apps-title">Connected MCP apps</h2>
+            </div>
+            <p class="account-access__introduction">MCP clients authorized through OAuth can act with your current account permissions.</p>
+            {{ if .OAuthConnections }}
+              <ul class="account-access__items">
+                {{ range .OAuthConnections }}
+                  <li>
+                    <div>
+                      <strong>{{ .ClientName }}</strong>
+                      <small>Authorized {{ .AuthorizedAt.Format "2006-01-02" }}{{ if .LastUsedAt }} · last used {{ .LastUsedAt.Format "2006-01-02" }}{{ end }}</small>
+                    </div>
+                    <form method="post" action="/account/oauth-connections/{{ .ID }}/revoke">
+                      <input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}">
+                      <button class="secondary-button secondary-button--compact" type="submit">Revoke</button>
+                    </form>
+                  </li>
+                {{ end }}
+              </ul>
+            {{ else }}
+              <p class="account-access__empty">No apps are connected.</p>
+            {{ end }}
+          </section>
+
+          <section class="account-access" aria-labelledby="api-token-title">
+            <div class="section-heading account-access__heading">
               <h2 id="api-token-title">API tokens</h2>
               <button class="secondary-button" type="button" data-open-panel="new-api-token-panel" aria-controls="new-api-token-panel" aria-expanded="{{ if or .TokenError .NewAPIToken }}true{{ else }}false{{ end }}">
                 <span class="material-symbols-rounded" aria-hidden="true">add</span>
                 Create token
               </button>
             </div>
-            <p class="account-api__introduction">Tokens inherit your current account permissions. Treat them like passwords.</p>
+            <p class="account-access__introduction">Tokens inherit your current account permissions. Treat them like passwords.</p>
             {{ if .APITokens }}
-              <ul class="account-api__tokens">
+              <ul class="account-access__items">
                 {{ range .APITokens }}
                   <li>
                     <div>
@@ -56,6 +100,8 @@
                   </li>
                 {{ end }}
               </ul>
+            {{ else }}
+              <p class="account-access__empty">No API tokens have been created.</p>
             {{ end }}
           </section>
         </div>
@@ -72,16 +118,16 @@
             </button>
           </header>
           {{ if .NewAPIToken }}
-            <div class="account-api__secret" role="status" data-api-token-result>
+            <div class="account-access__secret" role="status" data-api-token-result>
               <strong>Copy this token now. It will not be shown again.</strong>
-              <div class="account-api__secret-value">
+              <div class="account-access__secret-value">
                 <code data-api-token-value>{{ .NewAPIToken }}</code>
                 <button class="secondary-button" type="button" data-copy-api-token>
                   <span class="material-symbols-rounded" aria-hidden="true">content_copy</span>
                   <span data-copy-api-token-label>Copy</span>
                 </button>
               </div>
-              <p class="account-api__copy-status" aria-live="polite" data-copy-api-token-status></p>
+              <p class="account-access__copy-status" aria-live="polite" data-copy-api-token-status></p>
             </div>
           {{ end }}
           <form class="editor-form editor-form--panel" method="post" action="/account/api-tokens" data-api-token-form {{ if .NewAPIToken }}hidden{{ end }}>

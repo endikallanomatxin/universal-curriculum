@@ -108,6 +108,11 @@ are audience-bound to the exact MCP resource. Their last-use metadata update is
 best effort. The revocation endpoint accepts public-client access or refresh
 tokens without revealing whether a token existed.
 
+Each completed OAuth grant creates or refreshes one durable connection keyed by
+user, client and resource. Reauthorization replaces the connection's previous
+tokens. Users can inspect and revoke connected apps from Account; revoking a
+connection deletes all of its access and refresh tokens atomically.
+
 ## Client setup
 
 The production endpoint is:
@@ -146,10 +151,10 @@ the complete remote OAuth flow.
   who authors the draft, requires `confirmed: true`, and requires the current
   title as a stale/wrong-proposal guard. Clients should still show their own
   user confirmation UI.
-- The OAuth consent page grants the single `mcp` scope. There is not yet an
-  Account-page list of connected OAuth clients. Clients can revoke their access
-  or refresh token through `/oauth/revoke`; access otherwise ends after one
-  hour and refresh eligibility after 30 days.
+- The OAuth consent page grants the single `mcp` scope. Account lists connected
+  apps and can revoke a whole connection. Clients may also revoke an individual
+  access or refresh token through `/oauth/revoke`; access otherwise ends after
+  one hour and refresh eligibility after 30 days.
 - Browser cross-origin mutation protection wraps `/mcp`. The public OAuth
   discovery documents alone allow cross-origin reads.
 

@@ -157,6 +157,7 @@ func (server *Server) routes() http.Handler {
 	mux.Handle("GET /account", requireUser(http.HandlerFunc(server.account)))
 	mux.Handle("POST /account/api-tokens", requireUser(sensitiveAuthResponse(http.HandlerFunc(server.createAPIToken))))
 	mux.Handle("POST /account/api-tokens/{id}/revoke", requireUser(http.HandlerFunc(server.revokeAPIToken)))
+	mux.Handle("POST /account/oauth-connections/{id}/revoke", requireUser(http.HandlerFunc(server.revokeOAuthConnection)))
 	mux.Handle("GET /curriculum-modification", server.requireAdmin(http.HandlerFunc(server.curriculumModification)))
 	mux.Handle("POST /curriculum-modification/proposals", server.requireAdmin(http.HandlerFunc(server.createCurriculumProposal)))
 	mux.Handle("POST /curriculum-modification/proposals/{id}", server.requireAdmin(http.HandlerFunc(server.updateCurriculumProposal)))

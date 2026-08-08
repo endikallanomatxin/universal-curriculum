@@ -15,53 +15,6 @@
   margin: 0 0 var(--space-6);
 }
 
-.about-index__navigation {
-  display: grid;
-  gap: var(--space-2);
-}
-
-.about-index__page {
-  align-items: center;
-  background: color-mix(in srgb, var(--color-ink) 2%, var(--color-surface));
-  border-radius: var(--radius-surface);
-  display: grid;
-  gap: var(--space-2);
-  grid-template-columns: 1.5rem minmax(0, 1fr);
-  min-height: 4.25rem;
-  padding: var(--space-4);
-  text-decoration: none;
-  view-transition-class: layout-position;
-}
-
-.about-index__page > .material-symbols-rounded {
-  align-self: start;
-  color: var(--color-muted);
-  font-size: 1.35rem;
-  justify-self: center;
-  margin-top: 0.1rem;
-}
-
-.about-index__page strong,
-.about-index__page small {
-  display: block;
-}
-
-.about-index__page strong {
-  font-size: 0.92rem;
-}
-
-.about-index__page small {
-  color: var(--color-muted);
-  font-size: 0.75rem;
-  margin-top: 0.25rem;
-}
-
-.about-index__page > .material-symbols-rounded,
-.about-index__page strong,
-.about-index__page small {
-  view-transition-class: layout-position non-scaling-content;
-}
-
 .about-document p {
   line-height: 1.8;
   max-width: 42rem;

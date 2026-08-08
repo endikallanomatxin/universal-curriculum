@@ -177,7 +177,7 @@ func TestMCPOAuthTokensUsePKCEAudienceAndRotation(t *testing.T) {
 	resource := "https://curriculum.example/mcp"
 	clientID := "https://client.example/oauth.json"
 	code, err := db.CreateOAuthAuthorizationCode(database, models.OAuthAuthorizationGrant{
-		UserID: user.ID, ClientID: clientID, RedirectURI: "https://client.example/callback",
+		UserID: user.ID, ClientID: clientID, ClientName: "MCP integration client", RedirectURI: "https://client.example/callback",
 		Resource: resource, Scope: "mcp", CodeChallenge: challenge,
 	})
 	if err != nil {

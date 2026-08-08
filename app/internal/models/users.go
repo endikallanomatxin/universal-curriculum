@@ -53,10 +53,21 @@ type PasswordResetToken struct {
 type OAuthAuthorizationGrant struct {
 	UserID        int64
 	ClientID      string
+	ClientName    string
 	RedirectURI   string
 	Resource      string
 	Scope         string
 	CodeChallenge string
+}
+
+type OAuthConnection struct {
+	ID           int64
+	UserID       int64
+	ClientID     string
+	ClientName   string
+	Resource     string
+	AuthorizedAt time.Time
+	LastUsedAt   *time.Time
 }
 
 type OAuthTokenPair struct {

@@ -68,30 +68,35 @@
   font-weight: 700;
 }
 
-.account-api {
+.account-access {
   border-top: 1px solid var(--color-panel-end);
   display: grid;
-  gap: 0;
+  gap: var(--space-2);
   margin-top: var(--space-5);
   padding-top: var(--space-5);
 }
 
-.account-api__heading {
-  align-items: center;
-  flex-wrap: wrap;
-  margin-bottom: var(--space-1);
+.account-access-summary {
+  margin-top: var(--space-5);
 }
 
-.account-api__heading .secondary-button {
+.account-access__heading {
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 0;
+}
+
+.account-access__heading .secondary-button {
   flex: 0 0 auto;
 }
 
-.account-api__introduction {
+.account-access__introduction,
+.account-access__empty {
   color: var(--color-muted);
   margin: 0;
 }
 
-.account-api__secret {
+.account-access__secret {
   background: var(--color-panel-start);
   border-radius: var(--radius-control);
   display: grid;
@@ -100,42 +105,42 @@
   padding: var(--space-3);
 }
 
-.account-api__secret-value {
+.account-access__secret-value {
   align-items: center;
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
 }
 
-.account-api__secret-value code {
+.account-access__secret-value code {
   flex: 1 1 16rem;
   min-width: 0;
   overflow-wrap: anywhere;
   user-select: all;
 }
 
-.account-api__copy-status {
+.account-access__copy-status {
   color: var(--color-muted);
   font-size: 0.75rem;
   margin: 0;
   min-height: 1.2em;
 }
 
-.account-api__tokens {
+.account-access__items {
   display: grid;
   gap: var(--space-2);
   list-style: none;
-  margin: var(--space-2) 0 0;
+  margin: 0;
   padding: 0;
 }
 
-.account-api__tokens li,
-.account-api__tokens li > div {
+.account-access__items li,
+.account-access__items li > div {
   display: flex;
   gap: var(--space-2);
 }
 
-.account-api__tokens li {
+.account-access__items li {
   align-items: center;
   background: color-mix(in srgb, var(--color-ink) 2%, var(--color-surface));
   border: 1px solid color-mix(in srgb, var(--color-ink) 8%, transparent);
@@ -144,13 +149,13 @@
   padding: var(--space-3);
 }
 
-.account-api__tokens li > div {
+.account-access__items li > div {
   align-items: flex-start;
   flex-direction: column;
   gap: var(--space-1);
   min-width: 0;
 }
 
-.account-api__tokens code {
+.account-access__items code {
   overflow-wrap: anywhere;
 }

@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -13,6 +14,7 @@ import (
 	"testing"
 
 	"universal-curriculum/internal/db"
+	"universal-curriculum/internal/models"
 	"universal-curriculum/internal/services"
 )
 
@@ -211,6 +213,29 @@ func TestOAuthAuthorizationCodeFlowWithPostgreSQL(t *testing.T) {
 	if tokenBody.AccessToken == "" || tokenBody.RefreshToken == "" || tokenBody.TokenType != "Bearer" || tokenBody.ExpiresIn != 3600 {
 		t.Fatalf("token body = %#v", tokenBody)
 	}
+	connections, err := db.ListOAuthConnections(database, user.ID)
+	if err != nil || len(connections) != 1 || connections[0].ClientName != "Example agent" {
+		t.Fatalf("OAuth connections = %#v, %v", connections, err)
+	}
+	if authenticated, err := db.AuthenticateOAuthAccessToken(database, tokenBody.AccessToken, "https://curriculum.example/mcp"); err != nil || authenticated == nil {
+		t.Fatalf("OAuth access authentication = %#v, %v", authenticated, err)
+	}
+	connections, err = db.ListOAuthConnections(database, user.ID)
+	if err != nil || connections[0].LastUsedAt == nil {
+		t.Fatalf("used OAuth connection = %#v, %v", connections, err)
+	}
+	if _, err := database.Exec(`
+		UPDATE oauth_access_tokens token
+		SET expires_at = clock_timestamp() - INTERVAL '1 second'
+		FROM oauth_connections connection
+		WHERE token.connection_id = connection.id AND connection.user_id = $1
+	`, user.ID); err != nil {
+		t.Fatal(err)
+	}
+	rotated, err := services.RefreshOAuthAccessToken(database, tokenBody.RefreshToken, clientID, "https://curriculum.example/mcp")
+	if err != nil {
+		t.Fatalf("refresh after access expiry: %v", err)
+	}
 
 	// Authorization codes are one-time secrets.
 	reuseRequest := httptest.NewRequest(http.MethodPost, "/oauth/token", strings.NewReader(tokenValues.Encode()))
@@ -221,7 +246,31 @@ func TestOAuthAuthorizationCodeFlowWithPostgreSQL(t *testing.T) {
 		t.Fatalf("code reuse response = %d: %s", reuseResponse.Code, reuseResponse.Body.String())
 	}
 
-	revokeValues := url.Values{"client_id": {clientID}, "token": {tokenBody.AccessToken}}
+	reconnectCode, err := db.CreateOAuthAuthorizationCode(database, models.OAuthAuthorizationGrant{
+		UserID: user.ID, ClientID: clientID, ClientName: "Renamed example agent",
+		RedirectURI: redirectURI, Resource: "https://curriculum.example/mcp", Scope: "mcp", CodeChallenge: challenge,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	reconnected, err := services.ExchangeOAuthAuthorizationCode(
+		database, reconnectCode, clientID, redirectURI, "https://curriculum.example/mcp", verifier,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if authenticated, err := db.AuthenticateOAuthAccessToken(database, rotated.AccessToken, "https://curriculum.example/mcp"); err != nil || authenticated != nil {
+		t.Fatalf("replaced access token authentication = %#v, %v", authenticated, err)
+	}
+	if _, err := services.RefreshOAuthAccessToken(database, rotated.RefreshToken, clientID, "https://curriculum.example/mcp"); !errors.Is(err, services.ErrInvalidOAuthGrant) {
+		t.Fatalf("replaced refresh token error = %v", err)
+	}
+	connections, err = db.ListOAuthConnections(database, user.ID)
+	if err != nil || len(connections) != 1 || connections[0].ClientName != "Renamed example agent" {
+		t.Fatalf("reauthorized OAuth connections = %#v, %v", connections, err)
+	}
+
+	revokeValues := url.Values{"client_id": {clientID}, "token": {reconnected.AccessToken}}
 	revokeRequest := httptest.NewRequest(http.MethodPost, "/oauth/revoke", strings.NewReader(revokeValues.Encode()))
 	revokeRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	revokeResponse := httptest.NewRecorder()
@@ -229,7 +278,7 @@ func TestOAuthAuthorizationCodeFlowWithPostgreSQL(t *testing.T) {
 	if revokeResponse.Code != http.StatusOK {
 		t.Fatalf("revocation response = %d: %s", revokeResponse.Code, revokeResponse.Body.String())
 	}
-	authenticated, err := db.AuthenticateOAuthAccessToken(database, tokenBody.AccessToken, "https://curriculum.example/mcp")
+	authenticated, err := db.AuthenticateOAuthAccessToken(database, reconnected.AccessToken, "https://curriculum.example/mcp")
 	if err != nil || authenticated != nil {
 		t.Fatalf("revoked token authentication = %#v, %v", authenticated, err)
 	}

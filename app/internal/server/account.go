@@ -21,9 +21,39 @@ type accountAPITokenFlash struct {
 
 type accountPageData struct {
 	userPageData
-	APITokens   []models.APIToken
-	NewAPIToken string
-	TokenError  string
+	APITokens        []models.APIToken
+	OAuthConnections []models.OAuthConnection
+	NewAPIToken      string
+	TokenError       string
+}
+
+func (server *Server) revokeOAuthConnection(writer http.ResponseWriter, request *http.Request) {
+	request.Body = http.MaxBytesReader(writer, request.Body, 1<<20)
+	if err := request.ParseForm(); err != nil {
+		http.Error(writer, "Invalid form", http.StatusBadRequest)
+		return
+	}
+	if !services.ValidCSRFToken(request, request.FormValue("csrf_token")) {
+		http.Error(writer, "Invalid CSRF token", http.StatusForbidden)
+		return
+	}
+	connectionID, err := parsePositiveID(request.PathValue("id"))
+	if err != nil {
+		http.Error(writer, "Connection not found", http.StatusNotFound)
+		return
+	}
+	userID, _ := services.SessionUserID(request)
+	deleted, err := db.DeleteOAuthConnection(server.Database, userID, connectionID)
+	if err != nil {
+		log.Printf("revoke OAuth connection: %v", err)
+		http.Error(writer, "Unable to revoke connection", http.StatusInternalServerError)
+		return
+	}
+	if !deleted {
+		http.Error(writer, "Connection not found", http.StatusNotFound)
+		return
+	}
+	http.Redirect(writer, request, "/account", http.StatusSeeOther)
 }
 
 func (server *Server) account(writer http.ResponseWriter, request *http.Request) {
@@ -99,9 +129,15 @@ func (server *Server) renderAccount(writer http.ResponseWriter, request *http.Re
 		http.Error(writer, "Unable to load API tokens", http.StatusInternalServerError)
 		return
 	}
+	connections, err := db.ListOAuthConnections(server.Database, userID)
+	if err != nil {
+		log.Printf("list OAuth connections: %v", err)
+		http.Error(writer, "Unable to load connected apps", http.StatusInternalServerError)
+		return
+	}
 	server.renderStatus(writer, status, "account.html", accountPageData{
-		userPageData: page,
-		APITokens:    tokens, NewAPIToken: rawToken, TokenError: tokenError,
+		userPageData: page, APITokens: tokens, OAuthConnections: connections,
+		NewAPIToken: rawToken, TokenError: tokenError,
 	})
 }
 

@@ -133,7 +133,7 @@ func (server *Server) oauthAuthorize(writer http.ResponseWriter, request *http.R
 		return
 	}
 	code, err := db.CreateOAuthAuthorizationCode(server.Database, models.OAuthAuthorizationGrant{
-		UserID: userID, ClientID: input.ClientID, RedirectURI: input.RedirectURI,
+		UserID: userID, ClientID: input.ClientID, ClientName: input.ClientName, RedirectURI: input.RedirectURI,
 		Resource: input.Resource, Scope: input.Scope, CodeChallenge: input.CodeChallenge,
 	})
 	if err != nil {
