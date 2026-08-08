@@ -10,15 +10,8 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"universal-curriculum/internal/db"
+	"universal-curriculum/internal/guidance"
 )
-
-const aboutResource = `# Universal Curriculum
-
-Universal Curriculum is a shared, evolving map of learning units and prerequisite relationships. Units contain stable IDs, names and learning content. A dependency means the prerequisite should be completed before the dependent unit. Recognitions preserve learner progress when curriculum changes make earlier study equivalent to newer units.
-
-Learners organize target units into private learning paths. Recorded progress is authoritative, and the platform's recommendation service determines what is currently available to study.
-
-Administrators change the curriculum through draft proposals. A proposal may create, update or remove units and relationships. Drafts can become stale when another proposal is published: inspect and resolve rebase state before continuing. Publication changes the shared curriculum and must only happen after an explicit user request.`
 
 func (application *adapter) addResources(server *mcp.Server) {
 	server.AddResource(&mcp.Resource{
@@ -29,7 +22,7 @@ func (application *adapter) addResources(server *mcp.Server) {
 		return &mcp.ReadResourceResult{
 			Cacheable: mcp.Cacheable{TTLMs: 3_600_000, CacheScope: "public"},
 			Contents: []*mcp.ResourceContents{{
-				URI: request.Params.URI, MIMEType: "text/markdown", Text: aboutResource,
+				URI: request.Params.URI, MIMEType: "text/markdown", Text: guidance.Index(),
 			}},
 		}, nil
 	})
@@ -43,6 +36,30 @@ func (application *adapter) addResources(server *mcp.Server) {
 		Title: "Published curriculum unit", MIMEType: "application/json",
 		Description: "One published unit with its content, prerequisites and dependents.",
 	}, application.readUnitResource)
+	server.AddResourceTemplate(&mcp.ResourceTemplate{
+		URITemplate: "curriculum://documentation/{slug}", Name: "documentation_page",
+		Title: "Universal Curriculum documentation page", MIMEType: "text/markdown",
+		Description: "Canonical guidance for humans and agents about one curriculum concept or workflow.",
+	}, readDocumentationResource)
+}
+
+func readDocumentationResource(
+	_ context.Context, request *mcp.ReadResourceRequest,
+) (*mcp.ReadResourceResult, error) {
+	parsed, err := url.Parse(request.Params.URI)
+	if err != nil || parsed.Scheme != "curriculum" || parsed.Host != "documentation" {
+		return nil, mcp.ResourceNotFoundError(request.Params.URI)
+	}
+	page, ok := guidance.Find(strings.TrimPrefix(parsed.Path, "/"))
+	if !ok {
+		return nil, mcp.ResourceNotFoundError(request.Params.URI)
+	}
+	return &mcp.ReadResourceResult{
+		Cacheable: mcp.Cacheable{TTLMs: 3_600_000, CacheScope: "public"},
+		Contents: []*mcp.ResourceContents{{
+			URI: request.Params.URI, MIMEType: "text/markdown", Text: page.Content,
+		}},
+	}, nil
 }
 
 func (application *adapter) readCurriculumResource(

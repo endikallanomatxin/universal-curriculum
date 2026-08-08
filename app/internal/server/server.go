@@ -135,6 +135,8 @@ func (server *Server) routes() http.Handler {
 	mux.HandleFunc("GET /about", server.about)
 	mux.HandleFunc("GET /about/case", server.aboutCase)
 	mux.HandleFunc("GET /about/proposal", server.aboutProposal)
+	mux.HandleFunc("GET /about/documentation", server.documentation)
+	mux.HandleFunc("GET /about/documentation/{slug}", server.documentation)
 	mux.HandleFunc("GET /about/manifest", func(writer http.ResponseWriter, request *http.Request) {
 		http.Redirect(writer, request, "/about/case", http.StatusPermanentRedirect)
 	})
