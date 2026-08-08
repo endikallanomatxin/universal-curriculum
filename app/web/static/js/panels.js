@@ -144,6 +144,24 @@
     }).map(paneTransitionKey).filter(Boolean);
   }
 
+  function preservedPanelScrollPositions() {
+    const positions = new Map();
+    document.querySelectorAll("#workspace > [data-panel-preserve-scroll]").forEach(function (panel) {
+      const key = paneTransitionKey(panel);
+      if (key) positions.set(key, panel.scrollTop);
+    });
+    return positions;
+  }
+
+  function restorePanelScrollPositions(root, navigation) {
+    if (!navigation || !navigation.scrollPositions) return;
+    Array.from(root.children).forEach(function (panel) {
+      if (!panel.matches("[data-panel-preserve-scroll]")) return;
+      const position = navigation.scrollPositions.get(paneTransitionKey(panel));
+      if (position !== undefined) panel.scrollTop = position;
+    });
+  }
+
   function markMatchedTransitionContent(root) {
     Array.from(root.children).forEach(function (panel) {
       if (!panel.matches("[data-layout-panel]") || panel.classList.contains("is-closing")) return;
@@ -358,7 +376,8 @@
         mode: mode,
         scope: declaredMode === "workspace" ? "workspace" : "panel",
         viewTransition: mode === "open" && typeof document.startViewTransition === "function",
-        existingPaneKeys: visibleWorkspacePaneKeys()
+        existingPaneKeys: visibleWorkspacePaneKeys(),
+        scrollPositions: preservedPanelScrollPositions()
       });
       if (mode === "open") {
         const workspace = document.querySelector("#workspace");
@@ -385,13 +404,16 @@
   });
   document.addEventListener("htmx:afterSwap", function (event) {
     if (event.target && event.target.id === "workspace") {
-      keepTransitionContentOnlyForPersistentPanes(event.target, navigationFor(event));
+      const navigation = navigationFor(event);
+      keepTransitionContentOnlyForPersistentPanes(event.target, navigation);
+      restorePanelScrollPositions(event.target, navigation);
     }
   });
   document.addEventListener("htmx:afterSettle", function (event) {
     if (event.target && event.target.id === "workspace") {
       const root = event.target;
       const navigation = navigationFor(event);
+      restorePanelScrollPositions(root, navigation);
       if (navigation && navigation.mode === "open" && window.panelLayout) {
         window.panelLayout.settle();
       }

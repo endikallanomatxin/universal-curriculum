@@ -15,6 +15,7 @@ import (
 
 	"universal-curriculum/internal/db"
 	"universal-curriculum/internal/models"
+	"universal-curriculum/internal/server/views"
 	"universal-curriculum/internal/services"
 )
 
@@ -73,7 +74,7 @@ func TestOAuthAuthorizationRequiresConsentAndPreservesState(t *testing.T) {
 			TokenEndpointAuthMethodsSupported: []string{"none", "private_key_jwt"},
 		}},
 	}
-	templates, err := services.LoadTemplates()
+	templates, err := views.LoadTemplates()
 	if err != nil {
 		t.Fatal(err)
 	}

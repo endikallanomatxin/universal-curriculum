@@ -6,6 +6,10 @@ The Go module lives in `app`. The usual dependency flow is:
 
 `web/REST/MCP adapters → services → db → models`
 
+These four layers are represented by the top-level packages under
+`app/internal`: `server`, `services`, `db` and `models`. Adapter-specific and
+presentation packages belong below `server`.
+
 - Handlers own HTTP concerns: authorization, parsing and responses.
 - A handler may call `db` directly for a simple one-to-one persistence
   operation.

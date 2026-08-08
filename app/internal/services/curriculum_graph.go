@@ -15,7 +15,7 @@ const (
 	curriculumDirectNeighborLimit = 4
 	curriculumSecondNeighborLimit = 4
 	curriculumCoPrerequisiteLimit = 3
-	curriculumOrderSearchLimit    = 512
+	curriculumOrderSearchLimit    = 128
 )
 
 type CurriculumGraphLayoutHints struct {

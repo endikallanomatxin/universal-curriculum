@@ -46,15 +46,26 @@ func TestDiscoveryAdvertisesAgentGuidanceResourcesAndTools(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(templates.ResourceTemplates) != 1 || templates.ResourceTemplates[0].URITemplate != "curriculum://units/{unit_id}" {
+	templateURIs := make(map[string]bool, len(templates.ResourceTemplates))
+	for _, resourceTemplate := range templates.ResourceTemplates {
+		templateURIs[resourceTemplate.URITemplate] = true
+	}
+	if len(templates.ResourceTemplates) != 2 || !templateURIs["curriculum://units/{unit_id}"] || !templateURIs["curriculum://documentation/{slug}"] {
 		t.Fatalf("resource templates = %#v", templates.ResourceTemplates)
 	}
 	about, err := session.ReadResource(context.Background(), &mcp.ReadResourceParams{URI: "curriculum://about"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(about.Contents) != 1 || !strings.Contains(about.Contents[0].Text, "dependency") || about.TTLMs == 0 || about.CacheScope != "public" {
+	if len(about.Contents) != 1 || !strings.Contains(about.Contents[0].Text, "curriculum://documentation/dependencies") || about.TTLMs == 0 || about.CacheScope != "public" {
 		t.Fatalf("about resource = %#v", about)
+	}
+	writing, err := session.ReadResource(context.Background(), &mcp.ReadResourceParams{URI: "curriculum://documentation/writing-content"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(writing.Contents) != 1 || !strings.Contains(writing.Contents[0].Text, "Content supports Markdown") || !strings.Contains(writing.Contents[0].Text, "$$...$$") {
+		t.Fatalf("writing documentation resource = %#v", writing)
 	}
 
 	tools, err := session.ListTools(context.Background(), nil)
@@ -86,6 +97,13 @@ func TestDiscoveryAdvertisesAgentGuidanceResourcesAndTools(t *testing.T) {
 		`"maxLength":200`, `"minItems":1`, `"uniqueItems":true`)
 	assertSchemaContains(t, byName["create_proposal"].InputSchema,
 		`"maxLength":200`, `"maxLength":1000`)
+	assertSchemaContains(t, byName["create_proposal_unit"].InputSchema,
+		`Supports Markdown and LaTeX`, `$...$`, `$$...$$`)
+	assertSchemaContains(t, byName["update_proposal_unit"].InputSchema,
+		`Supports Markdown and LaTeX`, `$...$`, `$$...$$`)
+	if !strings.Contains(byName["update_proposal_unit"].Description, "rather than adding edit history") {
+		t.Fatalf("update_proposal_unit description = %q", byName["update_proposal_unit"].Description)
+	}
 	assertSchemaContains(t, byName["add_proposal_recognition"].InputSchema,
 		`"minItems":1`, `"uniqueItems":true`)
 	assertSchemaContains(t, byName["publish_proposal"].InputSchema,

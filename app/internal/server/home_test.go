@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"universal-curriculum/internal/models"
-	"universal-curriculum/internal/services"
+	"universal-curriculum/internal/server/views"
 )
 
 func TestAboutPageIsPublicAndUsesShellNavigation(t *testing.T) {
@@ -21,7 +21,7 @@ func TestAboutPageIsPublicAndUsesShellNavigation(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chdir(workingDirectory) })
 
-	templates, err := services.LoadTemplates()
+	templates, err := views.LoadTemplates()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,6 +40,7 @@ func TestAboutPageIsPublicAndUsesShellNavigation(t *testing.T) {
 		`Universal Curriculum is a platform for the collaborative development of a free, publicly accessible curriculum.`,
 		`href="/about/case"`,
 		`href="/about/proposal"`,
+		`href="/about/documentation"`,
 		`href="/license"`,
 		`href="/about" aria-current="page"`,
 		`hx-get="/about"`,
@@ -47,6 +48,51 @@ func TestAboutPageIsPublicAndUsesShellNavigation(t *testing.T) {
 		if !strings.Contains(response.Body.String(), fragment) {
 			t.Errorf("rendered About page does not contain %q", fragment)
 		}
+	}
+}
+
+func TestDocumentationPagesUseCanonicalContentAndNestedPanels(t *testing.T) {
+	workingDirectory, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir("../.."); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(workingDirectory) })
+
+	templates, err := views.LoadTemplates()
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := &Server{Templates: templates}
+
+	index := httptest.NewRecorder()
+	server.routes().ServeHTTP(index, httptest.NewRequest(http.MethodGet, "/about/documentation", nil))
+	if index.Code != http.StatusOK {
+		t.Fatalf("documentation status = %d", index.Code)
+	}
+	for _, fragment := range []string{`<h1 id="about-title">About</h1>`, `<h1 id="documentation-title">Documentation</h1>`, `href="/about/documentation/curriculum-units"`, `href="/about/documentation/mcp-api"`} {
+		if !strings.Contains(index.Body.String(), fragment) {
+			t.Errorf("documentation index does not contain %q", fragment)
+		}
+	}
+
+	page := httptest.NewRecorder()
+	server.routes().ServeHTTP(page, httptest.NewRequest(http.MethodGet, "/about/documentation/writing-content", nil))
+	if page.Code != http.StatusOK {
+		t.Fatalf("documentation page status = %d", page.Code)
+	}
+	for _, fragment := range []string{`<h1 id="documentation-page-title">Writing content</h1>`, `Content supports Markdown`, `$...$`, `$$...$$`} {
+		if !strings.Contains(page.Body.String(), fragment) {
+			t.Errorf("documentation page does not contain %q", fragment)
+		}
+	}
+
+	missing := httptest.NewRecorder()
+	server.routes().ServeHTTP(missing, httptest.NewRequest(http.MethodGet, "/about/documentation/unknown", nil))
+	if missing.Code != http.StatusNotFound {
+		t.Errorf("unknown documentation status = %d, want %d", missing.Code, http.StatusNotFound)
 	}
 }
 
@@ -60,7 +106,7 @@ func TestAboutDocumentsArePublic(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chdir(workingDirectory) })
 
-	templates, err := services.LoadTemplates()
+	templates, err := views.LoadTemplates()
 	if err != nil {
 		t.Fatal(err)
 	}

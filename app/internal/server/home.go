@@ -1,11 +1,14 @@
 package server
 
 import (
+	"html/template"
 	"net/http"
 	"strconv"
 
 	"universal-curriculum/internal/db"
 	"universal-curriculum/internal/models"
+	"universal-curriculum/internal/server/guidance"
+	"universal-curriculum/internal/server/views"
 	"universal-curriculum/internal/services"
 )
 
@@ -19,6 +22,36 @@ func (server *Server) aboutCase(writer http.ResponseWriter, request *http.Reques
 
 func (server *Server) aboutProposal(writer http.ResponseWriter, request *http.Request) {
 	server.renderUserPage(writer, request, "proposal.html", "about", false)
+}
+
+type documentationPageData struct {
+	userPageData
+	Pages    []guidance.Page
+	Page     *guidance.Page
+	Rendered template.HTML
+	Title    string
+}
+
+func (server *Server) documentation(writer http.ResponseWriter, request *http.Request) {
+	data, err := server.loadUserPageData(request, "about", false)
+	if err != nil {
+		http.Error(writer, "Load user", http.StatusInternalServerError)
+		return
+	}
+	view := documentationPageData{userPageData: data, Pages: guidance.Pages()}
+	if slug := request.PathValue("slug"); slug != "" {
+		page, ok := guidance.Find(slug)
+		if !ok {
+			http.NotFound(writer, request)
+			return
+		}
+		view.Page = &page
+		view.Rendered = views.RenderUnitContent(page.Content)
+		view.Title = page.Title + " · Universal Curriculum"
+		server.render(writer, "documentation-page.html", view)
+		return
+	}
+	server.render(writer, "documentation.html", view)
 }
 
 func (server *Server) license(writer http.ResponseWriter, request *http.Request) {

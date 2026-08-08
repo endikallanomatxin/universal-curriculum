@@ -45,14 +45,14 @@ type updateProposalInput struct {
 type createProposalUnitInput struct {
 	ProposalID int64  `json:"proposal_id" jsonschema:"Editable draft proposal ID."`
 	Name       string `json:"name" jsonschema:"Published-facing unit name, at most 200 characters."`
-	Content    string `json:"content" jsonschema:"Complete learning content for the proposed unit."`
+	Content    string `json:"content" jsonschema:"Complete learning content for the proposed unit. Supports Markdown and LaTeX using $...$ inline or $$...$$ for display math."`
 }
 
 type updateProposalUnitInput struct {
 	ProposalID int64  `json:"proposal_id" jsonschema:"Editable draft proposal ID."`
 	UnitID     int64  `json:"unit_id" jsonschema:"Existing or proposal-created unit ID."`
 	Name       string `json:"name" jsonschema:"Complete replacement unit name, at most 200 characters."`
-	Content    string `json:"content" jsonschema:"Complete replacement learning content."`
+	Content    string `json:"content" jsonschema:"Complete replacement learning content. Supports Markdown and LaTeX using $...$ inline or $$...$$ for display math."`
 }
 
 type proposalUnitIDInput struct {
@@ -108,7 +108,7 @@ func (application *adapter) addProposalTools(server *mcp.Server) {
 	addTool(server, "update_proposal", "Update proposal metadata", "Replaces the title and rationale of an authored draft.", mutation("Update proposal metadata", true, false), application.updateProposal)
 	addTool(server, "delete_proposal", "Delete curriculum proposal", "Deletes an authored draft and all of its unaccepted changes.", mutation("Delete curriculum proposal", true, true), application.deleteProposal)
 	addTool(server, "create_proposal_unit", "Create unit in proposal", "Proposes one new unit. Search published units first when an equivalent may exist.", mutation("Create unit in proposal", false, false), application.createProposalUnit)
-	addTool(server, "update_proposal_unit", "Update unit in proposal", "Converges both the name and content of an existing or proposal-created unit.", mutation("Update unit in proposal", true, false), application.updateProposalUnit)
+	addTool(server, "update_proposal_unit", "Update unit in proposal", "Converges the name and content on the proposed final state. For a unit created in this proposal, it updates the existing creation rather than adding edit history.", mutation("Update unit in proposal", true, false), application.updateProposalUnit)
 	addTool(server, "delete_proposal_unit", "Delete unit in proposal", "Proposes deletion of a unit, or discards a unit created in the same draft.", mutation("Delete unit in proposal", true, true), application.deleteProposalUnit)
 	addTool(server, "set_proposal_dependency", "Set proposal dependency", "Idempotently ensures a prerequisite relationship is present or absent; cycles are rejected.", mutation("Set proposal dependency", true, true), application.setProposalDependency)
 	addTool(server, "add_proposal_recognition", "Add proposal recognition", "Ensures an identical recognition exists. Recognitions preserve progress across curriculum changes and do not constitute ordinary public curriculum content.", mutation("Add proposal recognition", true, false), application.addProposalRecognition)

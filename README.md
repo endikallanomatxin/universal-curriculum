@@ -5,7 +5,7 @@ curriculum.
 
 The application is written in Go, uses PostgreSQL and is deployed to Render as
 a Docker web service. File access is prepared behind an object-store
-abstraction, but the 0.2.1 release does not store assets. Local storage is
+abstraction, but the 0.2.2 release does not store assets. Local storage is
 ephemeral in production until asset support is introduced in 0.3.0.
 
 ## Repository structure
@@ -16,8 +16,7 @@ ephemeral in production until asset support is introduced in 0.3.0.
   - `internal/models/`: domain models
   - `internal/db/`: PostgreSQL access and Goose migrations
   - `internal/services/`: business workflows
-  - `internal/server/`: HTTP server, configuration, web/REST and OAuth handlers
-  - `internal/mcpadapter/`: agent-oriented MCP adapter
+  - `internal/server/`: web, REST and MCP adapters, shared guidance and presentation rendering
   - `web/`: templates and static assets
 - `docs/`: product and deployment documentation
 - `compose.dev.yaml`: local development environment
@@ -80,7 +79,7 @@ See [`docs/deployment.md`](docs/deployment.md) for production deployment.
 
 ## Experimental API
 
-Release 0.2.1 exposes the capabilities of the web application under `/api`.
+Release 0.2.2 exposes the capabilities of the web application under `/api`.
 The API is experimental during the 0.x release line and may change between
 minor releases. It does not yet use a versioned path or promise backward
 compatibility.
