@@ -41,6 +41,7 @@ in code.
 The read-only resources are:
 
 - `curriculum://about`, a compact explanation of the platform and workflows;
+- `curriculum://documentation/{slug}`, canonical guidance shared with the web;
 - `curriculum://published`, the current published graph as JSON; and
 - `curriculum://units/{unit_id}`, one unit and its immediate relationships.
 
