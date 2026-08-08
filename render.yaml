@@ -17,6 +17,8 @@ services:
     envVars:
       - key: ENV
         value: prod
+      - key: GOMEMLIMIT
+        value: 400MiB
       - key: PORT
         value: "8080"
       - key: DB_SSLMODE
