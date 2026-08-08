@@ -105,6 +105,36 @@ func TestMCPAgentWorkflowWithPostgreSQL(t *testing.T) {
 		"proposal_id": proposalID, "name": "Applied topic", "content": "Apply the advanced topic.",
 	})
 	createdUnitID := unitResult.Data.ID
+	for _, update := range []struct {
+		name    string
+		content string
+	}{
+		{name: "Refined applied topic", content: "Apply the refined topic."},
+		{name: "Final applied topic", content: "Apply the final topic."},
+	} {
+		updated := callIntegrationTool[unit](t, adminSession, "update_proposal_unit", map[string]any{
+			"proposal_id": proposalID, "unit_id": createdUnitID,
+			"name": update.name, "content": update.content,
+		})
+		if !updated.OK || updated.Data.ID != createdUnitID ||
+			updated.Data.Name != update.name || updated.Data.Content != update.content {
+			t.Fatalf("updated proposal unit = %#v", updated)
+		}
+	}
+	normalized := callIntegrationTool[proposal](t, adminSession, "get_proposal", map[string]any{"proposal_id": proposalID})
+	var createdChanges int
+	for _, change := range normalized.Data.Changes {
+		if change.UnitID == nil || *change.UnitID != createdUnitID {
+			continue
+		}
+		if change.Kind != "create_unit" || change.UnitName != "Final applied topic" || change.UnitContent != "Apply the final topic." {
+			t.Fatalf("MCP unit update left edit-history changes: %#v", normalized.Data.Changes)
+		}
+		createdChanges++
+	}
+	if createdChanges != 1 {
+		t.Fatalf("MCP unit creation count = %d, changes = %#v", createdChanges, normalized.Data.Changes)
+	}
 	dependencyResult := callIntegrationTool[dependencyState](t, adminSession, "set_proposal_dependency", map[string]any{
 		"proposal_id": proposalID, "unit_id": createdUnitID, "prerequisite_id": advanced.ID, "present": true,
 	})
@@ -163,7 +193,7 @@ func TestMCPAgentWorkflowWithPostgreSQL(t *testing.T) {
 		t.Fatalf("publication result = %#v", published)
 	}
 	readCreated := callIntegrationTool[unit](t, adminSession, "get_unit", map[string]any{"unit_id": createdUnitID})
-	if !readCreated.OK || readCreated.Data.Name != "Applied topic" {
+	if !readCreated.OK || readCreated.Data.Name != "Final applied topic" || readCreated.Data.Content != "Apply the final topic." {
 		t.Fatalf("published unit = %#v", readCreated)
 	}
 }

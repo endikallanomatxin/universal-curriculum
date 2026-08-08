@@ -85,6 +85,30 @@ func TestExperimentalAPIEndToEnd(t *testing.T) {
 		fmt.Sprintf("/api/proposals/%d/units/%d", proposal.ID, unit.ID), map[string]any{
 			"name": "Practical API design", "content": "Learn how to design a practical API.",
 		}, http.StatusOK)
+	apiIntegrationRequest(t, application, token.Token, http.MethodPut,
+		fmt.Sprintf("/api/proposals/%d/units/%d", proposal.ID, unit.ID), map[string]any{
+			"name": "Final API design", "content": "Learn how to design the final API.",
+		}, http.StatusOK)
+	apiDraftResponse := apiIntegrationRequest(
+		t, application, token.Token, http.MethodGet,
+		fmt.Sprintf("/api/proposals/%d", proposal.ID), nil, http.StatusOK,
+	)
+	var apiDraft apiProposal
+	decodeAPIIntegrationResponse(t, apiDraftResponse, &apiDraft)
+	var apiCreationCount int
+	for _, change := range *apiDraft.Changes {
+		if change.UnitID == nil || *change.UnitID != unit.ID {
+			continue
+		}
+		if change.Kind != "create_unit" || change.UnitName != "Final API design" ||
+			change.UnitContent != "Learn how to design the final API." {
+			t.Fatalf("API unit update left edit-history changes: %#v", *apiDraft.Changes)
+		}
+		apiCreationCount++
+	}
+	if apiCreationCount != 1 {
+		t.Fatalf("API unit creation count = %d, changes = %#v", apiCreationCount, *apiDraft.Changes)
+	}
 	apiIntegrationRequest(t, application, token.Token, http.MethodPost,
 		fmt.Sprintf("/api/proposals/%d/dependencies", proposal.ID), map[string]any{
 			"unit_id": unit.ID, "prerequisite_id": prerequisite.ID,

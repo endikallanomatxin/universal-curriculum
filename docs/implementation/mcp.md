@@ -74,7 +74,9 @@ requested state, and an identical recognition is a successful no-op.
 All MCP protocol requests require a bearer credential. Requiring authentication
 at the transport boundary gives remote MCP clients the standard OAuth discovery
 challenge and also protects private tool and resource enumeration. Anonymous
-published-curriculum access remains available through REST.
+published-curriculum access remains available through REST. Tools omit
+`securitySchemes` and inherit this server-wide policy; they do not advertise the
+legacy `_meta.securitySchemes` compatibility mirror.
 
 Two bearer credential forms are accepted:
 

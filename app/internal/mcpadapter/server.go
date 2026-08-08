@@ -71,7 +71,7 @@ func NewHandler(database *sql.DB, baseURL string) http.Handler {
 
 func newServer(application *adapter) *mcp.Server {
 	server := mcp.NewServer(&mcp.Implementation{
-		Name: "universal-curriculum", Title: "Universal Curriculum", Version: "0.2.0",
+		Name: "universal-curriculum", Title: "Universal Curriculum", Version: "0.2.1",
 		Description: "Agent-oriented access to Universal Curriculum.", WebsiteURL: application.baseURL,
 	}, &mcp.ServerOptions{
 		Instructions: instructions,
@@ -105,7 +105,6 @@ func addTool[In, Out any](
 	mcp.AddTool(server, &mcp.Tool{
 		Name: name, Title: title, Description: description, Annotations: annotations,
 		InputSchema: inputSchema, OutputSchema: outputSchema,
-		Meta: mcp.Meta{"securitySchemes": []map[string]any{{"type": "oauth2", "scopes": []string{"mcp"}}}},
 	}, handler)
 }
 
