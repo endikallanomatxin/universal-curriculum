@@ -256,16 +256,26 @@
 
         function pathNodeCollisions(path, edge) {
           const length = path.getTotalLength();
+          const samples = [];
+          for (let distance = 0; distance <= length; distance += 2) {
+            samples.push({ distance: distance, point: path.getPointAtLength(distance) });
+          }
           const collisions = [];
           for (const [unitID, point] of nodePoints) {
             if (!point || unitID === edge.prerequisiteID || unitID === edge.dependentID) continue;
             const radius = point.width / 2 + 2;
             let closest = null;
-            for (let distance = 0; distance <= length; distance += 2) {
-              const sample = path.getPointAtLength(distance);
-              const separation = Math.hypot(sample.x - point.x, sample.y - point.y);
+            for (const sample of samples) {
+              const separation = Math.hypot(
+                sample.point.x - point.x,
+                sample.point.y - point.y
+              );
               if (!closest || separation < closest.separation) {
-                closest = { distance: distance, point: sample, separation: separation };
+                closest = {
+                  distance: sample.distance,
+                  point: sample.point,
+                  separation: separation
+                };
               }
             }
             if (closest && closest.separation <= radius) {
