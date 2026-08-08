@@ -60,25 +60,22 @@
     }).reverse();
   }
 
-  function paneModeInlinePadding(mode) {
-    if (mode === "collapsed") return 0;
-    if (mode === "breadcrumb") return 0.75;
-    if (mode === "compact" || mode === "mobile") return 1;
-    return 2;
+  function isStructuralPaneMode(mode) {
+    return mode === "compact" || mode === "mobile" ||
+      mode === "breadcrumb" || mode === "collapsed";
   }
 
   function reservePanePadding(definition) {
     if (!definition.panel.matches(".ui-pane")) return;
     definition.modes.forEach(function (mode) {
-      mode.width += 2 * paneModeInlinePadding(mode.name);
+      if (!isStructuralPaneMode(mode.name)) mode.width += 4;
     });
   }
 
   function usesSharedPanePadding(definition, selection) {
     const mode = definition.modes[selection].name;
     return definition.panel.matches(".ui-pane") &&
-      mode !== "compact" && mode !== "mobile" &&
-      mode !== "breadcrumb" && mode !== "collapsed";
+      !isStructuralPaneMode(mode);
   }
 
   function selectModeAtWidth(definition, width) {

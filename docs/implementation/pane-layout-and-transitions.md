@@ -8,10 +8,11 @@ page-specific viewport breakpoints.
 ## Pane modes
 
 Every layout participant declares ordered width modes in rem through
-`data-panel-modes`. For `.ui-pane` participants these values describe usable
-content width; the allocator adds the active mode's horizontal padding when it
-calculates the pane's outer width. Widths on structural group participants
-continue to describe their total allocated width. The shared layout in
+`data-panel-modes`. For normal `.ui-pane` content modes these values describe
+usable content width; the allocator adds horizontal padding when it calculates
+the pane's outer width. Structural pane modes (`collapsed`, `breadcrumb`,
+`compact` and `mobile`), navigation and group participants instead declare
+their fixed total allocated width. The shared layout in
 `web/static/js/panel_layout.js`:
 
 A pane's largest content mode should normally match, rather than exceed, its
@@ -63,7 +64,7 @@ increases every pane's padding together up to the shared maximum. The terminal
 fill pane may then absorb the remaining width without making its own spacing
 differ from its siblings. Vertical padding remains viewport-responsive, and
 structural modes such as compact, breadcrumb and mobile retain their explicit
-padding; their declared content widths likewise exclude that padding.
+padding within their fixed declared width.
 
 Panel capacity and content measure are independent. A pane that can usefully
 absorb surplus width declares `data-panel-fill` and may therefore grow to the
