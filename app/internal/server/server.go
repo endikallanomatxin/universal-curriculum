@@ -115,10 +115,8 @@ func (server *Server) routes() http.Handler {
 		http.MethodPut:    server.requireAPIAdmin(http.HandlerFunc(server.apiUpdateProposalUnit)),
 		http.MethodDelete: server.requireAPIAdmin(http.HandlerFunc(server.apiDeleteProposalUnit)),
 	})
-	registerAPIRoute(mux, "/api/proposals/{proposalId}/dependencies", map[string]http.Handler{
-		http.MethodPost:   server.requireAPIAdmin(http.HandlerFunc(server.apiAddProposalDependency)),
-		http.MethodDelete: server.requireAPIAdmin(http.HandlerFunc(server.apiRemoveProposalDependency)),
-	})
+	registerAPIRoute(mux, "/api/proposals/{proposalId}/dependencies", map[string]http.Handler{http.MethodPost: server.requireAPIAdmin(http.HandlerFunc(server.apiAddProposalDependency))})
+	registerAPIRoute(mux, "/api/proposals/{proposalId}/dependencies/{unitId}/{prerequisiteId}", map[string]http.Handler{http.MethodDelete: server.requireAPIAdmin(http.HandlerFunc(server.apiRemoveProposalDependency))})
 	registerAPIRoute(mux, "/api/proposals/{proposalId}/recognitions", map[string]http.Handler{http.MethodPost: server.requireAPIAdmin(http.HandlerFunc(server.apiAddProposalRecognition))})
 	registerAPIRoute(mux, "/api/proposals/{proposalId}/changes/{changeId}", map[string]http.Handler{http.MethodDelete: server.requireAPIAdmin(http.HandlerFunc(server.apiDeleteProposalChange))})
 	registerAPIRoute(mux, "/api/proposals/{proposalId}/rebase", map[string]http.Handler{

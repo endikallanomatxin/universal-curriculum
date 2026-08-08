@@ -73,10 +73,25 @@ func TestExperimentalAPIEndToEnd(t *testing.T) {
 		ID int64 `json:"id"`
 	}
 	decodeAPIIntegrationResponse(t, unitResponse, &unit)
+	prerequisiteResponse := apiIntegrationRequest(t, application, token.Token, http.MethodPost,
+		fmt.Sprintf("/api/proposals/%d/units", proposal.ID), map[string]any{
+			"name": "API foundations", "content": "Learn the foundations of API design.",
+		}, http.StatusCreated)
+	var prerequisite struct {
+		ID int64 `json:"id"`
+	}
+	decodeAPIIntegrationResponse(t, prerequisiteResponse, &prerequisite)
 	apiIntegrationRequest(t, application, token.Token, http.MethodPut,
 		fmt.Sprintf("/api/proposals/%d/units/%d", proposal.ID, unit.ID), map[string]any{
 			"name": "Practical API design", "content": "Learn how to design a practical API.",
 		}, http.StatusOK)
+	apiIntegrationRequest(t, application, token.Token, http.MethodPost,
+		fmt.Sprintf("/api/proposals/%d/dependencies", proposal.ID), map[string]any{
+			"unit_id": unit.ID, "prerequisite_id": prerequisite.ID,
+		}, http.StatusNoContent)
+	apiIntegrationRequest(t, application, token.Token, http.MethodDelete,
+		fmt.Sprintf("/api/proposals/%d/dependencies/%d/%d", proposal.ID, unit.ID, prerequisite.ID),
+		nil, http.StatusNoContent)
 
 	apiIntegrationRequest(t, application, token.Token, http.MethodPost,
 		fmt.Sprintf("/api/proposals/%d/publish", proposal.ID), nil, http.StatusOK)

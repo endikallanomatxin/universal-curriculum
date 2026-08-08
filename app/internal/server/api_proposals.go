@@ -230,14 +230,6 @@ func (server *Server) apiDeleteProposalUnit(writer http.ResponseWriter, request 
 }
 
 func (server *Server) apiAddProposalDependency(writer http.ResponseWriter, request *http.Request) {
-	server.apiSetProposalDependency(writer, request, true)
-}
-
-func (server *Server) apiRemoveProposalDependency(writer http.ResponseWriter, request *http.Request) {
-	server.apiSetProposalDependency(writer, request, false)
-}
-
-func (server *Server) apiSetProposalDependency(writer http.ResponseWriter, request *http.Request, desired bool) {
 	if !apiNoQuery(writer, request) {
 		return
 	}
@@ -253,13 +245,32 @@ func (server *Server) apiSetProposalDependency(writer http.ResponseWriter, reque
 		writeAPIError(writer, http.StatusBadRequest, "validation_failed", "unit_id and prerequisite_id must be positive integers", nil)
 		return
 	}
-	var err error
-	if desired {
-		err = services.AddUnitDependency(server.Database, apiUser(request).ID, proposalID, input.UnitID, input.PrerequisiteID)
-	} else {
-		err = services.RemoveUnitDependency(server.Database, apiUser(request).ID, proposalID, input.UnitID, input.PrerequisiteID)
+	if err := services.AddUnitDependency(server.Database, apiUser(request).ID, proposalID, input.UnitID, input.PrerequisiteID); err != nil {
+		server.writeAPICurriculumError(writer, err)
+		return
 	}
+	writeAPIJSON(writer, http.StatusNoContent, nil)
+}
+
+func (server *Server) apiRemoveProposalDependency(writer http.ResponseWriter, request *http.Request) {
+	if !apiNoQuery(writer, request) {
+		return
+	}
+	proposalID, ok := apiProposalID(writer, request)
+	if !ok {
+		return
+	}
+	unitID, err := apiPathID(request, "unitId")
 	if err != nil {
+		writeAPIError(writer, http.StatusBadRequest, "invalid_id", "unitId must be a positive integer", nil)
+		return
+	}
+	prerequisiteID, err := apiPathID(request, "prerequisiteId")
+	if err != nil {
+		writeAPIError(writer, http.StatusBadRequest, "invalid_id", "prerequisiteId must be a positive integer", nil)
+		return
+	}
+	if err := services.RemoveUnitDependency(server.Database, apiUser(request).ID, proposalID, unitID, prerequisiteID); err != nil {
 		server.writeAPICurriculumError(writer, err)
 		return
 	}

@@ -464,15 +464,15 @@ paths:
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {$ref: '#/components/responses/Conflict'}
         '500': {$ref: '#/components/responses/InternalError'}
+  /proposals/{proposalId}/dependencies/{unitId}/{prerequisiteId}:
+    parameters:
+      - $ref: '#/components/parameters/ProposalID'
+      - $ref: '#/components/parameters/UnitID'
+      - $ref: '#/components/parameters/PrerequisiteID'
     delete:
       tags: [Proposals]
       operationId: removeProposalDependency
       security: [{bearerAuth: []}]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: {$ref: '#/components/schemas/DependencyInput'}
       responses:
         '204': {description: Dependency removal recorded}
         '400': {$ref: '#/components/responses/BadRequest'}
@@ -617,6 +617,11 @@ components:
       schema: {type: integer, minimum: 0, default: 0}
     UnitID:
       name: unitId
+      in: path
+      required: true
+      schema: {type: integer, format: int64, minimum: 1}
+    PrerequisiteID:
+      name: prerequisiteId
       in: path
       required: true
       schema: {type: integer, format: int64, minimum: 1}
