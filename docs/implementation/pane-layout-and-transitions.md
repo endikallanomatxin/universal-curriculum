@@ -8,7 +8,16 @@ page-specific viewport breakpoints.
 ## Pane modes
 
 Every layout participant declares ordered width modes in rem through
-`data-panel-modes`. The shared layout in `web/static/js/panel_layout.js`:
+`data-panel-modes`. For normal `.ui-pane` content modes these values describe
+usable content width; the allocator adds horizontal padding when it calculates
+the pane's outer width. Structural pane modes (`collapsed`, `breadcrumb`,
+`compact` and `mobile`), navigation and group participants instead declare
+their fixed total allocated width. The shared layout in
+`web/static/js/panel_layout.js`:
+
+A pane's largest content mode should normally match, rather than exceed, its
+`.ui-pane__inner` readable measure. Deliberate extra capacity belongs in a fill
+pane or in the group's shared padding, not in an unreachable content width.
 
 1. assigns every visible pane its smallest mode;
 2. satisfies required modes from right to left;
@@ -47,9 +56,21 @@ a pane should respond to the space actually assigned to it, using container
 queries where appropriate rather than duplicating the global allocation
 algorithm with viewport media queries.
 
-Panel capacity and content measure are independent. A terminal pane normally
-declares `data-panel-fill` and may therefore grow to the remaining workspace
-width without a hard maximum. Its `.ui-pane__inner` declares a shared readable
+Normal content panes in the same group share one horizontal padding value. The
+allocator first reserves the shared minimum outside each pane's declared
+content width, then derives any increase from the space left after mode
+negotiation. Constrained groups keep the minimum, while genuinely spare width
+increases every pane's padding together up to the shared maximum. The terminal
+fill pane may then absorb the remaining width without making its own spacing
+differ from its siblings. Vertical padding remains viewport-responsive, and
+structural modes such as compact, breadcrumb and mobile retain their explicit
+padding within their fixed declared width.
+
+Panel capacity and content measure are independent. A pane that can usefully
+absorb surplus width declares `data-panel-fill` and may therefore grow to the
+remaining workspace width without a hard maximum. This is often the terminal
+pane, but a bounded right-hand reader can leave that role with a denser
+workspace to its left. A pane's `.ui-pane__inner` declares a shared readable
 measure through `data-pane-content-width`: `narrow` for navigation and forms,
 `reading` for long-form material, the default `standard` measure, or `wide` for
 graphs and dense workspaces. Content stays aligned to the pane's leading edge;
@@ -165,8 +186,9 @@ already present replaces its content in place.
 Every closable pane uses `ui-pane__close`. Its position belongs to the pane
 surface rather than to a title or form: `.ui-pane` is the positioning context
 and keeps the control at a responsive inset from its upper inline-end corner.
-That inset follows half the pane's fluid padding, within shared minimum and
-maximum bounds, so wide surfaces retain proportionate breathing room.
+That inset follows half the group's shared horizontal padding, within shared
+minimum and maximum bounds, so wide surfaces retain proportionate breathing
+room.
 Headers containing the control reserve the shared close-control clearance, so
 long titles and adjacent actions cannot occupy that area. Consumer styles must
 not reposition the close control. In mobile composition the system-level inset

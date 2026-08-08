@@ -2,6 +2,15 @@
   margin-bottom: var(--space-2);
 }
 
+.unit-content > .nested-panel__header {
+  flex-wrap: wrap;
+}
+
+.unit-content > .nested-panel__header > div {
+  flex: 1 0 min(100%, 20rem);
+  min-width: 0;
+}
+
 .unit-content__body {
   border-top: 1px solid color-mix(in srgb, var(--color-ink) 14%, transparent);
   font-size: clamp(1rem, 1.5vw, 1.08rem);

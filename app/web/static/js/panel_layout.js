@@ -60,6 +60,24 @@
     }).reverse();
   }
 
+  function isStructuralPaneMode(mode) {
+    return mode === "compact" || mode === "mobile" ||
+      mode === "breadcrumb" || mode === "collapsed";
+  }
+
+  function reservePanePadding(definition) {
+    if (!definition.panel.matches(".ui-pane")) return;
+    definition.modes.forEach(function (mode) {
+      if (!isStructuralPaneMode(mode.name)) mode.width += 4;
+    });
+  }
+
+  function usesSharedPanePadding(definition, selection) {
+    const mode = definition.modes[selection].name;
+    return definition.panel.matches(".ui-pane") &&
+      !isStructuralPaneMode(mode);
+  }
+
   function selectModeAtWidth(definition, width) {
     let selection = 0;
     definition.modes.forEach(function (mode, index) {
@@ -132,6 +150,14 @@
     return true;
   }
 
+  function setGroupPanePadding(group, padding) {
+    const property = "--pane-padding-inline";
+    const value = roundedWidth(padding) + "rem";
+    if (group.style.getPropertyValue(property) === value) return false;
+    group.style.setProperty(property, value);
+    return true;
+  }
+
   function layoutMobileGroup(group, definitions, available) {
     const activeIndex = definitions.length - 1;
     let changed = false;
@@ -174,6 +200,7 @@
       layoutMobileGroup(group, definitions, available);
       return;
     }
+    definitions.forEach(reservePanePadding);
     definitions.forEach(function (definition) {
       const visibleModes = definition.modes.filter(function (mode) { return mode.width > 0; });
       if (visibleModes.length) definition.modes = visibleModes;
@@ -234,9 +261,23 @@
     }
 
     let spare = Math.max(0, available - used);
+    const contentPanelCount = definitions.filter(function (definition, index) {
+      return usesSharedPanePadding(definition, selections[index]);
+    }).length;
+    const minimumPadding = 2;
+    const maximumPadding = 6;
+    const underPressure = requiredSpaceExhausted || higherPriorityPanelWantsSpace;
+    const padding = contentPanelCount === 0 || underPressure
+      ? minimumPadding
+      : Math.min(maximumPadding, minimumPadding + spare / (2 * contentPanelCount));
+    const additionalPadding = padding - minimumPadding;
     const widths = definitions.map(function (definition, index) {
-      return definition.modes[selections[index]].width;
+      const paddingWidth = usesSharedPanePadding(definition, selections[index])
+        ? 2 * additionalPadding
+        : 0;
+      return definition.modes[selections[index]].width + paddingWidth;
     });
+    spare = Math.max(0, spare - 2 * additionalPadding * contentPanelCount);
     for (let allocationIndex = 0; allocationIndex < allocation.length && spare > 0; allocationIndex += 1) {
       const index = allocation[allocationIndex];
       const definition = definitions[index];
@@ -260,6 +301,9 @@
         definition.modes[selections[index]].name
       ) || changed;
     });
+    if (contentPanelCount > 0) {
+      changed = setGroupPanePadding(group, padding) || changed;
+    }
     changed = setGroupValue(group, "panelChildrenRequiredWidth", definitions.reduce(function (total, definition) {
       return total + ownRequiredWidth(definition);
     }, 0)) || changed;

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modelcontextprotocol/go-sdk/auth"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"universal-curriculum/internal/models"
 )
@@ -128,12 +129,31 @@ func TestNonAdministratorDiscoversOnlyAvailableTools(t *testing.T) {
 }
 
 func TestProposalHandlersStillEnforceAdministratorPermission(t *testing.T) {
-	application := &adapter{user: &models.User{ID: 9}}
-	result, output, err := application.createProposal(context.Background(), nil, createProposalInput{
+	application := &adapter{}
+	request := &mcp.CallToolRequest{Extra: &mcp.RequestExtra{TokenInfo: tokenInfoForUser(&models.User{ID: 9})}}
+	result, output, err := application.createProposal(context.Background(), request, createProposalInput{
 		Title: "Not authorized", Rationale: "Permission remains enforced below discovery.",
 	})
 	if err != nil || result == nil || !result.IsError || output.Error == nil || output.Error.Code != "permission_denied" {
 		t.Fatalf("createProposal() = %#v, %#v, %v", result, output, err)
+	}
+}
+
+func TestServersAreReusedByPermissionLevel(t *testing.T) {
+	shared := newServers(&adapter{baseURL: "https://curriculum.example"})
+	learnerOne := tokenInfoForUser(&models.User{ID: 1})
+	learnerTwo := tokenInfoForUser(&models.User{ID: 2})
+	adminOne := tokenInfoForUser(&models.User{ID: 3, IsAdmin: true})
+	adminTwo := tokenInfoForUser(&models.User{ID: 4, IsAdmin: true})
+
+	if shared.forToken(learnerOne) != shared.forToken(learnerTwo) {
+		t.Fatal("learner requests did not reuse the standard MCP server")
+	}
+	if shared.forToken(adminOne) != shared.forToken(adminTwo) {
+		t.Fatal("administrator requests did not reuse the admin MCP server")
+	}
+	if shared.forToken(learnerOne) == shared.forToken(adminOne) {
+		t.Fatal("standard and administrator requests selected the same tool catalog")
 	}
 }
 
@@ -154,7 +174,7 @@ func TestHTTPTransportRequiresBearerAuthentication(t *testing.T) {
 func connectTestMCP(t *testing.T, user *models.User) (*mcp.ClientSession, func()) {
 	t.Helper()
 	ctx := context.Background()
-	server := newServer(&adapter{user: user, baseURL: "https://curriculum.example"})
+	server := newServer(&adapter{baseURL: "https://curriculum.example"}, user.IsAdmin)
 	client := mcp.NewClient(&mcp.Implementation{Name: "test-client", Version: "1"}, nil)
 	serverTransport, clientTransport := mcp.NewInMemoryTransports()
 	serverSession, err := server.Connect(ctx, serverTransport, nil)
@@ -169,6 +189,10 @@ func connectTestMCP(t *testing.T, user *models.User) (*mcp.ClientSession, func()
 		_ = clientSession.Close()
 		_ = serverSession.Wait()
 	}
+}
+
+func tokenInfoForUser(user *models.User) *auth.TokenInfo {
+	return &auth.TokenInfo{Extra: map[string]any{"user": user}}
 }
 
 func assertSchemaContains(t *testing.T, schema any, values ...string) {

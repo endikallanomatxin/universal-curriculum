@@ -1,7 +1,7 @@
 {{/* Learning path editor pane. */}}
 {{ define "learning-path-editor-pane" -}}
       {{ if .User }}
-        <section class="ui-pane ui-pane--form" id="learning-path-editor-panel" data-nested-panel data-panel-motion="horizontal" data-layout-panel data-panel-modes="collapsed:0 compact:18 form:34" data-panel-required-mode="form" data-panel-fill data-panel-breadcrumb="{{ with .EditingPath }}{{ .Name }}{{ else }}New path{{ end }}" {{ if not .ShowPathEditor }}hidden{{ end }} aria-labelledby="learning-path-editor-title">
+        <section class="ui-pane ui-pane--form" id="learning-path-editor-panel" data-nested-panel data-panel-motion="horizontal" data-layout-panel data-panel-modes="collapsed:0 compact:18 form:28" data-panel-required-mode="form" data-panel-fill data-panel-breadcrumb="{{ with .EditingPath }}{{ .Name }}{{ else }}New path{{ end }}" {{ if not .ShowPathEditor }}hidden{{ end }} aria-labelledby="learning-path-editor-title">
           <div class="ui-pane__inner nested-panel" data-pane-content-width="narrow">
             <header class="nested-panel__header">
               <div><h1 id="learning-path-editor-title">{{ if .EditingPath }}Edit path{{ else }}New path{{ end }}</h1></div>

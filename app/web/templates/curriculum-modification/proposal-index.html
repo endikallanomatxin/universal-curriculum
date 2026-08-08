@@ -32,7 +32,13 @@
                       <strong class="active-proposal-card__title" style="view-transition-name:active-proposal-title-{{ .ID }};" data-proposal-title-preview="{{ .ID }}">{{ .Title }}</strong>
                       <span class="active-proposal-card__rationale" style="view-transition-name:active-proposal-rationale-{{ .ID }};" data-proposal-rationale-preview="{{ .ID }}">{{ .Rationale }}</span>
                       <span class="active-proposal-card__meta" style="view-transition-name:active-proposal-meta-{{ .ID }};">
-                        <span>{{ .ChangeCount }} {{ if eq .ChangeCount 1 }}change{{ else }}changes{{ end }}</span>
+                        {{ if .ChangeSummary }}
+                          <span class="proposal-change-summary">
+                            {{ range .ChangeSummary }}<span class="proposal-change-summary__count proposal-change-summary__count--{{ .Kind }}" aria-label="{{ .Count }} {{ .Label }}" title="{{ .Count }} {{ .Label }}"><span aria-hidden="true">{{ .Count }}</span></span>{{ end }}
+                          </span>
+                        {{ else }}
+                          <span>0 changes</span>
+                        {{ end }}
                         {{ if eq .RebaseStatus "needs_review" }}<span class="proposal-status proposal-status--warning"><span class="material-symbols-rounded" aria-hidden="true">fork_right</span>Needs rebase review</span>{{ end }}
                       </span>
                     </a>

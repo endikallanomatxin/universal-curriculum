@@ -71,9 +71,10 @@ func (application *adapter) addLearningTools(server *mcp.Server) {
 }
 
 func (application *adapter) getLearningPaths(
-	_ context.Context, _ *mcp.CallToolRequest, _ emptyInput,
+	_ context.Context, request *mcp.CallToolRequest, _ emptyInput,
 ) (*mcp.CallToolResult, toolOutput[learningPathsOutput], error) {
-	models, err := db.ListLearningPaths(application.database, application.user.ID)
+	user := userFromRequest(request)
+	models, err := db.ListLearningPaths(application.database, user.ID)
 	if err != nil {
 		return internalFailure[learningPathsOutput]("list learning paths", err)
 	}
@@ -85,15 +86,16 @@ func (application *adapter) getLearningPaths(
 }
 
 func (application *adapter) createLearningPath(
-	_ context.Context, _ *mcp.CallToolRequest, input createLearningPathInput,
+	_ context.Context, request *mcp.CallToolRequest, input createLearningPathInput,
 ) (*mcp.CallToolResult, toolOutput[learningPath], error) {
+	user := userFromRequest(request)
 	created, err := services.CreateLearningPath(
-		application.database, application.user.ID, input.Name, input.TargetUnitIDs,
+		application.database, user.ID, input.Name, input.TargetUnitIDs,
 	)
 	if err != nil {
 		return learningPathFailure[learningPath]("create learning path", err)
 	}
-	created, err = db.GetLearningPath(application.database, application.user.ID, created.ID)
+	created, err = db.GetLearningPath(application.database, user.ID, created.ID)
 	if err != nil {
 		return internalFailure[learningPath]("reload created learning path", err)
 	}
@@ -101,15 +103,16 @@ func (application *adapter) createLearningPath(
 }
 
 func (application *adapter) updateLearningPath(
-	_ context.Context, _ *mcp.CallToolRequest, input updateLearningPathInput,
+	_ context.Context, request *mcp.CallToolRequest, input updateLearningPathInput,
 ) (*mcp.CallToolResult, toolOutput[learningPath], error) {
+	user := userFromRequest(request)
 	err := services.UpdateLearningPath(
-		application.database, application.user.ID, input.LearningPathID, input.Name, input.TargetUnitIDs,
+		application.database, user.ID, input.LearningPathID, input.Name, input.TargetUnitIDs,
 	)
 	if err != nil {
 		return learningPathFailure[learningPath]("update learning path", err)
 	}
-	updated, err := db.GetLearningPath(application.database, application.user.ID, input.LearningPathID)
+	updated, err := db.GetLearningPath(application.database, user.ID, input.LearningPathID)
 	if err != nil {
 		return internalFailure[learningPath]("reload updated learning path", err)
 	}
@@ -117,9 +120,10 @@ func (application *adapter) updateLearningPath(
 }
 
 func (application *adapter) deleteLearningPath(
-	_ context.Context, _ *mcp.CallToolRequest, input deleteLearningPathInput,
+	_ context.Context, request *mcp.CallToolRequest, input deleteLearningPathInput,
 ) (*mcp.CallToolResult, toolOutput[deleteOutput], error) {
-	deleted, err := db.DeleteLearningPath(application.database, application.user.ID, input.LearningPathID)
+	user := userFromRequest(request)
+	deleted, err := db.DeleteLearningPath(application.database, user.ID, input.LearningPathID)
 	if err != nil {
 		return internalFailure[deleteOutput]("delete learning path", err)
 	}
@@ -130,9 +134,10 @@ func (application *adapter) deleteLearningPath(
 }
 
 func (application *adapter) getProgress(
-	_ context.Context, _ *mcp.CallToolRequest, _ emptyInput,
+	_ context.Context, request *mcp.CallToolRequest, _ emptyInput,
 ) (*mcp.CallToolResult, toolOutput[progressOutput], error) {
-	statuses, err := db.UnitCompletionStatuses(application.database, application.user.ID)
+	user := userFromRequest(request)
+	statuses, err := db.UnitCompletionStatuses(application.database, user.ID)
 	if err != nil {
 		return internalFailure[progressOutput]("get progress", err)
 	}
@@ -150,10 +155,11 @@ func (application *adapter) getProgress(
 }
 
 func (application *adapter) setProgress(
-	_ context.Context, _ *mcp.CallToolRequest, input setProgressInput,
+	_ context.Context, request *mcp.CallToolRequest, input setProgressInput,
 ) (*mcp.CallToolResult, toolOutput[progress], error) {
+	user := userFromRequest(request)
 	status, err := services.SetUnitProgress(
-		application.database, application.user.ID, input.UnitID, input.Completed,
+		application.database, user.ID, input.UnitID, input.Completed,
 	)
 	if errors.Is(err, services.ErrUnitNotFound) {
 		return failed[progress]("unit_not_found", "The published curriculum unit was not found.", nil)
@@ -168,9 +174,10 @@ func (application *adapter) setProgress(
 }
 
 func (application *adapter) getRecommendations(
-	_ context.Context, _ *mcp.CallToolRequest, _ emptyInput,
+	_ context.Context, request *mcp.CallToolRequest, _ emptyInput,
 ) (*mcp.CallToolResult, toolOutput[recommendationsOutput], error) {
-	models, err := services.LearningRecommendations(application.database, application.user.ID)
+	user := userFromRequest(request)
+	models, err := services.LearningRecommendations(application.database, user.ID)
 	if err != nil {
 		return internalFailure[recommendationsOutput]("get recommendations", err)
 	}

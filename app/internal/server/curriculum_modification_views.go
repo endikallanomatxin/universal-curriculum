@@ -69,7 +69,14 @@ type curriculumRebaseTimelineEdgeView struct {
 
 type curriculumDraftProposalView struct {
 	models.CurriculumProposal
-	RebaseStatus string
+	RebaseStatus  string
+	ChangeSummary []curriculumProposalChangeCountView
+}
+
+type curriculumProposalChangeCountView struct {
+	Kind  string
+	Count int
+	Label string
 }
 
 type curriculumProposalHistoryView struct {
@@ -80,6 +87,39 @@ type curriculumProposalHistoryView struct {
 
 type proposalMetadataSaveStatusView struct {
 	Error string
+}
+
+func curriculumProposalChangeSummary(counts map[string]int) []curriculumProposalChangeCountView {
+	categories := []struct {
+		kind     string
+		singular string
+		plural   string
+		kinds    []string
+	}{
+		{kind: "created", singular: "unit creation", plural: "unit creations", kinds: []string{"create_unit"}},
+		{kind: "deleted", singular: "unit deletion", plural: "unit deletions", kinds: []string{"delete_unit"}},
+		{kind: "renamed", singular: "unit rename", plural: "unit renames", kinds: []string{"rename_unit"}},
+		{kind: "content", singular: "content update", plural: "content updates", kinds: []string{"update_content"}},
+		{kind: "dependency", singular: "dependency change", plural: "dependency changes", kinds: []string{"add_dependency", "remove_dependency"}},
+		{kind: "recognition", singular: "recognition", plural: "recognitions", kinds: []string{"recognition"}},
+	}
+	var summary []curriculumProposalChangeCountView
+	for _, category := range categories {
+		count := 0
+		for _, kind := range category.kinds {
+			count += counts[kind]
+		}
+		if count > 0 {
+			label := category.plural
+			if count == 1 {
+				label = category.singular
+			}
+			summary = append(summary, curriculumProposalChangeCountView{
+				Kind: category.kind, Count: count, Label: label,
+			})
+		}
+	}
+	return summary
 }
 
 func applyUnitContentDiff(unit *curriculumUnitView, proposal *models.CurriculumProposal) {

@@ -595,7 +595,12 @@ func ListDraftCurriculumProposalsByAuthor(database *sql.DB, authorID int64) ([]m
 		SELECT proposal.id, authors.ids, authors.names,
 		       proposal.title, proposal.rationale, proposal.status,
 		       proposal.base_proposal_id, proposal.created_at,
-		       COUNT(change.id)
+		       COUNT(change.id),
+		       COALESCE(
+		           ARRAY_AGG(change.kind ORDER BY change.id)
+		               FILTER (WHERE change.id IS NOT NULL),
+		           '{}'::TEXT[]
+		       )
 		FROM curriculum_proposals proposal
 		JOIN LATERAL (
 			SELECT array_agg(user_id ORDER BY users.full_name, user_id) AS ids,
@@ -618,15 +623,20 @@ func ListDraftCurriculumProposalsByAuthor(database *sql.DB, authorID int64) ([]m
 	for rows.Next() {
 		var proposal models.CurriculumProposal
 		var baseProposalID sql.NullInt64
+		var changeKinds []string
 		if err := rows.Scan(
 			&proposal.ID, pq.Array(&proposal.AuthorIDs), &proposal.AuthorName, &proposal.Title,
 			&proposal.Rationale, &proposal.Status, &baseProposalID,
-			&proposal.CreatedAt, &proposal.ChangeCount,
+			&proposal.CreatedAt, &proposal.ChangeCount, pq.Array(&changeKinds),
 		); err != nil {
 			return nil, fmt.Errorf("scan draft curriculum proposal: %w", err)
 		}
 		if baseProposalID.Valid {
 			proposal.BaseProposalID = &baseProposalID.Int64
+		}
+		proposal.ChangeKindCounts = make(map[string]int, len(changeKinds))
+		for _, kind := range changeKinds {
+			proposal.ChangeKindCounts[kind]++
 		}
 		proposals = append(proposals, proposal)
 	}

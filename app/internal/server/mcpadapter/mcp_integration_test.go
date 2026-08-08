@@ -322,19 +322,7 @@ func (transport bearerTransport) RoundTrip(request *http.Request) (*http.Respons
 
 func connectIntegrationMCP(t *testing.T, database *sql.DB, user *models.User) (*mcp.ClientSession, func()) {
 	t.Helper()
-	ctx := context.Background()
-	server := newServer(&adapter{database: database, user: user, baseURL: "https://curriculum.example"})
-	client := mcp.NewClient(&mcp.Implementation{Name: "integration-agent", Version: "1"}, nil)
-	serverTransport, clientTransport := mcp.NewInMemoryTransports()
-	serverSession, err := server.Connect(ctx, serverTransport, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	clientSession, err := client.Connect(ctx, clientTransport, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return clientSession, func() { _ = clientSession.Close(); _ = serverSession.Wait() }
+	return connectIntegrationHTTPMCP(t, database, user)
 }
 
 func callIntegrationTool[T any](t *testing.T, session *mcp.ClientSession, name string, arguments map[string]any) toolOutput[T] {
