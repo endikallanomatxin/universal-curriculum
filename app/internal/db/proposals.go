@@ -190,6 +190,31 @@ func DeleteDraftCurriculumProposalUnitChanges(q curriculumExecutor, proposalID, 
 	return authorized, nil
 }
 
+func UpdateDraftCurriculumUnitCreation(
+	q curriculumExecutor, proposalID, authorID, changeID int64, name, content string,
+) (bool, error) {
+	result, err := q.Exec(`
+		UPDATE curriculum_unit_creations creation
+		SET name = $4, content = $5
+		FROM curriculum_proposal_changes change, curriculum_proposals proposal
+		WHERE creation.change_id = $3
+		  AND change.id = creation.change_id
+		  AND change.kind = 'create_unit'
+		  AND change.proposal_id = $1
+		  AND proposal.id = change.proposal_id
+		  AND proposal.status = 'draft'
+		  AND EXISTS (
+		      SELECT 1 FROM curriculum_proposal_authors
+		      WHERE proposal_id = proposal.id AND user_id = $2
+		  )
+	`, proposalID, authorID, changeID, name, content)
+	if err != nil {
+		return false, fmt.Errorf("update draft curriculum unit creation: %w", err)
+	}
+	count, err := result.RowsAffected()
+	return count == 1, err
+}
+
 func AcceptDraftCurriculumProposal(q curriculumExecutor, proposalID, authorID int64) (bool, error) {
 	result, err := q.Exec(`
 		UPDATE curriculum_proposals

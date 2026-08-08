@@ -71,7 +71,7 @@ func NewHandler(database *sql.DB, baseURL string) http.Handler {
 
 func newServer(application *adapter) *mcp.Server {
 	server := mcp.NewServer(&mcp.Implementation{
-		Name: "universal-curriculum", Title: "Universal Curriculum", Version: "0.2.0",
+		Name: "universal-curriculum", Title: "Universal Curriculum", Version: "0.2.1",
 		Description: "Agent-oriented access to Universal Curriculum.", WebsiteURL: application.baseURL,
 	}, &mcp.ServerOptions{
 		Instructions: instructions,

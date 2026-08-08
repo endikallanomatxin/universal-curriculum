@@ -80,32 +80,25 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if err := UpdateCurriculumUnitContent(database, authorID, proposal.ID, foundations.ID, "Revised foundations."); err != nil {
 		t.Fatalf("edit proposed unit creation content: %v", err)
 	}
+	for range 2 {
+		if err := UpdateCurriculumUnitAndContent(
+			database, authorID, proposal.ID, foundations.ID,
+			"Final foundations", "Learn the final foundations.",
+		); err != nil {
+			t.Fatalf("replace proposed unit creation: %v", err)
+		}
+	}
 	draftCreation, err := db.GetCurriculumProposal(database, proposal.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(draftCreation.Changes) != 4 ||
+	if len(draftCreation.Changes) != 2 ||
 		draftCreation.Changes[0].Kind != "create_unit" ||
 		draftCreation.Changes[0].ID != foundations.ID ||
 		draftCreation.Changes[0].UnitID != foundations.ID ||
-		draftCreation.Changes[2].Kind != "rename_unit" ||
-		draftCreation.Changes[2].UnitID != foundations.ID ||
-		draftCreation.Changes[3].Kind != "update_content" ||
-		draftCreation.Changes[3].UnitID != foundations.ID {
-		t.Fatalf("hypothetical unit changes do not reference their creation: %#v", draftCreation.Changes)
-	}
-	if err := UpdateCurriculumUnit(database, authorID, proposal.ID, foundations.ID, "Foundations"); err != nil {
-		t.Fatal(err)
-	}
-	if err := UpdateCurriculumUnitContent(database, authorID, proposal.ID, foundations.ID, "Learn the core foundations."); err != nil {
-		t.Fatal(err)
-	}
-	draftCreation, err = db.GetCurriculumProposal(database, proposal.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(draftCreation.Changes) != 2 {
-		t.Fatalf("changes that restore creation values were not removed: %#v", draftCreation.Changes)
+		draftCreation.Changes[0].UnitName != "Final foundations" ||
+		draftCreation.Changes[0].UnitContent != "Learn the final foundations." {
+		t.Fatalf("proposed unit creation did not converge to its final state: %#v", draftCreation.Changes)
 	}
 	if err := AddUnitDependency(database, authorID, proposal.ID, algebra.ID, foundations.ID); err != nil {
 		t.Fatalf("connect units created by the same proposal: %v", err)
@@ -598,5 +591,56 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	}
 	if err := DeleteCurriculumProposal(database, authorID, discarded.ID); err != nil {
 		t.Fatalf("delete draft with internally referenced hypothetical unit: %v", err)
+	}
+
+	rebasedCreation, err := CreateCurriculumProposal(
+		database, authorID, "Rebased creation", "Preserve a created unit's final state through rebase.",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rebasedUnit, err := CreateCurriculumUnit(
+		database, authorID, rebasedCreation.ID, "Initial draft name", "Initial draft content.",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := UpdateCurriculumUnitAndContent(
+		database, authorID, rebasedCreation.ID, rebasedUnit.ID,
+		"Rebased final name", "Rebased final content.",
+	); err != nil {
+		t.Fatal(err)
+	}
+	upstreamRevision, err := CreateCurriculumProposal(
+		database, authorID, "Independent upstream revision", "Trigger automatic rebase of the created unit.",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := UpdateCurriculumUnitContent(
+		database, authorID, upstreamRevision.ID, replacement.ID,
+		"An independent upstream content revision.",
+	); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := PublishCurriculumProposal(database, authorID, upstreamRevision.ID); err != nil {
+		t.Fatal(err)
+	}
+	rebasedCreation, err = db.GetCurriculumProposal(database, rebasedCreation.ID)
+	if err != nil || rebasedCreation == nil || rebasedCreation.BaseProposalID == nil ||
+		*rebasedCreation.BaseProposalID != upstreamRevision.ID || len(rebasedCreation.Changes) != 1 ||
+		rebasedCreation.Changes[0].Kind != "create_unit" ||
+		rebasedCreation.Changes[0].UnitName != "Rebased final name" ||
+		rebasedCreation.Changes[0].UnitContent != "Rebased final content." {
+		t.Fatalf("automatic rebase changed the final unit creation: proposal=%#v err=%v", rebasedCreation, err)
+	}
+	if _, err := PublishCurriculumProposal(database, authorID, rebasedCreation.ID); err != nil {
+		t.Fatal(err)
+	}
+	publishedRebasedUnit, err := db.GetUnit(database, rebasedUnit.ID)
+	if err != nil || publishedRebasedUnit == nil ||
+		publishedRebasedUnit.Name != "Rebased final name" ||
+		publishedRebasedUnit.Content != "Rebased final content." {
+		t.Fatalf("published rebased unit = %#v err=%v", publishedRebasedUnit, err)
 	}
 }
