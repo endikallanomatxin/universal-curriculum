@@ -105,7 +105,6 @@ func addTool[In, Out any](
 	mcp.AddTool(server, &mcp.Tool{
 		Name: name, Title: title, Description: description, Annotations: annotations,
 		InputSchema: inputSchema, OutputSchema: outputSchema,
-		Meta: mcp.Meta{"securitySchemes": []map[string]any{{"type": "oauth2", "scopes": []string{"mcp"}}}},
 	}, handler)
 }
 

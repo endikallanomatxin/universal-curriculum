@@ -70,8 +70,8 @@ func TestDiscoveryAdvertisesAgentGuidanceResourcesAndTools(t *testing.T) {
 		if tool.OutputSchema == nil {
 			t.Errorf("%s has no output schema", tool.Name)
 		}
-		if tool.Meta["securitySchemes"] == nil {
-			t.Errorf("%s has no security metadata", tool.Name)
+		if _, ok := tool.Meta["securitySchemes"]; ok {
+			t.Errorf("%s has legacy security metadata", tool.Name)
 		}
 	}
 	if !byName["search_units"].Annotations.ReadOnlyHint || !byName["search_units"].Annotations.IdempotentHint {
