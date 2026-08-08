@@ -65,9 +65,11 @@ differ from its siblings. Vertical padding remains viewport-responsive, and
 structural modes such as compact, breadcrumb and mobile retain their explicit
 padding; their declared content widths likewise exclude that padding.
 
-Panel capacity and content measure are independent. A terminal pane normally
-declares `data-panel-fill` and may therefore grow to the remaining workspace
-width without a hard maximum. Its `.ui-pane__inner` declares a shared readable
+Panel capacity and content measure are independent. A pane that can usefully
+absorb surplus width declares `data-panel-fill` and may therefore grow to the
+remaining workspace width without a hard maximum. This is often the terminal
+pane, but a bounded right-hand reader can leave that role with a denser
+workspace to its left. A pane's `.ui-pane__inner` declares a shared readable
 measure through `data-pane-content-width`: `narrow` for navigation and forms,
 `reading` for long-form material, the default `standard` measure, or `wide` for
 graphs and dense workspaces. Content stays aligned to the pane's leading edge;
