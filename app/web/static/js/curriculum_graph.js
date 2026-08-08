@@ -257,13 +257,28 @@
         function pathNodeCollisions(path, edge) {
           const length = path.getTotalLength();
           const samples = [];
+          const bounds = {
+            minX: Infinity,
+            maxX: -Infinity,
+            minY: Infinity,
+            maxY: -Infinity
+          };
           for (let distance = 0; distance <= length; distance += 2) {
-            samples.push({ distance: distance, point: path.getPointAtLength(distance) });
+            const sample = path.getPointAtLength(distance);
+            samples.push({ distance: distance, point: sample });
+            bounds.minX = Math.min(bounds.minX, sample.x);
+            bounds.maxX = Math.max(bounds.maxX, sample.x);
+            bounds.minY = Math.min(bounds.minY, sample.y);
+            bounds.maxY = Math.max(bounds.maxY, sample.y);
           }
           const collisions = [];
           for (const [unitID, point] of nodePoints) {
             if (!point || unitID === edge.prerequisiteID || unitID === edge.dependentID) continue;
             const radius = point.width / 2 + 2;
+            if (point.x + radius < bounds.minX || point.x - radius > bounds.maxX ||
+                point.y + radius < bounds.minY || point.y - radius > bounds.maxY) {
+              continue;
+            }
             let closest = null;
             for (const sample of samples) {
               const separation = Math.hypot(
