@@ -8,7 +8,11 @@ page-specific viewport breakpoints.
 ## Pane modes
 
 Every layout participant declares ordered width modes in rem through
-`data-panel-modes`. The shared layout in `web/static/js/panel_layout.js`:
+`data-panel-modes`. For `.ui-pane` participants these values describe usable
+content width; the allocator adds the active mode's horizontal padding when it
+calculates the pane's outer width. Widths on structural group participants
+continue to describe their total allocated width. The shared layout in
+`web/static/js/panel_layout.js`:
 
 1. assigns every visible pane its smallest mode;
 2. satisfies required modes from right to left;
@@ -48,12 +52,14 @@ queries where appropriate rather than duplicating the global allocation
 algorithm with viewport media queries.
 
 Normal content panes in the same group share one horizontal padding value. The
-allocator derives it from the space left after mode negotiation: constrained
-groups use the shared minimum, while genuinely spare width increases every
-pane's padding together up to the shared maximum. The terminal fill pane may
-then absorb the remaining width without making its own spacing differ from its
-siblings. Vertical padding remains viewport-responsive, and structural modes
-such as compact, breadcrumb and mobile retain their explicit padding.
+allocator first reserves the shared minimum outside each pane's declared
+content width, then derives any increase from the space left after mode
+negotiation. Constrained groups keep the minimum, while genuinely spare width
+increases every pane's padding together up to the shared maximum. The terminal
+fill pane may then absorb the remaining width without making its own spacing
+differ from its siblings. Vertical padding remains viewport-responsive, and
+structural modes such as compact, breadcrumb and mobile retain their explicit
+padding; their declared content widths likewise exclude that padding.
 
 Panel capacity and content measure are independent. A terminal pane normally
 declares `data-panel-fill` and may therefore grow to the remaining workspace
