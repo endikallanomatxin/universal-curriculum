@@ -14,6 +14,10 @@ calculates the pane's outer width. Widths on structural group participants
 continue to describe their total allocated width. The shared layout in
 `web/static/js/panel_layout.js`:
 
+A pane's largest content mode should normally match, rather than exceed, its
+`.ui-pane__inner` readable measure. Deliberate extra capacity belongs in a fill
+pane or in the group's shared padding, not in an unreachable content width.
+
 1. assigns every visible pane its smallest mode;
 2. satisfies required modes from right to left;
 3. attempts larger desired modes in the same order, collapsing lower-priority
