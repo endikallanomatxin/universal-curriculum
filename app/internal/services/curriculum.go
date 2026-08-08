@@ -13,17 +13,26 @@ import (
 var (
 	ErrUnitNotFound               = errors.New("curriculum unit not found")
 	ErrUnitNameRequired           = errors.New("unit name is required")
+	ErrUnitNameTooLong            = errors.New("unit name must not exceed 200 characters")
 	ErrUnitContentRequired        = errors.New("unit content is required")
 	ErrDependencyExists           = errors.New("unit dependency already exists")
 	ErrDependencyNotFound         = errors.New("unit dependency not found")
 	ErrDependencyCycle            = errors.New("unit dependency creates a cycle")
 	ErrProposalNotFound           = errors.New("draft curriculum proposal not found")
 	ErrProposalTitleRequired      = errors.New("proposal title is required")
+	ErrProposalTitleTooLong       = errors.New("proposal title must not exceed 200 characters")
 	ErrProposalRationaleRequired  = errors.New("proposal rationale is required")
+	ErrProposalRationaleTooLong   = errors.New("proposal rationale must not exceed 1000 characters")
 	ErrProposalEmpty              = errors.New("curriculum proposal has no changes")
 	ErrProposalOutdated           = errors.New("curriculum proposal is not based on the current curriculum")
 	ErrRecognitionSourcesRequired = errors.New("recognition requires at least one source")
 	ErrRecognitionTargetsRequired = errors.New("recognition requires at least one target")
+)
+
+const (
+	MaximumUnitNameLength          = 200
+	MaximumProposalTitleLength     = 200
+	MaximumProposalRationaleLength = 1000
 )
 
 type UnitIsPrerequisiteError struct{ DependentNames []string }
@@ -129,11 +138,11 @@ func DeleteCurriculumProposal(database *sql.DB, authorID, proposalID int64) erro
 }
 
 func CreateCurriculumUnit(database *sql.DB, authorID, proposalID int64, name, content string) (*models.Unit, error) {
-	name = strings.TrimSpace(name)
-	content = strings.TrimSpace(content)
-	if name == "" {
-		return nil, ErrUnitNameRequired
+	name, err := validateUnitName(name)
+	if err != nil {
+		return nil, err
 	}
+	content = strings.TrimSpace(content)
 	if content == "" {
 		return nil, ErrUnitContentRequired
 	}
@@ -164,9 +173,9 @@ func CreateCurriculumUnit(database *sql.DB, authorID, proposalID int64, name, co
 }
 
 func UpdateCurriculumUnit(database *sql.DB, authorID, proposalID, unitID int64, name string) error {
-	name = strings.TrimSpace(name)
-	if name == "" {
-		return ErrUnitNameRequired
+	name, err := validateUnitName(name)
+	if err != nil {
+		return err
 	}
 	if err := EnsureCurriculumProposalReady(database, authorID, proposalID); err != nil {
 		return err
@@ -237,6 +246,81 @@ func UpdateCurriculumUnitContent(database *sql.DB, authorID, proposalID, unitID 
 		}
 	}
 	return replaceUnitProposalChange(database, authorID, proposalID, unitID, "update_content", change)
+}
+
+// UpdateCurriculumUnitAndContent replaces both editable fields in one
+// transaction. It is used by representations that submit a complete unit
+// rather than the web interface's independent inline fields.
+func UpdateCurriculumUnitAndContent(
+	database *sql.DB, authorID, proposalID, unitID int64, name, content string,
+) error {
+	name, err := validateUnitName(name)
+	if err != nil {
+		return err
+	}
+	content = strings.TrimSpace(content)
+	if content == "" {
+		return ErrUnitContentRequired
+	}
+	if err := EnsureCurriculumProposalReady(database, authorID, proposalID); err != nil {
+		return err
+	}
+	tx, err := beginCurriculumProposal(database)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	proposal, err := currentDraftCurriculumProposal(tx, authorID, proposalID)
+	if err != nil {
+		return err
+	}
+	var baseline *models.Unit
+	for _, change := range proposal.Changes {
+		if change.Kind == "delete_unit" && change.UnitID == unitID {
+			return ErrUnitNotFound
+		}
+		if change.Kind == "create_unit" && change.UnitID == unitID {
+			baseline = &models.Unit{ID: unitID, Name: change.UnitName, Content: change.UnitContent}
+		}
+	}
+	if baseline == nil {
+		baseline, err = db.GetUnit(tx, unitID)
+		if err != nil {
+			return err
+		}
+		if baseline == nil {
+			return ErrUnitNotFound
+		}
+	}
+	for _, kind := range []string{"rename_unit", "update_content"} {
+		authorized, err := db.DeleteDraftCurriculumProposalUnitChanges(
+			tx, proposalID, authorID, unitID, kind,
+		)
+		if err != nil {
+			return err
+		}
+		if !authorized {
+			return ErrProposalNotFound
+		}
+	}
+	if name != baseline.Name {
+		if err := db.AddDraftCurriculumProposalChange(tx, proposalID, authorID, &models.CurriculumProposalChange{
+			Kind: "rename_unit", UnitID: unitID, UnitName: name,
+		}); err != nil {
+			return err
+		}
+	}
+	if content != baseline.Content {
+		if err := db.AddDraftCurriculumProposalChange(tx, proposalID, authorID, &models.CurriculumProposalChange{
+			Kind: "update_content", UnitID: unitID, UnitContent: content,
+		}); err != nil {
+			return err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit curriculum unit replacement: %w", err)
+	}
+	return nil
 }
 
 func draftCreatedCurriculumUnit(database *sql.DB, authorID, proposalID, unitID int64) (*models.CurriculumProposalChange, error) {
@@ -424,6 +508,66 @@ func AddCurriculumRecognition(
 	return nil
 }
 
+// EnsureCurriculumRecognition adds a recognition only when the draft does not
+// already contain the same source and target sets. It gives retrying adapters
+// an idempotent application operation without changing the lower-level add
+// semantics used by the web and REST interfaces.
+func EnsureCurriculumRecognition(
+	database *sql.DB,
+	authorID, proposalID int64,
+	sourceUnitIDs, targetUnitIDs []int64,
+) error {
+	sources := uniquePositiveIDs(sourceUnitIDs)
+	targets := uniquePositiveIDs(targetUnitIDs)
+	if len(sources) == 0 {
+		return ErrRecognitionSourcesRequired
+	}
+	if len(targets) == 0 {
+		return ErrRecognitionTargetsRequired
+	}
+	if err := EnsureCurriculumProposalReady(database, authorID, proposalID); err != nil {
+		return err
+	}
+	proposal, err := db.GetCurriculumProposal(database, proposalID)
+	if err != nil {
+		return err
+	}
+	if proposal == nil || proposal.Status != "draft" || !proposal.HasAuthor(authorID) {
+		return ErrProposalNotFound
+	}
+	for _, change := range proposal.Changes {
+		if sameRecognitionUnitIDs(change.Recognition, sources, targets) {
+			return nil
+		}
+	}
+	return AddCurriculumRecognition(database, authorID, proposalID, sources, targets)
+}
+
+func sameRecognitionUnitIDs(recognition *models.Recognition, sourceIDs, targetIDs []int64) bool {
+	if recognition == nil || len(recognition.Sources) != len(sourceIDs) || len(recognition.Targets) != len(targetIDs) {
+		return false
+	}
+	sources := make(map[int64]bool, len(sourceIDs))
+	for _, id := range sourceIDs {
+		sources[id] = true
+	}
+	for _, unit := range recognition.Sources {
+		if !sources[unit.ID] {
+			return false
+		}
+	}
+	targets := make(map[int64]bool, len(targetIDs))
+	for _, id := range targetIDs {
+		targets[id] = true
+	}
+	for _, unit := range recognition.Targets {
+		if !targets[unit.ID] {
+			return false
+		}
+	}
+	return true
+}
+
 func uniquePositiveIDs(ids []int64) []int64 {
 	unique := make([]int64, 0, len(ids))
 	seen := make(map[int64]bool, len(ids))
@@ -477,6 +621,25 @@ func RemoveUnitDependency(database *sql.DB, authorID, proposalID, unitID, prereq
 		return ErrUnitNotFound
 	}
 	return setUnitDependency(database, authorID, proposalID, unitID, prerequisiteID, false)
+}
+
+// SetUnitDependency converges a dependency to the requested state. Repeating
+// the same operation is a successful no-op.
+func SetUnitDependency(
+	database *sql.DB, authorID, proposalID, unitID, prerequisiteID int64, desired bool,
+) error {
+	if desired {
+		err := AddUnitDependency(database, authorID, proposalID, unitID, prerequisiteID)
+		if errors.Is(err, ErrDependencyExists) {
+			return nil
+		}
+		return err
+	}
+	err := RemoveUnitDependency(database, authorID, proposalID, unitID, prerequisiteID)
+	if errors.Is(err, ErrDependencyNotFound) {
+		return nil
+	}
+	return err
 }
 
 func setUnitDependency(database *sql.DB, authorID, proposalID, unitID, prerequisiteID int64, desired bool) error {
@@ -825,10 +988,27 @@ func validateProposalMetadata(title, rationale string) (string, string, error) {
 	if title == "" {
 		return "", "", ErrProposalTitleRequired
 	}
+	if len([]rune(title)) > MaximumProposalTitleLength {
+		return "", "", ErrProposalTitleTooLong
+	}
 	if rationale == "" {
 		return "", "", ErrProposalRationaleRequired
 	}
+	if len([]rune(rationale)) > MaximumProposalRationaleLength {
+		return "", "", ErrProposalRationaleTooLong
+	}
 	return title, rationale, nil
+}
+
+func validateUnitName(name string) (string, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return "", ErrUnitNameRequired
+	}
+	if len([]rune(name)) > MaximumUnitNameLength {
+		return "", ErrUnitNameTooLong
+	}
+	return name, nil
 }
 
 func replaceUnitProposalChange(database *sql.DB, authorID, proposalID, unitID int64, kind string, change *models.CurriculumProposalChange) error {

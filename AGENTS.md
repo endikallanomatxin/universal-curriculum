@@ -4,7 +4,7 @@
 
 The Go module lives in `app`. The usual dependency flow is:
 
-`server → services → db → models`
+`web/REST/MCP adapters → services → db → models`
 
 - Handlers own HTTP concerns: authorization, parsing and responses.
 - A handler may call `db` directly for a simple one-to-one persistence
@@ -14,6 +14,9 @@ The Go module lives in `app`. The usual dependency flow is:
 - Database code uses raw PostgreSQL queries.
 - Schema changes use Goose migrations.
 - Read `docs/specification.md` before changing product behaviour.
+- Keep web, REST and MCP as sibling adapters. An adapter must not call another
+  adapter; shared workflows belong in services. MCP details are documented in
+  `docs/implementation/mcp.md`.
 
 ## Repository rules
 
@@ -33,6 +36,8 @@ The Go module lives in `app`. The usual dependency flow is:
   implementation documents instead of duplicating detailed mechanisms.
 - Keep documentation and applicable `AGENTS.md` files aligned with changes to
   architecture or conventions.
+- Keep future release descriptions in `docs/plan`; when a release is completed,
+  move its file to `docs/releases` in the release preparation commit.
 - After user feedback corrects an implementation, consider whether reusable
   repository knowledge available beforehand would have prevented the mistake.
   If so, update the applicable `AGENTS.md` or canonical implementation document
@@ -61,6 +66,14 @@ Run from `app`:
 
 ```bash
 go test ./...
+```
+
+Run the complete PostgreSQL integration suite from the repository root. This
+provides `TEST_DATABASE_URL`; running the same Go tests without it skips the
+database-backed cases:
+
+```bash
+podman compose -f compose.dev.yaml --profile test run --rm integration-tests
 ```
 
 After changing migrations, also run from the repository root:

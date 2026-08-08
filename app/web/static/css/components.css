@@ -19,6 +19,60 @@
   box-shadow: inset 0 0 0 2px var(--color-selection-outline), 0 0.55rem 1.25rem color-mix(in srgb, var(--color-ink-strong) 12%, transparent);
 }
 
+.pane-navigation-list {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.pane-navigation-card {
+  align-items: center;
+  background: color-mix(in srgb, var(--color-ink) 2%, var(--color-surface));
+  border: 0;
+  border-radius: var(--radius-surface);
+  color: inherit;
+  cursor: pointer;
+  display: grid;
+  font: inherit;
+  gap: var(--space-2);
+  grid-template-columns: 1.5rem minmax(0, 1fr);
+  min-height: 4.25rem;
+  padding: var(--space-4);
+  text-align: left;
+  text-decoration: none;
+  view-transition-class: layout-position;
+  width: 100%;
+}
+
+.pane-navigation-card > .material-symbols-rounded {
+  align-self: start;
+  color: var(--color-muted);
+  font-size: 1.35rem;
+  justify-self: center;
+  margin-top: 0.1rem;
+}
+
+.pane-navigation-card strong,
+.pane-navigation-card small {
+  display: block;
+}
+
+.pane-navigation-card strong {
+  color: var(--color-ink-strong);
+  font-size: 0.92rem;
+}
+
+.pane-navigation-card small {
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.pane-navigation-card > .material-symbols-rounded,
+.pane-navigation-card strong,
+.pane-navigation-card small {
+  view-transition-class: layout-position non-scaling-content;
+}
+
 .view-switcher {
   align-items: center;
   background: color-mix(in srgb, var(--color-ink) 5%, transparent);

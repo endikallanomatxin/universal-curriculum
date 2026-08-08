@@ -86,13 +86,26 @@
         if (window.panelLayout) window.panelLayout.refresh();
         panel.getBoundingClientRect();
         window.requestAnimationFrame(function () {
-          panel.classList.remove("is-opening");
-          if (window.autoResizeTextareas) window.autoResizeTextareas(panel);
-          const firstField = panel.querySelector("form input:not([type=hidden]), form select, form textarea, form button");
-          if (firstField) firstField.focus({ preventScroll: true });
-          window.setTimeout(function () {
+          const prepareOpenPanel = function () {
+            if (window.autoResizeTextareas) window.autoResizeTextareas(panel);
+            const firstField = panel.querySelector("form input:not([type=hidden]), form select, form textarea, form button");
+            if (firstField) firstField.focus({ preventScroll: true });
+          };
+          const finishHorizontalOpen = function () {
+            panel.classList.remove("is-opening");
+            prepareOpenPanel();
             panel.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "end" });
-          }, 260);
+          };
+          if (panel.dataset.panelMotion === "horizontal") {
+            panel.addEventListener("animationend", finishHorizontalOpen, { once: true });
+            panel.addEventListener("animationcancel", finishHorizontalOpen, { once: true });
+          } else {
+            panel.classList.remove("is-opening");
+            prepareOpenPanel();
+            window.setTimeout(function () {
+              panel.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "end" });
+            }, 260);
+          }
         });
       });
     });
@@ -102,6 +115,7 @@
       if (!close || close.panelInitialized) return;
       close.panelInitialized = true;
       close.addEventListener("click", function () {
+        if (close.hasAttribute("data-close-descendants")) closePanelsAfter(panel);
         beginPanelClose(panel, true, true, function () {
           updateURLAfterClientClose(panel);
         });

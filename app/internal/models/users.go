@@ -32,12 +32,49 @@ type User struct {
 	UpdatedAt time.Time
 }
 
+type APIToken struct {
+	ID         int64
+	UserID     int64
+	Name       string
+	Prefix     string
+	Token      string
+	LastUsedAt *time.Time
+	CreatedAt  time.Time
+}
+
 type PasswordResetToken struct {
 	// Token is the raw one-time secret returned only when it is created.
 	// Persistence stores its hash, never this value.
 	Token     string
 	UserID    int64
 	ExpiresAt time.Time
+}
+
+type OAuthAuthorizationGrant struct {
+	UserID        int64
+	ClientID      string
+	ClientName    string
+	RedirectURI   string
+	Resource      string
+	Scope         string
+	CodeChallenge string
+}
+
+type OAuthConnection struct {
+	ID           int64
+	UserID       int64
+	ClientID     string
+	ClientName   string
+	Resource     string
+	AuthorizedAt time.Time
+	LastUsedAt   *time.Time
+}
+
+type OAuthTokenPair struct {
+	AccessToken  string
+	RefreshToken string
+	ExpiresIn    int
+	Scope        string
 }
 
 func (user User) DisplayName() string {

@@ -328,6 +328,8 @@ func curriculumErrorResponse(err error) (string, int) {
 		return "Remove the dependencies from " + joinNames(prerequisiteError.DependentNames) + " before deleting this unit.", http.StatusConflict
 	case errors.Is(err, services.ErrUnitNameRequired):
 		return "A unit name is required.", http.StatusBadRequest
+	case errors.Is(err, services.ErrUnitNameTooLong):
+		return "A unit name cannot exceed 200 characters.", http.StatusBadRequest
 	case errors.Is(err, services.ErrUnitContentRequired):
 		return "Unit content cannot be empty.", http.StatusBadRequest
 	case errors.Is(err, services.ErrUnitNotFound):
@@ -342,8 +344,12 @@ func curriculumErrorResponse(err error) (string, int) {
 		return "Select an editable draft proposal first.", http.StatusNotFound
 	case errors.Is(err, services.ErrProposalTitleRequired):
 		return "A proposal title is required.", http.StatusBadRequest
+	case errors.Is(err, services.ErrProposalTitleTooLong):
+		return "A proposal title cannot exceed 200 characters.", http.StatusBadRequest
 	case errors.Is(err, services.ErrProposalRationaleRequired):
 		return "Explain the purpose of the proposal.", http.StatusBadRequest
+	case errors.Is(err, services.ErrProposalRationaleTooLong):
+		return "A proposal rationale cannot exceed 1000 characters.", http.StatusBadRequest
 	case errors.Is(err, services.ErrProposalEmpty):
 		return "Add at least one proposed change before publishing.", http.StatusBadRequest
 	case errors.Is(err, services.ErrProposalOutdated):

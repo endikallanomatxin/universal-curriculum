@@ -429,6 +429,8 @@ func learningPathError(err error) string {
 	switch {
 	case errors.Is(err, services.ErrLearningPathNameRequired):
 		return "A learning path name is required."
+	case errors.Is(err, services.ErrLearningPathNameTooLong):
+		return "A learning path name cannot exceed 200 characters."
 	case errors.Is(err, services.ErrLearningPathUnitsRequired):
 		return "Select at least one target unit."
 	case errors.Is(err, services.ErrUnitNotFound):

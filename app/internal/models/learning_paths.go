@@ -11,3 +11,14 @@ type LearningPath struct {
 	Units     []Unit
 	UnitCount int
 }
+
+type LearningRecommendation struct {
+	LearningPathID   int64
+	LearningPathName string
+	Units            []RecommendedUnit
+}
+
+type RecommendedUnit struct {
+	Unit
+	Reason string
+}
