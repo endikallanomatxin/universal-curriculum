@@ -62,7 +62,7 @@ type apiUserContextKey struct{}
 func (server *Server) apiInfo(writer http.ResponseWriter, _ *http.Request) {
 	writeAPIJSON(writer, http.StatusOK, map[string]string{
 		"name":          "Universal Curriculum API",
-		"release":       "0.2.3",
+		"release":       "0.2.4",
 		"status":        "experimental",
 		"documentation": "/api/openapi.yaml",
 	})

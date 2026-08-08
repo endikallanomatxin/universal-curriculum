@@ -86,7 +86,7 @@ func (servers servers) forToken(info *auth.TokenInfo) *mcp.Server {
 
 func newServer(application *adapter, admin bool) *mcp.Server {
 	server := mcp.NewServer(&mcp.Implementation{
-		Name: "universal-curriculum", Title: "Universal Curriculum", Version: "0.2.3",
+		Name: "universal-curriculum", Title: "Universal Curriculum", Version: "0.2.4",
 		Description: "Agent-oriented access to Universal Curriculum.", WebsiteURL: application.baseURL,
 	}, &mcp.ServerOptions{
 		Instructions: instructions,
