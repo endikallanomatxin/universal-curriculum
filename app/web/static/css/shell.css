@@ -645,6 +645,8 @@ button.primary-menu__link {
 }
 
 .pane-stack {
+  --pane-padding-inline: clamp(2rem, 5vw, 6rem);
+
   display: flex;
   flex: 0 0 var(--panel-width, 100%);
   height: 100dvh;
@@ -680,14 +682,15 @@ button.primary-menu__link {
 }
 
 .ui-pane {
-  --ui-pane-close-inset: clamp(var(--space-3), 2.5vw, var(--space-6));
+  --ui-pane-close-inset: clamp(var(--space-3), calc(var(--pane-padding-inline) / 2), var(--space-6));
 
   background: linear-gradient(90deg, var(--color-panel-start), var(--color-panel-end));
   flex: 0 0 var(--panel-width, min(100%, 42rem));
   height: 100dvh;
   min-height: 100dvh;
   overflow-y: auto;
-  padding: clamp(2rem, 5vw, 6rem);
+  padding-block: clamp(2rem, 5vw, 6rem);
+  padding-inline: var(--pane-padding-inline);
   position: relative;
 }
 

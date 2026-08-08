@@ -47,6 +47,14 @@ a pane should respond to the space actually assigned to it, using container
 queries where appropriate rather than duplicating the global allocation
 algorithm with viewport media queries.
 
+Normal content panes in the same group share one horizontal padding value. The
+allocator derives it from the space left after mode negotiation: constrained
+groups use the shared minimum, while genuinely spare width increases every
+pane's padding together up to the shared maximum. The terminal fill pane may
+then absorb the remaining width without making its own spacing differ from its
+siblings. Vertical padding remains viewport-responsive, and structural modes
+such as compact, breadcrumb and mobile retain their explicit padding.
+
 Panel capacity and content measure are independent. A terminal pane normally
 declares `data-panel-fill` and may therefore grow to the remaining workspace
 width without a hard maximum. Its `.ui-pane__inner` declares a shared readable
@@ -165,8 +173,9 @@ already present replaces its content in place.
 Every closable pane uses `ui-pane__close`. Its position belongs to the pane
 surface rather than to a title or form: `.ui-pane` is the positioning context
 and keeps the control at a responsive inset from its upper inline-end corner.
-That inset follows half the pane's fluid padding, within shared minimum and
-maximum bounds, so wide surfaces retain proportionate breathing room.
+That inset follows half the group's shared horizontal padding, within shared
+minimum and maximum bounds, so wide surfaces retain proportionate breathing
+room.
 Headers containing the control reserve the shared close-control clearance, so
 long titles and adjacent actions cannot occupy that area. Consumer styles must
 not reposition the close control. In mobile composition the system-level inset

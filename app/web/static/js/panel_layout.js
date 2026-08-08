@@ -132,6 +132,14 @@
     return true;
   }
 
+  function setGroupPanePadding(group, padding) {
+    const property = "--pane-padding-inline";
+    const value = roundedWidth(padding) + "rem";
+    if (group.style.getPropertyValue(property) === value) return false;
+    group.style.setProperty(property, value);
+    return true;
+  }
+
   function layoutMobileGroup(group, definitions, available) {
     const activeIndex = definitions.length - 1;
     let changed = false;
@@ -234,6 +242,7 @@
     }
 
     let spare = Math.max(0, available - used);
+    const collectiveSpare = spare;
     const widths = definitions.map(function (definition, index) {
       return definition.modes[selections[index]].width;
     });
@@ -260,6 +269,21 @@
         definition.modes[selections[index]].name
       ) || changed;
     });
+    const contentPanelCount = definitions.filter(function (definition, index) {
+      const mode = definition.modes[selections[index]].name;
+      return definition.panel.matches(".ui-pane") &&
+        mode !== "compact" && mode !== "mobile" &&
+        mode !== "breadcrumb" && mode !== "collapsed";
+    }).length;
+    if (contentPanelCount > 0) {
+      const minimumPadding = 2;
+      const maximumPadding = 6;
+      const underPressure = requiredSpaceExhausted || higherPriorityPanelWantsSpace;
+      const padding = underPressure
+        ? minimumPadding
+        : Math.min(maximumPadding, minimumPadding + collectiveSpare / (2 * contentPanelCount));
+      changed = setGroupPanePadding(group, padding) || changed;
+    }
     changed = setGroupValue(group, "panelChildrenRequiredWidth", definitions.reduce(function (total, definition) {
       return total + ownRequiredWidth(definition);
     }, 0)) || changed;
