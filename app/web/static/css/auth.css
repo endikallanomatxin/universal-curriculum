@@ -41,6 +41,16 @@
   border-color: var(--color-ink-strong);
 }
 
+.auth-form > .primary-button,
+.auth-form > .secondary-button {
+  align-items: center;
+  display: flex;
+  font-size: inherit;
+  justify-content: center;
+  margin-top: var(--space-3);
+  padding: 0.8rem 1rem;
+}
+
 .auth-form__fields {
   display: grid;
   gap: var(--space-2);
