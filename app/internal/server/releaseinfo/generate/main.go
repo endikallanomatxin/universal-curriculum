@@ -23,7 +23,8 @@ func main() {
 	output.WriteString("// Code generated from docs/releases and docs/plan; DO NOT EDIT.\n\npackage releaseinfo\n\n")
 	writeCatalog(&output, "releases", releases)
 	writeCatalog(&output, "roadmap", roadmap)
-	if err := os.WriteFile("catalog_generated.go", []byte(output.String()), 0o644); err != nil {
+	generated := strings.TrimRight(output.String(), "\n") + "\n"
+	if err := os.WriteFile("catalog_generated.go", []byte(generated), 0o644); err != nil {
 		panic(err)
 	}
 }

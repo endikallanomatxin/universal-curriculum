@@ -43,7 +43,7 @@ func TestAboutPageIsPublicAndUsesShellNavigation(t *testing.T) {
 		`href="/about/documentation"`,
 		`href="/about/releases"`,
 		`href="/about/roadmap"`,
-		`Current version · v0.2.6`,
+		`Current version · v0.2.7`,
 		`href="/license"`,
 		`href="/about" aria-current="page"`,
 		`hx-get="/about"`,
@@ -118,7 +118,7 @@ func TestReleaseAndRoadmapPagesUseSharedContentPanels(t *testing.T) {
 		path      string
 		fragments []string
 	}{
-		{path: "/about/releases", fragments: []string{`<h1 id="about-content-index-title">Releases</h1>`, `href="/about/releases/0.2.6"`, `Improve historical proposal inspection.`}},
+		{path: "/about/releases", fragments: []string{`<h1 id="about-content-index-title">Releases</h1>`, `href="/about/releases/0.2.7"`, `Refine proposal history navigation and make project evolution visible.`}},
 		{path: "/about/releases/0.2.6", fragments: []string{`<h1 id="about-content-page-title">v0.2.6</h1>`, `Added a read-only graph to accepted proposal details`}},
 		{path: "/about/roadmap", fragments: []string{`<h1 id="about-content-index-title">Roadmap</h1>`, `href="/about/roadmap/0.3.0"`, `Add asset support to the platform.`}},
 		{path: "/about/roadmap/0.3.0", fragments: []string{`<h1 id="about-content-page-title">v0.3.0</h1>`, `Add asset support to the platform.`}},
