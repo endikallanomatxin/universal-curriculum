@@ -319,12 +319,18 @@ The platform must resist bots, duplicate identities and coordinated
 manipulation. Stronger identity verification may be required for consequential
 decisions, but it must remain proportionate and protect participants' privacy.
 
-### 7.7 Acceptance
+### 7.7 Publication and acceptance
+
+Publishing submits a proposal for consideration. Acceptance confirms that its
+changes have been incorporated into the shared curriculum. They are distinct
+domain events even when one operation performs both. The current workflow
+accepts a proposal automatically when it is published, but later workflows may
+leave published proposals pending a separate decision.
 
 An accepted proposal is validated against the current graph and applied
 atomically. Its units, dependencies, recognitions, resources,
-translations and decision record are either published together or not published
-at all.
+translations and decision record are either published together or not
+published at all.
 
 ## 8. Languages
 
