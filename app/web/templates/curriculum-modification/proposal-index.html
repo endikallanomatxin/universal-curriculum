@@ -1,6 +1,6 @@
 {{/* Curriculum modification proposal index. */}}
 {{ define "proposal-index-pane" -}}
-      <section class="ui-pane proposal-index-pane" aria-labelledby="active-proposals-title" data-layout-panel data-panel-modes="collapsed:0 breadcrumb:4 mobile:20 content:24 wide:28" data-panel-required-mode="mobile" data-panel-fill data-panel-breadcrumb="Proposals">
+      <section class="ui-pane proposal-index-pane" aria-labelledby="active-proposals-title" data-layout-panel data-panel-modes="collapsed:0 breadcrumb:4 mobile:20 content:24 wide:28" data-panel-required-mode="mobile" data-panel-fill data-panel-breadcrumb="Proposals" data-panel-breadcrumb-url="/curriculum-modification">
         <div class="ui-pane__inner proposal-pane proposal-index pane-breadcrumb" data-pane-content-width="narrow">
           <header class="proposal-pane__header proposal-index__header pane-breadcrumb__header">
             <div>
@@ -12,7 +12,7 @@
 
           <section class="active-proposals" aria-labelledby="active-proposals-title">
             <div class="section-heading">
-              <h2 id="active-proposals-title" style="view-transition-name:active-proposals-title;">Active proposals</h2>
+              <h2 id="active-proposals-title" style="view-transition-name:active-proposals-title;">Your drafts</h2>
             </div>
             {{ if .DraftProposals }}
               <div class="active-proposal-list">

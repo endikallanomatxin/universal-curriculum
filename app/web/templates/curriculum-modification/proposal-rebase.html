@@ -23,14 +23,6 @@
                           <g data-rebase-graph-paths data-arrow-marker="proposal-rebase-arrow"></g>
                         </svg>
                         <ol class="proposal-rebase-graph__list">
-                          <li class="proposal-rebase-graph__item" data-rebase-node="base" data-rebase-lane="0">
-                            <span class="proposal-rebase-graph__node" data-rebase-anchor aria-hidden="true"></span>
-                            <div><span class="label">Your proposal’s base</span>{{ if .BaseID }}<a class="proposal-rebase-graph__proposal-link" href="/curriculum-modification?proposal={{ $.ActiveProposal.ID }}&amp;review-proposal={{ .BaseID }}" hx-get="/curriculum-modification?proposal={{ $.ActiveProposal.ID }}&amp;review-proposal={{ .BaseID }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true" data-panel-navigation="open-or-replace"><strong>{{ .BaseTitle }}</strong><span class="material-symbols-rounded" aria-hidden="true">arrow_forward</span></a>{{ else }}<strong>{{ .BaseTitle }}</strong>{{ end }}</div>
-                          </li>
-                          <li class="proposal-rebase-graph__item proposal-rebase-graph__item--draft" data-rebase-node="draft" data-rebase-lane="1">
-                            <span class="proposal-rebase-graph__node" data-rebase-anchor aria-hidden="true"></span>
-                            <div><span class="label">Your proposal</span><strong>{{ .DraftTitle }}</strong></div>
-                          </li>
                           {{ range .Items }}
                             {{ if .Ellipsis }}
                               <li class="proposal-rebase-graph__item proposal-rebase-graph__item--ellipsis" aria-hidden="true"><span>•••</span></li>
@@ -51,6 +43,14 @@
                               </li>
                             {{ end }}
                           {{ end }}
+                          <li class="proposal-rebase-graph__item" data-rebase-node="base" data-rebase-lane="0">
+                            <span class="proposal-rebase-graph__node" data-rebase-anchor aria-hidden="true"></span>
+                            <div><span class="label">Your proposal’s base</span>{{ if .BaseID }}<a class="proposal-rebase-graph__proposal-link" href="/curriculum-modification?proposal={{ $.ActiveProposal.ID }}&amp;review-proposal={{ .BaseID }}" hx-get="/curriculum-modification?proposal={{ $.ActiveProposal.ID }}&amp;review-proposal={{ .BaseID }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true" data-panel-navigation="open-or-replace"><strong>{{ .BaseTitle }}</strong><span class="material-symbols-rounded" aria-hidden="true">arrow_forward</span></a>{{ else }}<strong>{{ .BaseTitle }}</strong>{{ end }}</div>
+                          </li>
+                          <li class="proposal-rebase-graph__item proposal-rebase-graph__item--draft" data-rebase-node="draft" data-rebase-lane="1">
+                            <span class="proposal-rebase-graph__node" data-rebase-anchor aria-hidden="true"></span>
+                            <div><span class="label">Your proposal</span><strong>{{ .DraftTitle }}</strong></div>
+                          </li>
                         </ol>
                         <div hidden>
                           {{ range .Edges }}<span data-rebase-edge data-source="{{ .Source }}" data-target="{{ .Target }}"></span>{{ end }}

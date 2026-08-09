@@ -37,7 +37,7 @@
     return true;
   }
 
-  function closeMatchingPanels(group, origin, predicate) {
+  function closeMatchingPanels(group, origin, predicate, complete) {
     if (!group || !origin) return false;
     const children = Array.from(group.children);
     const originIndex = children.indexOf(origin);
@@ -45,7 +45,9 @@
     let changed = false;
     children.forEach(function (panel, index) {
       if (index <= originIndex || !predicate(panel)) return;
-      changed = beginPanelClose(panel, false) || changed;
+      changed = beginPanelClose(panel, false, false, function () {
+        if (complete) complete(panel);
+      }) || changed;
     });
     return changed;
   }
@@ -62,6 +64,8 @@
     const group = panel && panel.parentElement;
     const changed = closeMatchingPanels(group, panel, function (candidate) {
       return candidate.matches("[data-layout-panel]");
+    }, function (candidate) {
+      updateURLAfterClientClose(candidate);
     });
     if (changed && window.panelLayout) window.panelLayout.refresh();
   }
@@ -114,7 +118,8 @@
       const close = panel.querySelector("[data-close-panel]");
       if (!close || close.panelInitialized) return;
       close.panelInitialized = true;
-      close.addEventListener("click", function () {
+      close.addEventListener("click", function (event) {
+        event.preventDefault();
         if (close.hasAttribute("data-close-descendants")) closePanelsAfter(panel);
         beginPanelClose(panel, true, true, function () {
           updateURLAfterClientClose(panel);

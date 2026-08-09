@@ -1,6 +1,6 @@
 {{/* Curriculum modification proposal history. */}}
 {{ define "proposal-history-pane" -}}
-      <section class="ui-pane ui-pane--form" id="proposal-history-panel" data-nested-panel data-panel-motion="horizontal" data-layout-panel data-panel-modes="collapsed:0 compact:18 form:28" data-panel-required-mode="form" data-panel-fill data-panel-breadcrumb="History" {{ if not .ShowProposalHistory }}hidden{{ end }} aria-labelledby="proposal-history-title">
+      <section class="ui-pane ui-pane--form" id="proposal-history-panel" data-nested-panel data-panel-motion="horizontal" data-layout-panel data-panel-modes="collapsed:0 compact:18 form:28" data-panel-required-mode="form" data-panel-fill data-panel-breadcrumb="History" data-panel-breadcrumb-url="/curriculum-modification?{{ if .ActiveProposal }}proposal={{ .ActiveProposal.ID }}&amp;{{ end }}history=1&amp;history-limit={{ .ProposalHistoryLimit }}" data-panel-preserve-scroll {{ if not .ShowProposalHistory }}hidden{{ end }} aria-labelledby="proposal-history-title">
         <div class="ui-pane__inner nested-panel" data-pane-content-width="narrow">
           <header class="nested-panel__header">
             <div>
@@ -32,20 +32,10 @@
                   <g data-rebase-graph-paths data-arrow-marker="proposal-history-arrow"></g>
                 </svg>
                 <ol class="proposal-rebase-graph__list">
-                  <li class="proposal-rebase-graph__item" data-rebase-node="history-root" data-rebase-lane="0">
-                    <span class="proposal-rebase-graph__node proposal-history-graph__root-node" data-rebase-anchor aria-hidden="true"></span>
-                    <div><span class="label">Starting point</span><strong>Initial curriculum</strong></div>
-                  </li>
-                  {{ range .RootDraftProposals }}
-                    <li class="proposal-rebase-graph__item proposal-rebase-graph__item--draft" data-rebase-node="history-draft-{{ .ID }}" data-rebase-lane="1">
-                      <span class="proposal-rebase-graph__node" data-rebase-anchor aria-hidden="true"></span>
-                      <div><a class="proposal-rebase-graph__proposal-link" href="/curriculum-modification?proposal={{ .ID }}" hx-get="/curriculum-modification?proposal={{ .ID }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true" data-panel-navigation="open-or-replace"><strong>{{ .Title }}</strong><span class="material-symbols-rounded" aria-hidden="true">arrow_forward</span></a><span class="proposal-history-graph__status">Draft before first publication</span></div>
-                    </li>
-                  {{ end }}
                   {{ range .ProposalHistory }}
                     <li class="proposal-rebase-graph__item {{ if .IsHead }}proposal-rebase-graph__item--current{{ end }}" data-rebase-node="history-accepted-{{ .ID }}" data-rebase-lane="0">
                       <span class="proposal-rebase-graph__node" data-rebase-anchor aria-hidden="true"></span>
-                      <div>{{ if .IsHead }}<span class="label">Published curriculum</span>{{ end }}<strong>{{ .Title }}</strong><span class="proposal-history-graph__status">{{ .AuthorName }} · accepted</span></div>
+                      <div>{{ if .IsHead }}<span class="label">Published curriculum</span>{{ end }}<a class="proposal-rebase-graph__proposal-link" href="/curriculum-modification?{{ if $.ActiveProposal }}proposal={{ $.ActiveProposal.ID }}&amp;{{ end }}history=1&amp;history-limit={{ $.ProposalHistoryLimit }}&amp;review-proposal={{ .ID }}" hx-get="/curriculum-modification?{{ if $.ActiveProposal }}proposal={{ $.ActiveProposal.ID }}&amp;{{ end }}history=1&amp;history-limit={{ $.ProposalHistoryLimit }}&amp;review-proposal={{ .ID }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true" data-panel-navigation="open-or-replace"><strong>{{ .Title }}</strong><span class="material-symbols-rounded" aria-hidden="true">arrow_forward</span></a><span class="proposal-history-graph__status">{{ .AuthorName }} · accepted</span></div>
                     </li>
                     {{ range .Drafts }}
                       <li class="proposal-rebase-graph__item proposal-rebase-graph__item--draft" data-rebase-node="history-draft-{{ .ID }}" data-rebase-lane="1">
@@ -54,20 +44,47 @@
                       </li>
                     {{ end }}
                   {{ end }}
+                  {{ if not .ProposalHistoryMore }}
+                    <li class="proposal-rebase-graph__item" data-rebase-node="history-root" data-rebase-lane="0">
+                      <span class="proposal-rebase-graph__node proposal-history-graph__root-node" data-rebase-anchor aria-hidden="true"></span>
+                      <div><span class="label">Starting point</span><strong>Initial curriculum</strong></div>
+                    </li>
+                    {{ range .RootDraftProposals }}
+                      <li class="proposal-rebase-graph__item proposal-rebase-graph__item--draft" data-rebase-node="history-draft-{{ .ID }}" data-rebase-lane="1">
+                        <span class="proposal-rebase-graph__node" data-rebase-anchor aria-hidden="true"></span>
+                        <div><a class="proposal-rebase-graph__proposal-link" href="/curriculum-modification?proposal={{ .ID }}" hx-get="/curriculum-modification?proposal={{ .ID }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true" data-panel-navigation="open-or-replace"><strong>{{ .Title }}</strong><span class="material-symbols-rounded" aria-hidden="true">arrow_forward</span></a><span class="proposal-history-graph__status">Draft before first publication</span></div>
+                      </li>
+                    {{ end }}
+                  {{ end }}
                 </ol>
                 <div hidden>
-                  {{ range .RootDraftProposals }}<span data-rebase-edge data-source="history-root" data-target="history-draft-{{ .ID }}"></span>{{ end }}
-                  {{ $previous := "history-root" }}
+                  {{ $previous := "" }}
                   {{ range .ProposalHistory }}
-                    <span data-rebase-edge data-source="{{ $previous }}" data-target="history-accepted-{{ .ID }}"></span>
+                    {{ if $previous }}<span data-rebase-edge data-source="{{ $previous }}" data-target="history-accepted-{{ .ID }}"></span>{{ end }}
                     {{ $previous = printf "history-accepted-%d" .ID }}
                     {{ $accepted := . }}
                     {{ range .Drafts }}<span data-rebase-edge data-source="history-accepted-{{ $accepted.ID }}" data-target="history-draft-{{ .ID }}"></span>{{ end }}
+                  {{ end }}
+                  {{ if not .ProposalHistoryMore }}
+                    {{ if $previous }}<span data-rebase-edge data-source="{{ $previous }}" data-target="history-root"></span>{{ end }}
+                    {{ range .RootDraftProposals }}<span data-rebase-edge data-source="history-root" data-target="history-draft-{{ .ID }}"></span>{{ end }}
                   {{ end }}
                 </div>
               </div>
               <figcaption class="visually-hidden">Accepted proposals form the main line. Draft proposals branch from the accepted curriculum on which they are based.</figcaption>
             </figure>
+            {{ if .ProposalHistoryMore }}
+              <div class="pane-list-actions">
+                <a class="pane-list-action"
+                   href="/curriculum-modification?{{ if .ActiveProposal }}proposal={{ .ActiveProposal.ID }}&amp;{{ end }}history=1&amp;history-limit={{ .ProposalHistoryNext }}"
+                   hx-get="/curriculum-modification?{{ if .ActiveProposal }}proposal={{ .ActiveProposal.ID }}&amp;{{ end }}history=1&amp;history-limit={{ .ProposalHistoryNext }}"
+                   hx-target="#workspace"
+                   hx-select="#workspace"
+                   hx-swap="outerHTML"
+                   hx-push-url="true"
+                   data-panel-navigation="replace">Show more</a>
+              </div>
+            {{ end }}
           {{ else }}
             <p class="empty-message">No proposals have been created yet.</p>
           {{ end }}

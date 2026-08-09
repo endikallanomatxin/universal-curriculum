@@ -160,6 +160,7 @@ func TestLearningPathPanelHasCloseNavigation(t *testing.T) {
 	output := renderTemplate(t, templates, "learn.html", map[string]any{
 		"ShowGraph": true,
 		"Graph":     &models.CurriculumGraphLayout{},
+		"GraphURL":  "/learn?path=7&unit=3",
 	})
 
 	for _, fragment := range []string{
@@ -167,6 +168,7 @@ func TestLearningPathPanelHasCloseNavigation(t *testing.T) {
 		`href="/learn"`,
 		`hx-trigger="panel-close"`,
 		`data-panel-navigation="close"`,
+		`data-panel-breadcrumb-url="/learn?path=7&amp;unit=3"`,
 	} {
 		if !strings.Contains(output, fragment) {
 			t.Errorf("learning path close control does not contain %q", fragment)
@@ -383,6 +385,10 @@ func TestCurriculumProposalContentPanelRendersUnitContentDiff(t *testing.T) {
 
 	for _, fragment := range []string{
 		"Proposed content changes",
+		`data-panel-breadcrumb-url="/curriculum-modification?proposal=12"`,
+		`data-panel-preserve-scroll`,
+		`data-panel-close-query="content"`,
+		`data-close-panel`,
 		`class="view-switcher"`,
 		`data-view-switcher-trigger="source"`,
 		`data-view-switcher-trigger="rendered"`,
@@ -398,6 +404,55 @@ func TestCurriculumProposalContentPanelRendersUnitContentDiff(t *testing.T) {
 	}
 	if strings.Contains(output, "View content changes") || strings.Contains(output, "<details") {
 		t.Error("content diff should be shown directly in the unit panel")
+	}
+}
+
+func TestAcceptedProposalHistoryLinksOpenDetailBesideHistory(t *testing.T) {
+	templates := loadTestTemplates(t)
+	accepted := models.CurriculumProposal{ID: 8, Title: "Clarify electricity", Status: "accepted", AuthorName: "Ada"}
+	output := renderTemplate(t, templates, "curriculum-modification.html", map[string]any{
+		"ShowProposalHistory":  true,
+		"ProposalHistoryLimit": 10,
+		"ProposalHistory": []map[string]any{{
+			"ID": accepted.ID, "Title": accepted.Title, "Status": accepted.Status,
+			"AuthorName": accepted.AuthorName, "IsHead": true,
+		}},
+		"ReviewedProposal": &accepted,
+	})
+
+	link := `href="/curriculum-modification?history=1&amp;history-limit=10&amp;review-proposal=8"`
+	if !strings.Contains(output, link) {
+		t.Errorf("accepted proposal history does not contain detail link %q", link)
+	}
+	if !strings.Contains(output, `href="/curriculum-modification?history=1&amp;history-limit=10"`) {
+		t.Error("accepted proposal detail does not close back to history")
+	}
+	if strings.Index(output, `id="proposal-history-panel"`) > strings.Index(output, `aria-labelledby="related-proposal-title"`) {
+		t.Error("accepted proposal detail should render to the right of history")
+	}
+}
+
+func TestProposalHistoryShowsNewestFirstAndLoadsOlderEntriesOnDemand(t *testing.T) {
+	templates := loadTestTemplates(t)
+	output := renderTemplate(t, templates, "curriculum-modification.html", map[string]any{
+		"ShowProposalHistory":  true,
+		"ProposalHistoryMore":  true,
+		"ProposalHistoryLimit": 10,
+		"ProposalHistoryNext":  20,
+		"ProposalHistory": []map[string]any{
+			{"ID": 2, "Title": "Newest", "AuthorName": "Ada", "IsHead": true},
+			{"ID": 1, "Title": "Older", "AuthorName": "Grace"},
+		},
+	})
+
+	if strings.Index(output, "Newest") > strings.Index(output, "Older") {
+		t.Error("proposal history should render newest proposals first")
+	}
+	if !strings.Contains(output, `history-limit=20`) || !strings.Contains(output, `>Show more</a>`) {
+		t.Error("paginated proposal history does not offer the next page")
+	}
+	if strings.Contains(output, "Initial curriculum") {
+		t.Error("partial proposal history should not connect to the initial curriculum")
 	}
 }
 

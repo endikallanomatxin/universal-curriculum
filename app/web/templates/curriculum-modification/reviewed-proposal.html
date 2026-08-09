@@ -5,19 +5,19 @@
           <article class="ui-pane__inner related-proposal" data-pane-content-width="reading">
             <header class="nested-panel__header">
               <div>
-                <p class="label">Related accepted proposal</p>
+                <p class="label">{{ if $.ShowProposalHistory }}Accepted proposal{{ else }}Related accepted proposal{{ end }}</p>
                 <h1 id="related-proposal-title">{{ .Title }}</h1>
               </div>
               <a class="icon-button ui-pane__close"
-                 href="/curriculum-modification?proposal={{ $.ActiveProposal.ID }}"
-                 hx-get="/curriculum-modification?proposal={{ $.ActiveProposal.ID }}"
+                 href="/curriculum-modification?{{ if $.ActiveProposal }}proposal={{ $.ActiveProposal.ID }}{{ if $.ShowProposalHistory }}&amp;{{ end }}{{ end }}{{ if $.ShowProposalHistory }}history=1&amp;history-limit={{ $.ProposalHistoryLimit }}{{ end }}"
+                 hx-get="/curriculum-modification?{{ if $.ActiveProposal }}proposal={{ $.ActiveProposal.ID }}{{ if $.ShowProposalHistory }}&amp;{{ end }}{{ end }}{{ if $.ShowProposalHistory }}history=1&amp;history-limit={{ $.ProposalHistoryLimit }}{{ end }}"
                  hx-trigger="panel-close"
                  hx-target="#workspace"
                  hx-select="#workspace"
                  hx-swap="outerHTML transition:true"
                  hx-push-url="true"
                  data-panel-navigation="close"
-                 aria-label="Close related proposal">
+                 aria-label="Close accepted proposal">
                 <span class="material-symbols-rounded" aria-hidden="true">close</span>
               </a>
             </header>

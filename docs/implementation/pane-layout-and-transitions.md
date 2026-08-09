@@ -81,7 +81,9 @@ The shared navigation supports full, sidebar, icon-only and mobile-launcher
 presentations. Content panes that cannot remain useful at narrow widths may
 declare a breadcrumb mode. A breadcrumb retains the current contextual title
 vertically while removing the rest of the pane content. Its vertical offset
-must leave the mobile navigation launcher unobstructed.
+must leave the mobile navigation launcher unobstructed. Long vertical labels
+are truncated within most of the viewport height rather than extending beyond
+the pane's useful controls.
 
 At `42rem` and below, the allocator switches to the mobile composition: only
 the rightmost visible pane in each group receives width and every pane to its
@@ -100,6 +102,15 @@ The empty trail container is rendered with every workspace so its insertion
 does not alter the new View Transition snapshot. Named transition descendants
 inside zero-width panes are suppressed: a graph that becomes contextual should
 fade in place rather than interpolate toward its reflowed, hidden geometry.
+Mobile trail segments have an individual maximum and remain shrinkable as a
+group. Flexbox therefore gives long labels less width as more contextual panes
+are present, while short labels keep only the space they need.
+
+Server-rendered panes declare `data-panel-breadcrumb-url` when returning to
+that pane requires canonical server state. Earlier mobile trail segments then
+navigate to that URL and replace the workspace in one request, producing the
+same DOM and URL as closing every descendant pane. Panes without a canonical
+URL remain client-local and use the shared close controller.
 
 ## Pane operations
 
@@ -122,7 +133,13 @@ query parameter from the current history entry once the transition completes.
 Navigation links whose server-rendered behavior depends on that open state mark
 the parameter with `data-panel-close-query-link`; the shared close restores
 their closed-state URLs at the same time so the retained DOM cannot reopen the
-detail unintentionally.
+detail unintentionally. Closing descendant panes through the mobile breadcrumb
+trail performs the same query cleanup.
+
+A pane whose internal scroll position represents retained navigation context
+declares `data-panel-preserve-scroll`. Workspace swaps capture its `scrollTop`
+by stable pane key and restore it on the replacement pane, so opening a detail
+and returning does not move the user away from the originating item.
 
 `web/static/js/panels.js` owns this interaction. New panel interactions should
 reuse its declarative triggers and stable panel boundaries rather than adding

@@ -1,7 +1,7 @@
 {{/* Learning curriculum map pane. */}}
 {{ define "learning-curriculum-map-pane" -}}
       {{ if .ShowGraph }}
-        <section class="ui-pane ui-pane--wide curriculum-map-pane" aria-labelledby="learn-graph-title" data-nested-panel data-panel-motion="horizontal" data-layout-panel data-panel-modes="collapsed:0 breadcrumb:4 mobile:20 content:34 wide:46" data-panel-required-mode="mobile" data-panel-fill data-panel-breadcrumb="Curriculum map">
+        <section class="ui-pane ui-pane--wide curriculum-map-pane" aria-labelledby="learn-graph-title" data-nested-panel data-panel-motion="horizontal" data-layout-panel data-panel-modes="collapsed:0 breadcrumb:4 mobile:20 content:34 wide:46" data-panel-required-mode="mobile" data-panel-fill data-panel-breadcrumb="Curriculum map" data-panel-breadcrumb-url="{{ .GraphURL }}">
           <div class="ui-pane__inner learn-view pane-breadcrumb" data-pane-content-width="wide">
             <header class="learn-heading learn-heading--closable pane-breadcrumb__header {{ if or .SelectedPath .CombinePaths }}learn-heading--path{{ end }}">
               <div>

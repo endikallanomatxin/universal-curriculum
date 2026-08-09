@@ -13,12 +13,13 @@ type contentDiffPart struct {
 }
 
 var contentDiffTokenPattern = regexp.MustCompile(`\s+|[\pL\pN_]+|[^\s\pL\pN_]`)
+var contentDiffWordPattern = regexp.MustCompile(`[\pL\pN_]+`)
+
+const detailedContentDiffSimilarity = 0.55
+const maxContentDiffComparisons = 2_000_000
 
 func RenderContentDiff(previous, current string) template.HTML {
-	parts := contentDiffParts(
-		contentDiffTokenPattern.FindAllString(previous, -1),
-		contentDiffTokenPattern.FindAllString(current, -1),
-	)
+	parts := sourceContentDiffParts(previous, current)
 	var output strings.Builder
 	output.WriteString(`<pre class="content-diff" aria-label="Content changes">`)
 	for _, part := range parts {
@@ -34,6 +35,52 @@ func RenderContentDiff(previous, current string) template.HTML {
 	}
 	output.WriteString(`</pre>`)
 	return template.HTML(output.String())
+}
+
+func sourceContentDiffParts(previous, current string) []contentDiffPart {
+	blockParts := contentDiffParts(markdownContentBlocks(previous), markdownContentBlocks(current))
+	parts := make([]contentDiffPart, 0, len(blockParts))
+	for index := 0; index < len(blockParts); {
+		if blockParts[index].kind == "same" {
+			parts = appendContentDiffPart(parts, "same", blockParts[index].text)
+			index++
+			continue
+		}
+
+		var deleted, inserted strings.Builder
+		for index < len(blockParts) && blockParts[index].kind != "same" {
+			if blockParts[index].kind == "deleted" {
+				deleted.WriteString(blockParts[index].text)
+			} else {
+				inserted.WriteString(blockParts[index].text)
+			}
+			index++
+		}
+		previousText, currentText := deleted.String(), inserted.String()
+		if previousText != "" && currentText != "" && contentSimilarity(previousText, currentText) >= detailedContentDiffSimilarity {
+			parts = append(parts, contentDiffParts(
+				contentDiffTokenPattern.FindAllString(previousText, -1),
+				contentDiffTokenPattern.FindAllString(currentText, -1),
+			)...)
+			continue
+		}
+		parts = appendContentDiffPart(parts, "deleted", previousText)
+		parts = appendContentDiffPart(parts, "inserted", currentText)
+	}
+	return parts
+}
+
+func contentSimilarity(previous, current string) float64 {
+	previousWords := contentDiffWordPattern.FindAllString(strings.ToLower(previous), -1)
+	currentWords := contentDiffWordPattern.FindAllString(strings.ToLower(current), -1)
+	if len(previousWords) == 0 || len(currentWords) == 0 {
+		return 0
+	}
+	if len(previousWords)*len(currentWords) > maxContentDiffComparisons {
+		return 0
+	}
+	common := contentDiffCommonLength(previousWords, currentWords)
+	return 2 * float64(common) / float64(len(previousWords)+len(currentWords))
 }
 
 func RenderRenderedContentDiff(previous, current string) template.HTML {
@@ -123,7 +170,7 @@ func contentDiffParts(previous, current []string) []contentDiffPart {
 	parts = appendContentDiffPart(parts, "same", strings.Join(previous[:prefix], ""))
 	oldMiddle := previous[prefix : len(previous)-suffix]
 	newMiddle := current[prefix : len(current)-suffix]
-	if len(oldMiddle)*len(newMiddle) > 2_000_000 {
+	if len(oldMiddle)*len(newMiddle) > maxContentDiffComparisons {
 		parts = appendContentDiffPart(parts, "deleted", strings.Join(oldMiddle, ""))
 		parts = appendContentDiffPart(parts, "inserted", strings.Join(newMiddle, ""))
 	} else {
@@ -136,19 +183,7 @@ func contentDiffParts(previous, current []string) []contentDiffPart {
 }
 
 func compareContentDiffTokens(previous, current []string) []contentDiffPart {
-	lengths := make([][]int, len(previous)+1)
-	for index := range lengths {
-		lengths[index] = make([]int, len(current)+1)
-	}
-	for oldIndex := len(previous) - 1; oldIndex >= 0; oldIndex-- {
-		for newIndex := len(current) - 1; newIndex >= 0; newIndex-- {
-			if previous[oldIndex] == current[newIndex] {
-				lengths[oldIndex][newIndex] = lengths[oldIndex+1][newIndex+1] + 1
-			} else {
-				lengths[oldIndex][newIndex] = max(lengths[oldIndex+1][newIndex], lengths[oldIndex][newIndex+1])
-			}
-		}
-	}
+	lengths := contentDiffLengths(previous, current)
 
 	parts := make([]contentDiffPart, 0)
 	oldIndex, newIndex := 0, 0
@@ -169,6 +204,27 @@ func compareContentDiffTokens(previous, current []string) []contentDiffPart {
 	parts = appendContentDiffPart(parts, "deleted", strings.Join(previous[oldIndex:], ""))
 	parts = appendContentDiffPart(parts, "inserted", strings.Join(current[newIndex:], ""))
 	return parts
+}
+
+func contentDiffCommonLength(previous, current []string) int {
+	return contentDiffLengths(previous, current)[0][0]
+}
+
+func contentDiffLengths(previous, current []string) [][]int {
+	lengths := make([][]int, len(previous)+1)
+	for index := range lengths {
+		lengths[index] = make([]int, len(current)+1)
+	}
+	for oldIndex := len(previous) - 1; oldIndex >= 0; oldIndex-- {
+		for newIndex := len(current) - 1; newIndex >= 0; newIndex-- {
+			if previous[oldIndex] == current[newIndex] {
+				lengths[oldIndex][newIndex] = lengths[oldIndex+1][newIndex+1] + 1
+			} else {
+				lengths[oldIndex][newIndex] = max(lengths[oldIndex+1][newIndex], lengths[oldIndex][newIndex+1])
+			}
+		}
+	}
+	return lengths
 }
 
 func appendContentDiffPart(parts []contentDiffPart, kind, text string) []contentDiffPart {

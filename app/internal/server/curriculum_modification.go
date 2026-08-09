@@ -11,6 +11,8 @@ import (
 	"universal-curriculum/internal/services"
 )
 
+const curriculumProposalHistoryPageSize = 10
+
 func (server *Server) curriculumModification(writer http.ResponseWriter, request *http.Request) {
 	server.renderCurriculumModification(writer, request, http.StatusOK, "")
 }
@@ -75,9 +77,21 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 			http.Error(writer, "Invalid curriculum proposal", http.StatusBadRequest)
 			return
 		}
-		reviewedProposal = visibleRebaseProposal(rebasePlan, reviewedID)
+		if request.URL.Query().Get("history") == "1" {
+			reviewedProposal, err = db.GetCurriculumProposal(server.Database, reviewedID)
+			if err != nil {
+				log.Printf("load accepted curriculum proposal: %v", err)
+				http.Error(writer, "Unable to load accepted curriculum proposal", http.StatusInternalServerError)
+				return
+			}
+			if reviewedProposal != nil && reviewedProposal.Status != "accepted" {
+				reviewedProposal = nil
+			}
+		} else {
+			reviewedProposal = visibleRebaseProposal(rebasePlan, reviewedID)
+		}
 		if reviewedProposal == nil {
-			http.Error(writer, "Related curriculum proposal not found", http.StatusNotFound)
+			http.Error(writer, "Accepted curriculum proposal not found", http.StatusNotFound)
 			return
 		}
 		reviewedGraph, graphErr := services.CurriculumGraphAtProposal(server.Database, &reviewedProposal.ID)
@@ -120,12 +134,6 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 	}
 	layout.Boundaries = boundaries
 	positionIsolatedCreatedUnits(layout, activeProposal)
-	proposals, err := db.ListCurriculumProposals(server.Database, 100)
-	if err != nil {
-		log.Printf("load curriculum proposals: %v", err)
-		http.Error(writer, "Unable to load curriculum proposals", http.StatusInternalServerError)
-		return
-	}
 	draftProposals, err := db.ListDraftCurriculumProposalsByAuthor(server.Database, userID)
 	if err != nil {
 		log.Printf("load draft curriculum proposals: %v", err)
@@ -148,27 +156,51 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 			ChangeSummary: curriculumProposalChangeSummary(draftProposals[index].ChangeKindCounts),
 		})
 	}
-	history, rootDrafts := curriculumProposalHistory(proposals, draftViews)
+	showProposalHistory := request.URL.Query().Get("history") == "1"
+	historyLimit := curriculumProposalHistoryPageSize
+	if value := request.URL.Query().Get("history-limit"); value != "" {
+		parsed, parseErr := strconv.Atoi(value)
+		if parseErr != nil || parsed < curriculumProposalHistoryPageSize {
+			http.Error(writer, "Invalid proposal history limit", http.StatusBadRequest)
+			return
+		}
+		historyLimit = parsed
+	}
+	var history []curriculumProposalHistoryView
+	var rootDrafts []curriculumDraftProposalView
+	historyHasMore := false
+	if showProposalHistory {
+		accepted, total, listErr := db.ListAcceptedCurriculumProposals(server.Database, historyLimit, 0)
+		if listErr != nil {
+			log.Printf("load curriculum proposal history: %v", listErr)
+			http.Error(writer, "Unable to load curriculum proposal history", http.StatusInternalServerError)
+			return
+		}
+		history, rootDrafts = curriculumProposalHistory(accepted, draftViews)
+		historyHasMore = len(accepted) < total
+	}
 	data := curriculumModificationPageData{
 		userPageData: userPageData{
 			User: user, CSRFToken: sessionCSRFToken(request), CurrentSection: "curriculum-modification",
 		},
-		Dependencies:        proposalBaseGraph.Dependencies,
-		Graph:               layout,
-		FocusedUnit:         focusedUnit,
-		Proposals:           proposals,
-		DraftProposals:      draftViews,
-		ActiveProposal:      activeProposal,
-		ProposalRebase:      rebasePlan,
-		RebaseTimeline:      curriculumRebaseTimeline(rebasePlan, activeProposal),
-		ReviewedProposal:    reviewedProposal,
-		ProposalHistory:     history,
-		RootDraftProposals:  rootDrafts,
-		ShowProposalHistory: request.URL.Query().Get("history") == "1",
-		CanEditProposal:     activeProposal != nil && (rebasePlan == nil || !rebasePlan.NeedsReview()),
-		RecognitionSources:  proposalBaseGraph.Units,
-		RecognitionTargets:  workingGraph.Units,
-		Error:               message,
+		Dependencies:         proposalBaseGraph.Dependencies,
+		Graph:                layout,
+		FocusedUnit:          focusedUnit,
+		DraftProposals:       draftViews,
+		ActiveProposal:       activeProposal,
+		ProposalRebase:       rebasePlan,
+		RebaseTimeline:       curriculumRebaseTimeline(rebasePlan, activeProposal),
+		ReviewedProposal:     reviewedProposal,
+		ProposalHistory:      history,
+		RootDraftProposals:   rootDrafts,
+		ShowProposalHistory:  showProposalHistory,
+		ProposalHistoryMore:  historyHasMore,
+		ProposalHistoryLimit: historyLimit,
+		ProposalHistoryNext:  historyLimit + curriculumProposalHistoryPageSize,
+		CanEditProposal:      activeProposal != nil && (rebasePlan == nil || !rebasePlan.NeedsReview()),
+		RecognitionSources:   proposalBaseGraph.Units,
+		RecognitionTargets:   workingGraph.Units,
+		Error:                message,
 	}
 	data.PublishWarning = curriculumRecognitionPublishWarning(activeProposal)
 	data.Units = curriculumUnitViews(workingGraph, layout)
