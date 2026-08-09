@@ -827,7 +827,10 @@ button.primary-menu__link {
   left: 0.125rem;
   letter-spacing: 0.03em;
   margin: 0;
+  max-inline-size: 80dvh;
+  overflow: hidden;
   position: relative;
+  text-overflow: ellipsis;
   transform: rotate(180deg);
   white-space: nowrap;
   writing-mode: vertical-rl;
@@ -886,6 +889,7 @@ button.primary-menu__link {
     flex: 0 1 auto;
     font: inherit;
     font-size: 0.78rem;
+    max-inline-size: min(60vw, 18rem);
     min-width: 0;
     overflow: hidden;
     padding: var(--space-2) 0;
@@ -906,7 +910,6 @@ button.primary-menu__link {
 
   .mobile-panel-breadcrumbs button[aria-current="page"] {
     color: var(--color-ink-strong);
-    flex-shrink: 0;
     font-weight: 700;
   }
 
