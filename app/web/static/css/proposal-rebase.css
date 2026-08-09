@@ -48,13 +48,19 @@
 .proposal-history-graph--truncated {
   margin-bottom: calc(-1 * var(--space-5));
   mask-image: linear-gradient(to bottom, black calc(100% - 4rem), transparent 100%);
-  padding-bottom: var(--space-6);
 }
 
 .proposal-history__more {
-  justify-content: center;
+  justify-items: center;
+  margin-top: 0;
   position: relative;
   z-index: 4;
+}
+
+.proposal-history__more .pane-list-action {
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  border-radius: var(--radius-control);
+  padding-inline: var(--space-3);
 }
 
 .proposal-rebase-graph__layout {
