@@ -1,7 +1,7 @@
 {{/* Curriculum modification proposal workspace. */}}
 {{ define "proposal-workspace-pane" -}}
       {{ if .ActiveProposal }}
-        <section class="ui-pane ui-pane--wide proposal-workspace-pane" id="proposal-workspace-panel" data-nested-panel data-panel-motion="horizontal" data-layout-panel data-panel-modes="collapsed:0 breadcrumb:4 mobile:20 content:34 wide:46" data-panel-required-mode="mobile" data-panel-fill data-panel-breadcrumb="Working on {{ .ActiveProposal.Title }}" aria-labelledby="proposal-workspace-title">
+        <section class="ui-pane ui-pane--wide proposal-workspace-pane" id="proposal-workspace-panel" data-nested-panel data-panel-motion="horizontal" data-layout-panel data-panel-modes="collapsed:0 breadcrumb:4 mobile:20 content:34 wide:46" data-panel-required-mode="mobile" data-panel-fill data-panel-breadcrumb="Working on {{ .ActiveProposal.Title }}" data-panel-preserve-scroll aria-labelledby="proposal-workspace-title">
           <div class="ui-pane__inner proposal-pane pane-breadcrumb" data-pane-content-width="wide">
             <form class="proposal-workspace__metadata pane-breadcrumb__container"
                   data-proposal-metadata="{{ .ActiveProposal.ID }}"

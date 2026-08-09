@@ -383,6 +383,9 @@ func TestCurriculumProposalContentPanelRendersUnitContentDiff(t *testing.T) {
 
 	for _, fragment := range []string{
 		"Proposed content changes",
+		`data-panel-preserve-scroll`,
+		`data-panel-close-query="content"`,
+		`data-close-panel`,
 		`class="view-switcher"`,
 		`data-view-switcher-trigger="source"`,
 		`data-view-switcher-trigger="rendered"`,

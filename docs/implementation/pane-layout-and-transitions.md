@@ -127,7 +127,13 @@ query parameter from the current history entry once the transition completes.
 Navigation links whose server-rendered behavior depends on that open state mark
 the parameter with `data-panel-close-query-link`; the shared close restores
 their closed-state URLs at the same time so the retained DOM cannot reopen the
-detail unintentionally.
+detail unintentionally. Closing descendant panes through the mobile breadcrumb
+trail performs the same query cleanup.
+
+A pane whose internal scroll position represents retained navigation context
+declares `data-panel-preserve-scroll`. Workspace swaps capture its `scrollTop`
+by stable pane key and restore it on the replacement pane, so opening a detail
+and returning does not move the user away from the originating item.
 
 `web/static/js/panels.js` owns this interaction. New panel interactions should
 reuse its declarative triggers and stable panel boundaries rather than adding
