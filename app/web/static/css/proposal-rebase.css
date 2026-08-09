@@ -138,10 +138,6 @@
   text-underline-offset: 0.16em;
 }
 
-.proposal-rebase-graph__proposal-link > .material-symbols-rounded {
-  font-size: 0.9rem;
-}
-
 .related-proposal {
   display: grid;
   gap: var(--space-4);
