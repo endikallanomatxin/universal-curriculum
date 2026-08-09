@@ -15,6 +15,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"universal-curriculum/internal/db"
 	"universal-curriculum/internal/models"
+	"universal-curriculum/internal/server/appinfo"
 )
 
 const instructions = "Universal Curriculum is a shared, dependency-aware curriculum. Search existing units before proposing a new one. Curriculum changes happen only through proposals. Use get_recommendations instead of inferring what a learner should study next; recorded progress is authoritative. Inspect rebase state before changing a stale proposal. Never publish merely because a user asked to edit or prepare a proposal: publish only after an explicit request and confirmation. Server-side permissions always apply."
@@ -86,7 +87,7 @@ func (servers servers) forToken(info *auth.TokenInfo) *mcp.Server {
 
 func newServer(application *adapter, admin bool) *mcp.Server {
 	server := mcp.NewServer(&mcp.Implementation{
-		Name: "universal-curriculum", Title: "Universal Curriculum", Version: "0.2.6",
+		Name: "universal-curriculum", Title: "Universal Curriculum", Version: appinfo.Release,
 		Description: "Agent-oriented access to Universal Curriculum.", WebsiteURL: application.baseURL,
 	}, &mcp.ServerOptions{
 		Instructions: instructions,

@@ -41,6 +41,9 @@ func TestAboutPageIsPublicAndUsesShellNavigation(t *testing.T) {
 		`href="/about/case"`,
 		`href="/about/proposal"`,
 		`href="/about/documentation"`,
+		`href="/about/releases"`,
+		`href="/about/roadmap"`,
+		`Current version · v0.2.7`,
 		`href="/license"`,
 		`href="/about" aria-current="page"`,
 		`hx-get="/about"`,
@@ -72,7 +75,7 @@ func TestDocumentationPagesUseCanonicalContentAndNestedPanels(t *testing.T) {
 	if index.Code != http.StatusOK {
 		t.Fatalf("documentation status = %d", index.Code)
 	}
-	for _, fragment := range []string{`<h1 id="about-title">About</h1>`, `<h1 id="documentation-title">Documentation</h1>`, `href="/about/documentation/curriculum-units"`, `href="/about/documentation/mcp-api"`} {
+	for _, fragment := range []string{`<h1 id="about-title">About</h1>`, `<h1 id="about-content-index-title">Documentation</h1>`, `href="/about/documentation/curriculum-units"`, `href="/about/documentation/mcp-api"`} {
 		if !strings.Contains(index.Body.String(), fragment) {
 			t.Errorf("documentation index does not contain %q", fragment)
 		}
@@ -83,7 +86,7 @@ func TestDocumentationPagesUseCanonicalContentAndNestedPanels(t *testing.T) {
 	if page.Code != http.StatusOK {
 		t.Fatalf("documentation page status = %d", page.Code)
 	}
-	for _, fragment := range []string{`<h1 id="documentation-page-title">Writing content</h1>`, `Content supports Markdown`, `$...$`, `$$...$$`} {
+	for _, fragment := range []string{`<h1 id="about-content-page-title">Writing content</h1>`, `Content supports Markdown`, `$...$`, `$$...$$`} {
 		if !strings.Contains(page.Body.String(), fragment) {
 			t.Errorf("documentation page does not contain %q", fragment)
 		}
@@ -93,6 +96,43 @@ func TestDocumentationPagesUseCanonicalContentAndNestedPanels(t *testing.T) {
 	server.routes().ServeHTTP(missing, httptest.NewRequest(http.MethodGet, "/about/documentation/unknown", nil))
 	if missing.Code != http.StatusNotFound {
 		t.Errorf("unknown documentation status = %d, want %d", missing.Code, http.StatusNotFound)
+	}
+}
+
+func TestReleaseAndRoadmapPagesUseSharedContentPanels(t *testing.T) {
+	workingDirectory, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir("../.."); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(workingDirectory) })
+
+	templates, err := views.LoadTemplates()
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := &Server{Templates: templates}
+	for _, test := range []struct {
+		path      string
+		fragments []string
+	}{
+		{path: "/about/releases", fragments: []string{`<h1 id="about-content-index-title">Releases</h1>`, `href="/about/releases/0.2.7"`, `Refine proposal history navigation and make project evolution visible.`}},
+		{path: "/about/releases/0.2.6", fragments: []string{`<h1 id="about-content-page-title">v0.2.6</h1>`, `Added a read-only graph to accepted proposal details`}},
+		{path: "/about/roadmap", fragments: []string{`<h1 id="about-content-index-title">Roadmap</h1>`, `href="/about/roadmap/0.3.0"`, `Add asset support to the platform.`}},
+		{path: "/about/roadmap/0.3.0", fragments: []string{`<h1 id="about-content-page-title">v0.3.0</h1>`, `Add asset support to the platform.`}},
+	} {
+		response := httptest.NewRecorder()
+		server.routes().ServeHTTP(response, httptest.NewRequest(http.MethodGet, test.path, nil))
+		if response.Code != http.StatusOK {
+			t.Fatalf("GET %s status = %d", test.path, response.Code)
+		}
+		for _, fragment := range test.fragments {
+			if !strings.Contains(response.Body.String(), fragment) {
+				t.Errorf("GET %s response does not contain %q", test.path, fragment)
+			}
+		}
 	}
 }
 

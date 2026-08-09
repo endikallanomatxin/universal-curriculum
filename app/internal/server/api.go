@@ -15,6 +15,7 @@ import (
 
 	"universal-curriculum/internal/db"
 	"universal-curriculum/internal/models"
+	"universal-curriculum/internal/server/appinfo"
 )
 
 const (
@@ -62,7 +63,7 @@ type apiUserContextKey struct{}
 func (server *Server) apiInfo(writer http.ResponseWriter, _ *http.Request) {
 	writeAPIJSON(writer, http.StatusOK, map[string]string{
 		"name":          "Universal Curriculum API",
-		"release":       "0.2.6",
+		"release":       appinfo.Release,
 		"status":        "experimental",
 		"documentation": "/api/openapi.yaml",
 	})

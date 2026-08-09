@@ -15,6 +15,7 @@ import (
 
 	"universal-curriculum/internal/db"
 	"universal-curriculum/internal/models"
+	"universal-curriculum/internal/server/appinfo"
 	"universal-curriculum/internal/server/mcpadapter"
 	"universal-curriculum/internal/server/views"
 	"universal-curriculum/internal/services"
@@ -138,6 +139,10 @@ func (server *Server) routes() http.Handler {
 	mux.HandleFunc("GET /about/proposal", server.aboutProposal)
 	mux.HandleFunc("GET /about/documentation", server.documentation)
 	mux.HandleFunc("GET /about/documentation/{slug}", server.documentation)
+	mux.HandleFunc("GET /about/releases", server.releases)
+	mux.HandleFunc("GET /about/releases/{slug}", server.releases)
+	mux.HandleFunc("GET /about/roadmap", server.roadmap)
+	mux.HandleFunc("GET /about/roadmap/{slug}", server.roadmap)
 	mux.HandleFunc("GET /about/manifest", func(writer http.ResponseWriter, request *http.Request) {
 		http.Redirect(writer, request, "/about/case", http.StatusPermanentRedirect)
 	})
@@ -195,6 +200,7 @@ type userPageData struct {
 	CurrentSection  string
 	Home            bool
 	Recommendations []homeLearningPathRecommendation
+	Release         string
 }
 
 func (server *Server) index(writer http.ResponseWriter, request *http.Request) {
@@ -225,7 +231,7 @@ func (server *Server) renderUserPage(writer http.ResponseWriter, request *http.R
 }
 
 func (server *Server) loadUserPageData(request *http.Request, currentSection string, home bool) (userPageData, error) {
-	data := userPageData{CurrentSection: currentSection, Home: home}
+	data := userPageData{CurrentSection: currentSection, Home: home, Release: appinfo.Release}
 	if userID, ok := services.SessionUserID(request); ok {
 		user, err := db.GetUserByID(server.Database, userID)
 		if err != nil {
