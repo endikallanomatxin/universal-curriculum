@@ -191,8 +191,6 @@
 }
 
 .proposal-change__dependency-remove {
-  background: var(--color-surface);
-  border-radius: 50%;
   font-size: 0.62rem !important;
   font-weight: 700;
   left: 50%;
