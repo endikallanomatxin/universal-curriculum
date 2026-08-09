@@ -26,6 +26,25 @@ func TestRenderContentDiffHighlightsWordChangesAndEscapesContent(t *testing.T) {
 	}
 }
 
+func TestRenderContentDiffShowsRewrittenParagraphsAsWholeBlocks(t *testing.T) {
+	previous := "Shared introduction.\n\nA capacitor stores electrical energy in the electric field between its plates."
+	current := "Shared introduction.\n\nVoltage measures the potential difference that drives charge through a circuit."
+	output := string(RenderContentDiff(previous, current))
+
+	for _, fragment := range []string{
+		"Shared introduction.\n\n",
+		"<del>A capacitor stores electrical energy in the electric field between its plates.</del>",
+		"<ins>Voltage measures the potential difference that drives charge through a circuit.</ins>",
+	} {
+		if !strings.Contains(output, fragment) {
+			t.Errorf("rendered content diff does not contain %q: %s", fragment, output)
+		}
+	}
+	if strings.Contains(output, "<del>capacitor</del>") || strings.Contains(output, "<ins>Voltage</ins>") {
+		t.Fatalf("rewritten paragraphs should not be fragmented into word changes: %s", output)
+	}
+}
+
 func TestRenderRenderedContentDiffRendersOnlyChangedBlocksTwice(t *testing.T) {
 	output := string(RenderRenderedContentDiff(
 		"Shared introduction.\n\nThe old **formula** is $x$.\n\nShared ending.",
