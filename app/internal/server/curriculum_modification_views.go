@@ -22,27 +22,29 @@ type curriculumUnitView struct {
 
 type curriculumModificationPageData struct {
 	userPageData
-	Units               []curriculumUnitView
-	Dependencies        []models.UnitDependency
-	Graph               *models.CurriculumGraphLayout
-	GraphView           curriculumGraphView
-	GraphSearch         unitNavigationSearchView
-	FocusedUnit         *models.Unit
-	ContentUnit         *curriculumUnitView
-	DraftProposals      []curriculumDraftProposalView
-	Proposals           []models.CurriculumProposal
-	ActiveProposal      *models.CurriculumProposal
-	ProposalRebase      *services.CurriculumProposalRebasePlan
-	RebaseTimeline      *curriculumRebaseTimelineView
-	ReviewedProposal    *models.CurriculumProposal
-	ProposalHistory     []curriculumProposalHistoryView
-	RootDraftProposals  []curriculumDraftProposalView
-	ShowProposalHistory bool
-	CanEditProposal     bool
-	RecognitionSources  []models.Unit
-	RecognitionTargets  []models.Unit
-	PublishWarning      string
-	Error               string
+	Units                []curriculumUnitView
+	Dependencies         []models.UnitDependency
+	Graph                *models.CurriculumGraphLayout
+	GraphView            curriculumGraphView
+	GraphSearch          unitNavigationSearchView
+	FocusedUnit          *models.Unit
+	ContentUnit          *curriculumUnitView
+	DraftProposals       []curriculumDraftProposalView
+	ActiveProposal       *models.CurriculumProposal
+	ProposalRebase       *services.CurriculumProposalRebasePlan
+	RebaseTimeline       *curriculumRebaseTimelineView
+	ReviewedProposal     *models.CurriculumProposal
+	ProposalHistory      []curriculumProposalHistoryView
+	RootDraftProposals   []curriculumDraftProposalView
+	ShowProposalHistory  bool
+	ProposalHistoryMore  bool
+	ProposalHistoryLimit int
+	ProposalHistoryNext  int
+	CanEditProposal      bool
+	RecognitionSources   []models.Unit
+	RecognitionTargets   []models.Unit
+	PublishWarning       string
+	Error                string
 }
 
 type curriculumRebaseTimelineView struct {
@@ -374,8 +376,7 @@ func curriculumProposalHistory(
 		draftsByBase[*draft.BaseProposalID] = append(draftsByBase[*draft.BaseProposalID], draft)
 	}
 	history := make([]curriculumProposalHistoryView, 0, len(accepted))
-	for index := len(accepted) - 1; index >= 0; index-- {
-		proposal := accepted[index]
+	for index, proposal := range accepted {
 		history = append(history, curriculumProposalHistoryView{
 			CurriculumProposal: proposal,
 			Drafts:             draftsByBase[proposal.ID],
@@ -419,16 +420,22 @@ func curriculumRebaseTimeline(
 			ID: proposal.ID, Title: proposal.Title, Current: current, Conflicts: conflicting[proposal.ID],
 		})
 	}
-	view.Edges = append(view.Edges, curriculumRebaseTimelineEdgeView{Source: "base", Target: "draft"})
-	previous := "base"
+	slices.Reverse(view.Items)
+	previous := ""
 	for _, item := range view.Items {
 		if item.Ellipsis {
 			continue
 		}
 		target := "accepted-" + strconv.FormatInt(item.ID, 10)
-		view.Edges = append(view.Edges, curriculumRebaseTimelineEdgeView{Source: previous, Target: target})
+		if previous != "" {
+			view.Edges = append(view.Edges, curriculumRebaseTimelineEdgeView{Source: previous, Target: target})
+		}
 		previous = target
 	}
+	view.Edges = append(view.Edges,
+		curriculumRebaseTimelineEdgeView{Source: previous, Target: "base"},
+		curriculumRebaseTimelineEdgeView{Source: "base", Target: "draft"},
+	)
 	return view
 }
 

@@ -408,7 +408,8 @@ func TestAcceptedProposalHistoryLinksOpenDetailBesideHistory(t *testing.T) {
 	templates := loadTestTemplates(t)
 	accepted := models.CurriculumProposal{ID: 8, Title: "Clarify electricity", Status: "accepted", AuthorName: "Ada"}
 	output := renderTemplate(t, templates, "curriculum-modification.html", map[string]any{
-		"ShowProposalHistory": true,
+		"ShowProposalHistory":  true,
+		"ProposalHistoryLimit": 10,
 		"ProposalHistory": []map[string]any{{
 			"ID": accepted.ID, "Title": accepted.Title, "Status": accepted.Status,
 			"AuthorName": accepted.AuthorName, "IsHead": true,
@@ -416,15 +417,39 @@ func TestAcceptedProposalHistoryLinksOpenDetailBesideHistory(t *testing.T) {
 		"ReviewedProposal": &accepted,
 	})
 
-	link := `href="/curriculum-modification?history=1&amp;review-proposal=8"`
+	link := `href="/curriculum-modification?history=1&amp;history-limit=10&amp;review-proposal=8"`
 	if !strings.Contains(output, link) {
 		t.Errorf("accepted proposal history does not contain detail link %q", link)
 	}
-	if !strings.Contains(output, `href="/curriculum-modification?history=1"`) {
+	if !strings.Contains(output, `href="/curriculum-modification?history=1&amp;history-limit=10"`) {
 		t.Error("accepted proposal detail does not close back to history")
 	}
 	if strings.Index(output, `id="proposal-history-panel"`) > strings.Index(output, `aria-labelledby="related-proposal-title"`) {
 		t.Error("accepted proposal detail should render to the right of history")
+	}
+}
+
+func TestProposalHistoryShowsNewestFirstAndLoadsOlderEntriesOnDemand(t *testing.T) {
+	templates := loadTestTemplates(t)
+	output := renderTemplate(t, templates, "curriculum-modification.html", map[string]any{
+		"ShowProposalHistory":  true,
+		"ProposalHistoryMore":  true,
+		"ProposalHistoryLimit": 10,
+		"ProposalHistoryNext":  20,
+		"ProposalHistory": []map[string]any{
+			{"ID": 2, "Title": "Newest", "AuthorName": "Ada", "IsHead": true},
+			{"ID": 1, "Title": "Older", "AuthorName": "Grace"},
+		},
+	})
+
+	if strings.Index(output, "Newest") > strings.Index(output, "Older") {
+		t.Error("proposal history should render newest proposals first")
+	}
+	if !strings.Contains(output, `history-limit=20`) || !strings.Contains(output, `>Show more</a>`) {
+		t.Error("paginated proposal history does not offer the next page")
+	}
+	if strings.Contains(output, "Initial curriculum") {
+		t.Error("partial proposal history should not connect to the initial curriculum")
 	}
 }
 

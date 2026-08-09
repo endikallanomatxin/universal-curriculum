@@ -227,11 +227,11 @@ func TestCurriculumProposalHistoryShowsAcceptedLineAndDraftBranches(t *testing.T
 		},
 	)
 
-	if len(history) != 2 || history[0].ID != 1 || history[1].ID != 2 || !history[1].IsHead {
+	if len(history) != 2 || history[0].ID != 2 || history[1].ID != 1 || !history[0].IsHead {
 		t.Fatalf("accepted proposal history = %#v", history)
 	}
-	if len(history[0].Drafts) != 1 || history[0].Drafts[0].ID != 3 {
-		t.Fatalf("draft branches = %#v", history[0].Drafts)
+	if len(history[1].Drafts) != 1 || history[1].Drafts[0].ID != 3 {
+		t.Fatalf("draft branches = %#v", history[1].Drafts)
 	}
 	if len(roots) != 1 || roots[0].ID != 4 {
 		t.Fatalf("root drafts = %#v", roots)
@@ -261,13 +261,16 @@ func TestCurriculumRebaseTimelineKeepsConflictsAndCompressesOtherAcceptedWork(t 
 	if view == nil || view.BaseTitle != "Original base" || view.DraftTitle != "Working draft" {
 		t.Fatalf("rebase timeline identity = %#v", view)
 	}
-	if len(view.Items) != 4 || !view.Items[0].Ellipsis ||
-		view.Items[1].Title != "Overlapping work" || view.Items[1].Current || !view.Items[1].Conflicts ||
-		!view.Items[2].Ellipsis || view.Items[3].Title != "Current head" || !view.Items[3].Current {
+	if len(view.Items) != 4 || view.Items[0].Title != "Current head" || !view.Items[0].Current ||
+		!view.Items[1].Ellipsis ||
+		view.Items[2].Title != "Overlapping work" || view.Items[2].Current || !view.Items[2].Conflicts ||
+		!view.Items[3].Ellipsis {
 		t.Fatalf("rebase timeline items = %#v", view.Items)
 	}
-	if len(view.Edges) != 3 || view.Edges[0].Source != "base" || view.Edges[0].Target != "draft" ||
-		view.Edges[1].Target != "accepted-3" || view.Edges[2].Target != "accepted-5" {
+	if len(view.Edges) != 3 ||
+		view.Edges[0].Source != "accepted-5" || view.Edges[0].Target != "accepted-3" ||
+		view.Edges[1].Source != "accepted-3" || view.Edges[1].Target != "base" ||
+		view.Edges[2].Source != "base" || view.Edges[2].Target != "draft" {
 		t.Fatalf("rebase timeline edges = %#v", view.Edges)
 	}
 	related := visibleRebaseProposal(plan, 3)

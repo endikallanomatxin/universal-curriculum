@@ -483,54 +483,6 @@ func RebuildCurriculumProjection(q curriculumExecutor, proposalID int64) error {
 	return nil
 }
 
-func ListCurriculumProposals(database *sql.DB, limit int) ([]models.CurriculumProposal, error) {
-	rows, err := database.Query(`
-		SELECT proposal.id, authors.ids, authors.names,
-		       proposal.title, proposal.rationale, proposal.status,
-		       proposal.base_proposal_id,
-		       proposal.created_at, proposal.accepted_at
-		FROM curriculum_proposals proposal
-		JOIN LATERAL (
-			SELECT array_agg(user_id ORDER BY users.full_name, user_id) AS ids,
-			       string_agg(users.full_name, ', ' ORDER BY users.full_name, user_id) AS names
-			FROM curriculum_proposal_authors
-			JOIN users ON users.id = user_id
-			WHERE proposal_id = proposal.id
-		) authors ON TRUE
-		WHERE proposal.status <> 'draft'
-		ORDER BY proposal.created_at DESC
-		LIMIT $1
-	`, limit)
-	if err != nil {
-		return nil, fmt.Errorf("list curriculum proposals: %w", err)
-	}
-	defer rows.Close()
-	var proposals []models.CurriculumProposal
-	for rows.Next() {
-		var proposal models.CurriculumProposal
-		var baseProposalID sql.NullInt64
-		var acceptedAt sql.NullTime
-		if err := rows.Scan(
-			&proposal.ID, pq.Array(&proposal.AuthorIDs), &proposal.AuthorName, &proposal.Title,
-			&proposal.Rationale, &proposal.Status, &baseProposalID,
-			&proposal.CreatedAt, &acceptedAt,
-		); err != nil {
-			return nil, fmt.Errorf("scan curriculum proposal: %w", err)
-		}
-		if baseProposalID.Valid {
-			proposal.BaseProposalID = &baseProposalID.Int64
-		}
-		if acceptedAt.Valid {
-			proposal.AcceptedAt = &acceptedAt.Time
-		}
-		proposals = append(proposals, proposal)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate curriculum proposals: %w", err)
-	}
-	return proposals, nil
-}
-
 func ListAcceptedCurriculumProposals(
 	database *sql.DB, limit, offset int,
 ) ([]models.CurriculumProposal, int, error) {

@@ -9,8 +9,8 @@
                 <h1 id="related-proposal-title">{{ .Title }}</h1>
               </div>
               <a class="icon-button ui-pane__close"
-                 href="/curriculum-modification?{{ if $.ActiveProposal }}proposal={{ $.ActiveProposal.ID }}{{ if $.ShowProposalHistory }}&amp;{{ end }}{{ end }}{{ if $.ShowProposalHistory }}history=1{{ end }}"
-                 hx-get="/curriculum-modification?{{ if $.ActiveProposal }}proposal={{ $.ActiveProposal.ID }}{{ if $.ShowProposalHistory }}&amp;{{ end }}{{ end }}{{ if $.ShowProposalHistory }}history=1{{ end }}"
+                 href="/curriculum-modification?{{ if $.ActiveProposal }}proposal={{ $.ActiveProposal.ID }}{{ if $.ShowProposalHistory }}&amp;{{ end }}{{ end }}{{ if $.ShowProposalHistory }}history=1&amp;history-limit={{ $.ProposalHistoryLimit }}{{ end }}"
+                 hx-get="/curriculum-modification?{{ if $.ActiveProposal }}proposal={{ $.ActiveProposal.ID }}{{ if $.ShowProposalHistory }}&amp;{{ end }}{{ end }}{{ if $.ShowProposalHistory }}history=1&amp;history-limit={{ $.ProposalHistoryLimit }}{{ end }}"
                  hx-trigger="panel-close"
                  hx-target="#workspace"
                  hx-select="#workspace"
