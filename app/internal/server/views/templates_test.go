@@ -451,6 +451,9 @@ func TestProposalHistoryShowsNewestFirstAndLoadsOlderEntriesOnDemand(t *testing.
 	if !strings.Contains(output, `history-limit=20`) || !strings.Contains(output, `>Show more</a>`) {
 		t.Error("paginated proposal history does not offer the next page")
 	}
+	if !strings.Contains(output, `data-rebase-edge data-source="history-accepted-1" data-target="history-accepted-2"`) {
+		t.Error("proposal history should point from older proposals to newer proposals")
+	}
 	if strings.Contains(output, "Initial curriculum") {
 		t.Error("partial proposal history should not connect to the initial curriculum")
 	}

@@ -21,7 +21,7 @@
           </header>
           <p class="nested-panel__introduction">Accepted proposals form the publication line. Drafts branch from the state on which they are based.</p>
           {{ if or .ProposalHistory .RootDraftProposals }}
-            <figure class="proposal-rebase-graph proposal-history-graph" data-rebase-graph>
+            <figure class="proposal-rebase-graph proposal-history-graph {{ if .ProposalHistoryMore }}proposal-history-graph--truncated{{ end }}" data-rebase-graph>
               <div class="proposal-rebase-graph__layout">
                 <svg class="proposal-rebase-graph__svg" aria-hidden="true">
                   <defs>
@@ -60,13 +60,13 @@
                 <div hidden>
                   {{ $previous := "" }}
                   {{ range .ProposalHistory }}
-                    {{ if $previous }}<span data-rebase-edge data-source="{{ $previous }}" data-target="history-accepted-{{ .ID }}"></span>{{ end }}
+                    {{ if $previous }}<span data-rebase-edge data-source="history-accepted-{{ .ID }}" data-target="{{ $previous }}"></span>{{ end }}
                     {{ $previous = printf "history-accepted-%d" .ID }}
                     {{ $accepted := . }}
                     {{ range .Drafts }}<span data-rebase-edge data-source="history-accepted-{{ $accepted.ID }}" data-target="history-draft-{{ .ID }}"></span>{{ end }}
                   {{ end }}
                   {{ if not .ProposalHistoryMore }}
-                    {{ if $previous }}<span data-rebase-edge data-source="{{ $previous }}" data-target="history-root"></span>{{ end }}
+                    {{ if $previous }}<span data-rebase-edge data-source="history-root" data-target="{{ $previous }}"></span>{{ end }}
                     {{ range .RootDraftProposals }}<span data-rebase-edge data-source="history-root" data-target="history-draft-{{ .ID }}"></span>{{ end }}
                   {{ end }}
                 </div>
@@ -74,7 +74,7 @@
               <figcaption class="visually-hidden">Accepted proposals form the main line. Draft proposals branch from the accepted curriculum on which they are based.</figcaption>
             </figure>
             {{ if .ProposalHistoryMore }}
-              <div class="pane-list-actions">
+              <div class="pane-list-actions proposal-history__more">
                 <a class="pane-list-action"
                    href="/curriculum-modification?{{ if .ActiveProposal }}proposal={{ .ActiveProposal.ID }}&amp;{{ end }}history=1&amp;history-limit={{ .ProposalHistoryNext }}"
                    hx-get="/curriculum-modification?{{ if .ActiveProposal }}proposal={{ .ActiveProposal.ID }}&amp;{{ end }}history=1&amp;history-limit={{ .ProposalHistoryNext }}"

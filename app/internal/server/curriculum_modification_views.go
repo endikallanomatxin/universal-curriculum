@@ -428,12 +428,12 @@ func curriculumRebaseTimeline(
 		}
 		target := "accepted-" + strconv.FormatInt(item.ID, 10)
 		if previous != "" {
-			view.Edges = append(view.Edges, curriculumRebaseTimelineEdgeView{Source: previous, Target: target})
+			view.Edges = append(view.Edges, curriculumRebaseTimelineEdgeView{Source: target, Target: previous})
 		}
 		previous = target
 	}
 	view.Edges = append(view.Edges,
-		curriculumRebaseTimelineEdgeView{Source: previous, Target: "base"},
+		curriculumRebaseTimelineEdgeView{Source: "base", Target: previous},
 		curriculumRebaseTimelineEdgeView{Source: "base", Target: "draft"},
 	)
 	return view
