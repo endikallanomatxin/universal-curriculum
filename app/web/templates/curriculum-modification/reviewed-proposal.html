@@ -55,6 +55,38 @@
                 <p class="empty-message">This proposal has no recorded changes.</p>
               {{ end }}
             </section>
+            {{ if $.ViewingAcceptedProposal }}
+              <section class="curriculum-modification__units" aria-label="Curriculum after this proposal">
+                {{ if $.Graph.Nodes }}
+                  <section class="curriculum-explorer" id="curriculum-explorer" aria-live="polite">
+                    <nav class="learn-navigation" aria-label="Curriculum navigation">
+                      {{ if $.FocusedUnit }}
+                        <p>Showing this unit’s neighbourhood alongside every unit affected by the proposal.</p>
+                        <a class="secondary-button"
+                           href="{{ $.GraphURL }}"
+                           hx-get="{{ $.GraphURL }}"
+                           hx-target="#workspace"
+                           hx-select="#workspace"
+                           hx-swap="outerHTML transition:true"
+                           hx-push-url="true">
+                          <span class="material-symbols-rounded" aria-hidden="true">zoom_out_map</span>
+                          Proposal overview
+                        </a>
+                      {{ else }}
+                        <p>Showing the curriculum produced by this proposal, with its affected units and immediate context.</p>
+                      {{ end }}
+                      {{ template "unit-navigation-search" $.GraphSearch }}
+                    </nav>
+                    {{ template "curriculum-graph" $.GraphView }}
+                  </section>
+                {{ else }}
+                  <div class="empty-state empty-state--bounded">
+                    <span class="material-symbols-rounded" aria-hidden="true">conversion_path</span>
+                    <h3>The curriculum was empty</h3>
+                  </div>
+                {{ end }}
+              </section>
+            {{ end }}
           </article>
         </section>
       {{ end }}

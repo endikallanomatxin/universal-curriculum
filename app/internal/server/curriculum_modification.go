@@ -18,6 +18,7 @@ func (server *Server) curriculumModification(writer http.ResponseWriter, request
 }
 
 func (server *Server) renderCurriculumModification(writer http.ResponseWriter, request *http.Request, status int, message string) {
+	showProposalHistory := request.URL.Query().Get("history") == "1"
 	userID, _ := services.SessionUserID(request)
 	user, err := db.GetUserByID(server.Database, userID)
 	if err != nil || user == nil {
@@ -71,13 +72,14 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 		services.PopulateCurriculumProposalPreviousState(proposalBaseGraph, activeProposal)
 	}
 	var reviewedProposal *models.CurriculumProposal
+	var reviewedBaseGraph, reviewedWorkingGraph *models.CurriculumGraph
 	if reviewedValue := request.URL.Query().Get("review-proposal"); reviewedValue != "" {
 		reviewedID, parseErr := parsePositiveID(reviewedValue)
 		if parseErr != nil {
 			http.Error(writer, "Invalid curriculum proposal", http.StatusBadRequest)
 			return
 		}
-		if request.URL.Query().Get("history") == "1" {
+		if showProposalHistory {
 			reviewedProposal, err = db.GetCurriculumProposal(server.Database, reviewedID)
 			if err != nil {
 				log.Printf("load accepted curriculum proposal: %v", err)
@@ -101,10 +103,25 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 			return
 		}
 		applyCurriculumChangeLabels(reviewedProposal, reviewedGraph)
+		if showProposalHistory {
+			reviewedBaseGraph, err = services.CurriculumGraphAtProposal(server.Database, reviewedProposal.BaseProposalID)
+			if err != nil {
+				log.Printf("load accepted proposal base curriculum: %v", err)
+				http.Error(writer, "Unable to load accepted proposal base", http.StatusInternalServerError)
+				return
+			}
+			reviewedWorkingGraph = reviewedGraph
+		}
 	}
 	workingGraph := curriculumGraphWithProposal(proposalBaseGraph, activeProposal)
-	applyCurriculumChangeLabels(activeProposal, workingGraph)
-	visualGraph := curriculumGraphWithRemovedDependencies(workingGraph, proposalBaseGraph, activeProposal)
+	graphProposal := activeProposal
+	if reviewedWorkingGraph != nil {
+		proposalBaseGraph = reviewedBaseGraph
+		workingGraph = reviewedWorkingGraph
+		graphProposal = reviewedProposal
+	}
+	applyCurriculumChangeLabels(graphProposal, workingGraph)
+	visualGraph := curriculumGraphWithRemovedDependencies(workingGraph, proposalBaseGraph, graphProposal)
 	var focusID *int64
 	if unitValue := request.URL.Query().Get("unit"); unitValue != "" {
 		unitID, parseErr := parsePositiveID(unitValue)
@@ -114,7 +131,7 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 		}
 		focusID = &unitID
 	}
-	visibleGraph, focusedUnit, boundaries, err := services.CurriculumProposalNeighborhood(visualGraph, activeProposal, focusID)
+	visibleGraph, focusedUnit, boundaries, err := services.CurriculumProposalNeighborhood(visualGraph, graphProposal, focusID)
 	if errors.Is(err, services.ErrCurriculumUnitNotFound) {
 		http.Error(writer, "Curriculum unit not found", http.StatusNotFound)
 		return
@@ -133,7 +150,7 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 		return
 	}
 	layout.Boundaries = boundaries
-	positionIsolatedCreatedUnits(layout, activeProposal)
+	positionIsolatedCreatedUnits(layout, graphProposal)
 	draftProposals, err := db.ListDraftCurriculumProposalsByAuthor(server.Database, userID)
 	if err != nil {
 		log.Printf("load draft curriculum proposals: %v", err)
@@ -156,7 +173,6 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 			ChangeSummary: curriculumProposalChangeSummary(draftProposals[index].ChangeKindCounts),
 		})
 	}
-	showProposalHistory := request.URL.Query().Get("history") == "1"
 	historyLimit := curriculumProposalHistoryPageSize
 	if value := request.URL.Query().Get("history-limit"); value != "" {
 		parsed, parseErr := strconv.Atoi(value)
@@ -183,24 +199,25 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 		userPageData: userPageData{
 			User: user, CSRFToken: sessionCSRFToken(request), CurrentSection: "curriculum-modification",
 		},
-		Dependencies:         proposalBaseGraph.Dependencies,
-		Graph:                layout,
-		FocusedUnit:          focusedUnit,
-		DraftProposals:       draftViews,
-		ActiveProposal:       activeProposal,
-		ProposalRebase:       rebasePlan,
-		RebaseTimeline:       curriculumRebaseTimeline(rebasePlan, activeProposal),
-		ReviewedProposal:     reviewedProposal,
-		ProposalHistory:      history,
-		RootDraftProposals:   rootDrafts,
-		ShowProposalHistory:  showProposalHistory,
-		ProposalHistoryMore:  historyHasMore,
-		ProposalHistoryLimit: historyLimit,
-		ProposalHistoryNext:  historyLimit + curriculumProposalHistoryPageSize,
-		CanEditProposal:      activeProposal != nil && (rebasePlan == nil || !rebasePlan.NeedsReview()),
-		RecognitionSources:   proposalBaseGraph.Units,
-		RecognitionTargets:   workingGraph.Units,
-		Error:                message,
+		Dependencies:            proposalBaseGraph.Dependencies,
+		Graph:                   layout,
+		FocusedUnit:             focusedUnit,
+		DraftProposals:          draftViews,
+		ActiveProposal:          activeProposal,
+		ProposalRebase:          rebasePlan,
+		RebaseTimeline:          curriculumRebaseTimeline(rebasePlan, activeProposal),
+		ReviewedProposal:        reviewedProposal,
+		ProposalHistory:         history,
+		RootDraftProposals:      rootDrafts,
+		ShowProposalHistory:     showProposalHistory,
+		ProposalHistoryMore:     historyHasMore,
+		ProposalHistoryLimit:    historyLimit,
+		ProposalHistoryNext:     historyLimit + curriculumProposalHistoryPageSize,
+		CanEditProposal:         activeProposal != nil && (rebasePlan == nil || !rebasePlan.NeedsReview()),
+		ViewingAcceptedProposal: reviewedWorkingGraph != nil,
+		RecognitionSources:      proposalBaseGraph.Units,
+		RecognitionTargets:      workingGraph.Units,
+		Error:                   message,
 	}
 	data.PublishWarning = curriculumRecognitionPublishWarning(activeProposal)
 	data.Units = curriculumUnitViews(workingGraph, layout)
@@ -224,14 +241,30 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 				return
 			}
 		}
-		applyUnitContentDiff(data.ContentUnit, activeProposal)
+		applyUnitContentDiff(data.ContentUnit, graphProposal)
+	}
+	graphQuery := ""
+	if activeProposal != nil {
+		graphQuery = "proposal=" + strconv.FormatInt(activeProposal.ID, 10)
+	} else if reviewedWorkingGraph != nil {
+		graphQuery = "history=1&history-limit=" + strconv.Itoa(historyLimit) +
+			"&review-proposal=" + strconv.FormatInt(reviewedProposal.ID, 10)
+	}
+	data.GraphURL = "/curriculum-modification"
+	if graphQuery != "" {
+		data.GraphURL += "?" + graphQuery
 	}
 	unitURL := func(unitID int64) string {
-		target := "/curriculum-modification?"
-		if activeProposal != nil {
-			target += "proposal=" + strconv.FormatInt(activeProposal.ID, 10) + "&"
+		target := data.GraphURL
+		if graphQuery == "" {
+			target += "?"
+		} else {
+			target += "&"
 		}
 		return target + "unit=" + strconv.FormatInt(unitID, 10)
+	}
+	if data.ContentUnit != nil {
+		data.UnitContentCloseURL = unitURL(data.ContentUnit.ID)
 	}
 	navigateURL, contentURL := curriculumUnitURLs(unitURL, data.ContentUnit != nil)
 	data.GraphView = newCurriculumGraphView(
@@ -245,7 +278,7 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 		navigateURL,
 		contentURL,
 	)
-	applyProposalGraphStates(&data.GraphView, activeProposal)
+	applyProposalGraphStates(&data.GraphView, graphProposal)
 	data.GraphSearch = newUnitNavigationSearchView(
 		"curriculum-graph-search-results",
 		"Find a unit in the curriculum",

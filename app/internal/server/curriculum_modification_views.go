@@ -22,29 +22,32 @@ type curriculumUnitView struct {
 
 type curriculumModificationPageData struct {
 	userPageData
-	Units                []curriculumUnitView
-	Dependencies         []models.UnitDependency
-	Graph                *models.CurriculumGraphLayout
-	GraphView            curriculumGraphView
-	GraphSearch          unitNavigationSearchView
-	FocusedUnit          *models.Unit
-	ContentUnit          *curriculumUnitView
-	DraftProposals       []curriculumDraftProposalView
-	ActiveProposal       *models.CurriculumProposal
-	ProposalRebase       *services.CurriculumProposalRebasePlan
-	RebaseTimeline       *curriculumRebaseTimelineView
-	ReviewedProposal     *models.CurriculumProposal
-	ProposalHistory      []curriculumProposalHistoryView
-	RootDraftProposals   []curriculumDraftProposalView
-	ShowProposalHistory  bool
-	ProposalHistoryMore  bool
-	ProposalHistoryLimit int
-	ProposalHistoryNext  int
-	CanEditProposal      bool
-	RecognitionSources   []models.Unit
-	RecognitionTargets   []models.Unit
-	PublishWarning       string
-	Error                string
+	Units                   []curriculumUnitView
+	Dependencies            []models.UnitDependency
+	Graph                   *models.CurriculumGraphLayout
+	GraphView               curriculumGraphView
+	GraphSearch             unitNavigationSearchView
+	FocusedUnit             *models.Unit
+	ContentUnit             *curriculumUnitView
+	DraftProposals          []curriculumDraftProposalView
+	ActiveProposal          *models.CurriculumProposal
+	ProposalRebase          *services.CurriculumProposalRebasePlan
+	RebaseTimeline          *curriculumRebaseTimelineView
+	ReviewedProposal        *models.CurriculumProposal
+	ProposalHistory         []curriculumProposalHistoryView
+	RootDraftProposals      []curriculumDraftProposalView
+	ShowProposalHistory     bool
+	ProposalHistoryMore     bool
+	ProposalHistoryLimit    int
+	ProposalHistoryNext     int
+	CanEditProposal         bool
+	ViewingAcceptedProposal bool
+	GraphURL                string
+	UnitContentCloseURL     string
+	RecognitionSources      []models.Unit
+	RecognitionTargets      []models.Unit
+	PublishWarning          string
+	Error                   string
 }
 
 type curriculumRebaseTimelineView struct {

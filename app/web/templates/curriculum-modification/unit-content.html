@@ -5,7 +5,7 @@
           <article class="ui-pane__inner unit-content" data-pane-content-width="reading" data-inline-editing>
             <header class="nested-panel__header">
               <div>
-                <p class="label">{{ if .Historical }}Proposal base unit content{{ else }}Published unit content{{ end }}</p>
+                <p class="label">{{ if .Historical }}Proposal base unit content{{ else if $.ViewingAcceptedProposal }}Accepted unit content{{ else }}Published unit content{{ end }}</p>
                 <h1 id="curriculum-modification-unit-content-title" data-inline-editor-display="inline-rename-unit">{{ .Name }}</h1>
                 {{ if and $.CanEditProposal (not .Historical) }}
                   <form class="editor-form unit-content__inline-editor unit-content__inline-editor--rename" id="inline-rename-unit" action="/curriculum-modification/units/{{ .ID }}" method="post" data-inline-editor hidden>
@@ -21,7 +21,7 @@
                 {{ end }}
               </div>
               <a class="icon-button ui-pane__close"
-                 href="/curriculum-modification?proposal={{ $.ActiveProposal.ID }}&amp;unit={{ .ID }}"
+                 href="{{ $.UnitContentCloseURL }}"
                  data-close-panel
                  aria-label="Close unit content">
                 <span class="material-symbols-rounded" aria-hidden="true">close</span>
@@ -55,7 +55,7 @@
             <div data-inline-editor-display="inline-edit-unit-content" data-view-switcher>
               {{ if .HasContentDiff }}
                 <div class="unit-content__view-header">
-                  <p>Proposed content changes</p>
+                  <p>{{ if $.ViewingAcceptedProposal }}Accepted content changes{{ else }}Proposed content changes{{ end }}</p>
                   {{ template "view-switcher" (viewSwitcher "Content view" "source" "source" "Source" "rendered" "Rendered") }}
                 </div>
                 <div class="unit-content__body unit-content__body--diff" role="tabpanel" data-view-switcher-panel="source">
