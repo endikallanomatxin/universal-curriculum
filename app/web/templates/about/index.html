@@ -21,11 +21,20 @@
               <span class="material-symbols-rounded" style="view-transition-name:about-documentation-icon;" aria-hidden="true">menu_book</span>
               <span><strong style="view-transition-name:about-documentation-title;">Documentation</strong><small style="view-transition-name:about-documentation-description;">How the curriculum and its workflows work</small></span>
             </a>
+            <a class="pane-navigation-card selectable-surface" href="/about/releases" hx-get="/about/releases" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true" data-panel-navigation="open-or-replace" style="view-transition-name:about-releases-card;">
+              <span class="material-symbols-rounded" style="view-transition-name:about-releases-icon;" aria-hidden="true">new_releases</span>
+              <span><strong style="view-transition-name:about-releases-title;">Releases</strong><small style="view-transition-name:about-releases-description;">What changed in each published version</small></span>
+            </a>
+            <a class="pane-navigation-card selectable-surface" href="/about/roadmap" hx-get="/about/roadmap" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true" data-panel-navigation="open-or-replace" style="view-transition-name:about-roadmap-card;">
+              <span class="material-symbols-rounded" style="view-transition-name:about-roadmap-icon;" aria-hidden="true">route</span>
+              <span><strong style="view-transition-name:about-roadmap-title;">Roadmap</strong><small style="view-transition-name:about-roadmap-description;">Planned direction for future releases</small></span>
+            </a>
             <a class="pane-navigation-card selectable-surface" href="/license" hx-get="/license" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true" data-panel-navigation="open-or-replace" style="view-transition-name:about-license-card;">
               <span class="material-symbols-rounded" style="view-transition-name:about-license-icon;" aria-hidden="true">license</span>
               <span><strong style="view-transition-name:about-license-title;">License</strong><small style="view-transition-name:about-license-description;">How original and external content is licensed</small></span>
             </a>
           </nav>
+          <a class="about-index__release" href="/about/releases" hx-get="/about/releases" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true" data-panel-navigation="open-or-replace">Current version · v{{ .Release }}</a>
         </div>
       </section>
 {{- end }}

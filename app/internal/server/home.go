@@ -4,10 +4,12 @@ import (
 	"html/template"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"universal-curriculum/internal/db"
 	"universal-curriculum/internal/models"
 	"universal-curriculum/internal/server/guidance"
+	"universal-curriculum/internal/server/releaseinfo"
 	"universal-curriculum/internal/server/views"
 	"universal-curriculum/internal/services"
 )
@@ -24,34 +26,74 @@ func (server *Server) aboutProposal(writer http.ResponseWriter, request *http.Re
 	server.renderUserPage(writer, request, "proposal.html", "about", false)
 }
 
-type documentationPageData struct {
-	userPageData
-	Pages    []guidance.Page
-	Page     *guidance.Page
-	Rendered template.HTML
+type aboutContentPage struct {
+	Slug     string
 	Title    string
+	Summary  string
+	Content  string
+	Rendered template.HTML
 }
 
-func (server *Server) documentation(writer http.ResponseWriter, request *http.Request) {
+type aboutContentSectionData struct {
+	userPageData
+	SectionSlug         string
+	SectionTitle        string
+	SectionIntroduction string
+	Pages               []aboutContentPage
+	Page                *aboutContentPage
+	Title               string
+}
+
+func (server *Server) releases(writer http.ResponseWriter, request *http.Request) {
+	server.aboutContentSection(writer, request, "releases", "Releases", "Published changes, newest first.", releasePages(releaseinfo.Releases()))
+}
+
+func (server *Server) roadmap(writer http.ResponseWriter, request *http.Request) {
+	server.aboutContentSection(writer, request, "roadmap", "Roadmap", "Planned direction, subject to change.", releasePages(releaseinfo.Roadmap()))
+}
+
+func releasePages(documents []releaseinfo.Document) []aboutContentPage {
+	pages := make([]aboutContentPage, 0, len(documents))
+	for _, document := range documents {
+		content := document.Content
+		if _, remainder, found := strings.Cut(content, "\n"); found && strings.HasPrefix(content, "# ") {
+			content = strings.TrimSpace(remainder)
+		}
+		pages = append(pages, aboutContentPage{Slug: document.Version, Title: "v" + document.Version, Summary: document.Summary, Content: content})
+	}
+	return pages
+}
+
+func (server *Server) aboutContentSection(writer http.ResponseWriter, request *http.Request, slug, title, introduction string, pages []aboutContentPage) {
 	data, err := server.loadUserPageData(request, "about", false)
 	if err != nil {
 		http.Error(writer, "Load user", http.StatusInternalServerError)
 		return
 	}
-	view := documentationPageData{userPageData: data, Pages: guidance.Pages()}
-	if slug := request.PathValue("slug"); slug != "" {
-		page, ok := guidance.Find(slug)
-		if !ok {
-			http.NotFound(writer, request)
-			return
+	view := aboutContentSectionData{userPageData: data, SectionSlug: slug, SectionTitle: title, SectionIntroduction: introduction, Pages: pages, Title: title + " · Universal Curriculum"}
+	if pageSlug := request.PathValue("slug"); pageSlug != "" {
+		for index := range view.Pages {
+			if view.Pages[index].Slug == pageSlug {
+				view.Pages[index].Rendered = views.RenderUnitContent(view.Pages[index].Content)
+				view.Page = &view.Pages[index]
+				view.Title = view.Pages[index].Title + " · " + title + " · Universal Curriculum"
+				server.render(writer, "about-content.html", view)
+				return
+			}
 		}
-		view.Page = &page
-		view.Rendered = views.RenderUnitContent(page.Content)
-		view.Title = page.Title + " · Universal Curriculum"
-		server.render(writer, "documentation-page.html", view)
+		http.NotFound(writer, request)
 		return
 	}
-	server.render(writer, "documentation.html", view)
+	server.render(writer, "about-content.html", view)
+}
+
+func (server *Server) documentation(writer http.ResponseWriter, request *http.Request) {
+	pages := guidance.Pages()
+	contentPages := make([]aboutContentPage, 0, len(pages))
+	for _, page := range pages {
+		contentPages = append(contentPages, aboutContentPage{Slug: page.Slug, Title: page.Title, Summary: page.Summary, Content: page.Content})
+	}
+	server.aboutContentSection(writer, request, "documentation", "Documentation", "How the curriculum and its workflows work.", contentPages)
 }
 
 func (server *Server) license(writer http.ResponseWriter, request *http.Request) {

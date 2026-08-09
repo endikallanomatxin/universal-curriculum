@@ -42,6 +42,9 @@ presentation packages belong below `server`.
   architecture or conventions.
 - Keep future release descriptions in `docs/plan`; when a release is completed,
   move its file to `docs/releases` in the release preparation commit.
+- After changing `docs/plan` or `docs/releases`, run
+  `go generate ./internal/server/releaseinfo` from `app` so the web catalog
+  remains synchronized with those canonical files.
 - After user feedback corrects an implementation, consider whether reusable
   repository knowledge available beforehand would have prevented the mistake.
   If so, update the applicable `AGENTS.md` or canonical implementation document

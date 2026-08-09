@@ -15,6 +15,28 @@
   margin: 0 0 var(--space-6);
 }
 
+.about-index__release {
+  color: var(--color-muted);
+  display: inline-block;
+  font-size: 0.72rem;
+  margin-top: var(--space-5);
+  text-decoration: none;
+}
+
+.about-index__release:hover,
+.about-index__release:focus-visible {
+  color: var(--color-ink-strong);
+  text-decoration: underline;
+  text-underline-offset: 0.16em;
+}
+
+.about-content-index__introduction {
+  color: var(--color-muted);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin: 0 0 var(--space-5);
+}
+
 .about-document p {
   line-height: 1.8;
   max-width: 42rem;

@@ -1,0 +1,39 @@
+{{ define "about-content-index-pane" -}}
+      <section class="ui-pane" aria-labelledby="about-content-index-title" data-nested-panel data-panel-motion="horizontal" data-layout-panel data-panel-modes="collapsed:0 mobile:20 standard:28" {{ if not .Page }}data-panel-fill{{ end }} data-panel-breadcrumb="{{ .SectionTitle }}" data-panel-breadcrumb-url="/about/{{ .SectionSlug }}" data-panel-preserve-scroll>
+        <div class="ui-pane__inner about-index pane-breadcrumb" data-pane-content-width="narrow">
+          <header class="about-index__header pane-breadcrumb__header">
+            <div>
+              <h1 id="about-content-index-title">{{ .SectionTitle }}</h1>
+              <a class="pane-breadcrumb__title" href="/about/{{ .SectionSlug }}" hx-get="/about/{{ .SectionSlug }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML" hx-push-url="true" data-panel-navigation="close">{{ .SectionTitle }}</a>
+            </div>
+            <a class="icon-button ui-pane__close" href="/about" hx-get="/about" hx-trigger="panel-close" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML" hx-push-url="true" data-panel-navigation="close" aria-label="Close {{ .SectionTitle }}">
+              <span class="material-symbols-rounded" aria-hidden="true">close</span>
+            </a>
+          </header>
+          <p class="about-content-index__introduction">{{ .SectionIntroduction }}</p>
+          <nav class="pane-navigation-list" aria-label="{{ .SectionTitle }} pages">
+            {{ range .Pages }}
+            <a class="pane-navigation-card pane-navigation-card--text-only selectable-surface" href="/about/{{ $.SectionSlug }}/{{ .Slug }}" hx-get="/about/{{ $.SectionSlug }}/{{ .Slug }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true" data-panel-navigation="open-or-replace">
+              <span><strong>{{ .Title }}</strong>{{ with .Summary }}<small>{{ . }}</small>{{ end }}</span>
+            </a>
+            {{ end }}
+          </nav>
+        </div>
+      </section>
+{{- end }}
+
+{{ define "about-content-page-pane" -}}
+      {{ with .Page }}
+      <section class="ui-pane" aria-labelledby="about-content-page-title" data-nested-panel data-panel-motion="horizontal" data-layout-panel data-panel-modes="collapsed:0 mobile:20 standard:42" data-panel-fill data-panel-breadcrumb="{{ .Title }}">
+        <article class="ui-pane__inner about-page" data-pane-content-width="reading">
+          <header class="about-page__header">
+            <h1 id="about-content-page-title">{{ .Title }}</h1>
+            <a class="icon-button ui-pane__close" href="/about/{{ $.SectionSlug }}" hx-get="/about/{{ $.SectionSlug }}" hx-trigger="panel-close" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML" hx-push-url="true" data-panel-navigation="close" aria-label="Close {{ .Title }}">
+              <span class="material-symbols-rounded" aria-hidden="true">close</span>
+            </a>
+          </header>
+          <div class="about-document">{{ .Rendered }}</div>
+        </article>
+      </section>
+      {{ end }}
+{{- end }}
