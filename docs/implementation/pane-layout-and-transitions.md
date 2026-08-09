@@ -106,6 +106,12 @@ Mobile trail segments have an individual maximum and remain shrinkable as a
 group. Flexbox therefore gives long labels less width as more contextual panes
 are present, while short labels keep only the space they need.
 
+Server-rendered panes declare `data-panel-breadcrumb-url` when returning to
+that pane requires canonical server state. Earlier mobile trail segments then
+navigate to that URL and replace the workspace in one request, producing the
+same DOM and URL as closing every descendant pane. Panes without a canonical
+URL remain client-local and use the shared close controller.
+
 ## Pane operations
 
 Opening an editor or detail from a pane normally replaces the visible panes to

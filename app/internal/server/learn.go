@@ -34,6 +34,7 @@ type learnPageData struct {
 	CombinePaths       bool
 	ShowGraph          bool
 	ShowPathEditor     bool
+	GraphURL           string
 }
 
 type learningPathSaveStatusView struct {
@@ -207,6 +208,10 @@ func (server *Server) learn(writer http.ResponseWriter, request *http.Request) {
 		pathQuery = "mine"
 	} else if data.SelectedPath != nil {
 		pathQuery = strconv.FormatInt(data.SelectedPath.ID, 10)
+	}
+	data.GraphURL = "/learn?path=" + pathQuery
+	if focusID != nil {
+		data.GraphURL += "&unit=" + strconv.FormatInt(*focusID, 10)
 	}
 	unitURL := func(unitID int64) string {
 		value := strconv.FormatInt(unitID, 10)

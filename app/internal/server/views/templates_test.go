@@ -160,6 +160,7 @@ func TestLearningPathPanelHasCloseNavigation(t *testing.T) {
 	output := renderTemplate(t, templates, "learn.html", map[string]any{
 		"ShowGraph": true,
 		"Graph":     &models.CurriculumGraphLayout{},
+		"GraphURL":  "/learn?path=7&unit=3",
 	})
 
 	for _, fragment := range []string{
@@ -167,6 +168,7 @@ func TestLearningPathPanelHasCloseNavigation(t *testing.T) {
 		`href="/learn"`,
 		`hx-trigger="panel-close"`,
 		`data-panel-navigation="close"`,
+		`data-panel-breadcrumb-url="/learn?path=7&amp;unit=3"`,
 	} {
 		if !strings.Contains(output, fragment) {
 			t.Errorf("learning path close control does not contain %q", fragment)
@@ -383,6 +385,7 @@ func TestCurriculumProposalContentPanelRendersUnitContentDiff(t *testing.T) {
 
 	for _, fragment := range []string{
 		"Proposed content changes",
+		`data-panel-breadcrumb-url="/curriculum-modification?proposal=12"`,
 		`data-panel-preserve-scroll`,
 		`data-panel-close-query="content"`,
 		`data-close-panel`,

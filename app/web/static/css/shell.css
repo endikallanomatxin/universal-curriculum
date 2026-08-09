@@ -880,7 +880,8 @@ button.primary-menu__link {
     z-index: 4;
   }
 
-  .mobile-panel-breadcrumbs button {
+  .mobile-panel-breadcrumbs button,
+  .mobile-panel-breadcrumbs a {
     appearance: none;
     background: transparent;
     border: 0;
@@ -893,22 +894,25 @@ button.primary-menu__link {
     min-width: 0;
     overflow: hidden;
     padding: var(--space-2) 0;
+    text-decoration: none;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .mobile-panel-breadcrumbs button + button::before {
+  .mobile-panel-breadcrumbs > * + *::before {
     color: color-mix(in srgb, var(--color-muted) 55%, transparent);
     content: "/";
     margin-right: var(--space-2);
   }
 
   .mobile-panel-breadcrumbs button:hover,
-  .mobile-panel-breadcrumbs button:focus-visible {
+  .mobile-panel-breadcrumbs button:focus-visible,
+  .mobile-panel-breadcrumbs a:hover,
+  .mobile-panel-breadcrumbs a:focus-visible {
     color: var(--color-ink-strong);
   }
 
-  .mobile-panel-breadcrumbs button[aria-current="page"] {
+  .mobile-panel-breadcrumbs [aria-current="page"] {
     color: var(--color-ink-strong);
     font-weight: 700;
   }

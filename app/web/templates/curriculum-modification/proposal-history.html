@@ -1,6 +1,6 @@
 {{/* Curriculum modification proposal history. */}}
 {{ define "proposal-history-pane" -}}
-      <section class="ui-pane ui-pane--form" id="proposal-history-panel" data-nested-panel data-panel-motion="horizontal" data-layout-panel data-panel-modes="collapsed:0 compact:18 form:28" data-panel-required-mode="form" data-panel-fill data-panel-breadcrumb="History" data-panel-preserve-scroll {{ if not .ShowProposalHistory }}hidden{{ end }} aria-labelledby="proposal-history-title">
+      <section class="ui-pane ui-pane--form" id="proposal-history-panel" data-nested-panel data-panel-motion="horizontal" data-layout-panel data-panel-modes="collapsed:0 compact:18 form:28" data-panel-required-mode="form" data-panel-fill data-panel-breadcrumb="History" data-panel-breadcrumb-url="/curriculum-modification?{{ if .ActiveProposal }}proposal={{ .ActiveProposal.ID }}&amp;{{ end }}history=1&amp;history-limit={{ .ProposalHistoryLimit }}" data-panel-preserve-scroll {{ if not .ShowProposalHistory }}hidden{{ end }} aria-labelledby="proposal-history-title">
         <div class="ui-pane__inner nested-panel" data-pane-content-width="narrow">
           <header class="nested-panel__header">
             <div>
