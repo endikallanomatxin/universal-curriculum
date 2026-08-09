@@ -45,7 +45,7 @@
                   {{ range .ProposalHistory }}
                     <li class="proposal-rebase-graph__item {{ if .IsHead }}proposal-rebase-graph__item--current{{ end }}" data-rebase-node="history-accepted-{{ .ID }}" data-rebase-lane="0">
                       <span class="proposal-rebase-graph__node" data-rebase-anchor aria-hidden="true"></span>
-                      <div>{{ if .IsHead }}<span class="label">Published curriculum</span>{{ end }}<strong>{{ .Title }}</strong><span class="proposal-history-graph__status">{{ .AuthorName }} · accepted</span></div>
+                      <div>{{ if .IsHead }}<span class="label">Published curriculum</span>{{ end }}<a class="proposal-rebase-graph__proposal-link" href="/curriculum-modification?{{ if $.ActiveProposal }}proposal={{ $.ActiveProposal.ID }}&amp;{{ end }}history=1&amp;review-proposal={{ .ID }}" hx-get="/curriculum-modification?{{ if $.ActiveProposal }}proposal={{ $.ActiveProposal.ID }}&amp;{{ end }}history=1&amp;review-proposal={{ .ID }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true" data-panel-navigation="open-or-replace"><strong>{{ .Title }}</strong><span class="material-symbols-rounded" aria-hidden="true">arrow_forward</span></a><span class="proposal-history-graph__status">{{ .AuthorName }} · accepted</span></div>
                     </li>
                     {{ range .Drafts }}
                       <li class="proposal-rebase-graph__item proposal-rebase-graph__item--draft" data-rebase-node="history-draft-{{ .ID }}" data-rebase-lane="1">

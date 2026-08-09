@@ -404,6 +404,30 @@ func TestCurriculumProposalContentPanelRendersUnitContentDiff(t *testing.T) {
 	}
 }
 
+func TestAcceptedProposalHistoryLinksOpenDetailBesideHistory(t *testing.T) {
+	templates := loadTestTemplates(t)
+	accepted := models.CurriculumProposal{ID: 8, Title: "Clarify electricity", Status: "accepted", AuthorName: "Ada"}
+	output := renderTemplate(t, templates, "curriculum-modification.html", map[string]any{
+		"ShowProposalHistory": true,
+		"ProposalHistory": []map[string]any{{
+			"ID": accepted.ID, "Title": accepted.Title, "Status": accepted.Status,
+			"AuthorName": accepted.AuthorName, "IsHead": true,
+		}},
+		"ReviewedProposal": &accepted,
+	})
+
+	link := `href="/curriculum-modification?history=1&amp;review-proposal=8"`
+	if !strings.Contains(output, link) {
+		t.Errorf("accepted proposal history does not contain detail link %q", link)
+	}
+	if !strings.Contains(output, `href="/curriculum-modification?history=1"`) {
+		t.Error("accepted proposal detail does not close back to history")
+	}
+	if strings.Index(output, `id="proposal-history-panel"`) > strings.Index(output, `aria-labelledby="related-proposal-title"`) {
+		t.Error("accepted proposal detail should render to the right of history")
+	}
+}
+
 func TestCurriculumProposalRendersRebaseResolutionInUnifiedWorkspace(t *testing.T) {
 	templates := loadTestTemplates(t)
 	change := models.CurriculumProposalChange{

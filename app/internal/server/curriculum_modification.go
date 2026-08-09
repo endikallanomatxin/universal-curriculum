@@ -75,9 +75,21 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 			http.Error(writer, "Invalid curriculum proposal", http.StatusBadRequest)
 			return
 		}
-		reviewedProposal = visibleRebaseProposal(rebasePlan, reviewedID)
+		if request.URL.Query().Get("history") == "1" {
+			reviewedProposal, err = db.GetCurriculumProposal(server.Database, reviewedID)
+			if err != nil {
+				log.Printf("load accepted curriculum proposal: %v", err)
+				http.Error(writer, "Unable to load accepted curriculum proposal", http.StatusInternalServerError)
+				return
+			}
+			if reviewedProposal != nil && reviewedProposal.Status != "accepted" {
+				reviewedProposal = nil
+			}
+		} else {
+			reviewedProposal = visibleRebaseProposal(rebasePlan, reviewedID)
+		}
 		if reviewedProposal == nil {
-			http.Error(writer, "Related curriculum proposal not found", http.StatusNotFound)
+			http.Error(writer, "Accepted curriculum proposal not found", http.StatusNotFound)
 			return
 		}
 		reviewedGraph, graphErr := services.CurriculumGraphAtProposal(server.Database, &reviewedProposal.ID)

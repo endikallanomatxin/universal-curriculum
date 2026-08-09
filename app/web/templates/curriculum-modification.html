@@ -9,9 +9,10 @@
       <nav class="mobile-panel-breadcrumbs" data-mobile-panel-breadcrumbs aria-label="Current location" hidden></nav>
       {{ template "proposal-index-pane" . }}
       {{ template "proposal-workspace-pane" . }}
-      {{ template "reviewed-proposal-pane" . }}
+      {{ if not .ShowProposalHistory }}{{ template "reviewed-proposal-pane" . }}{{ end }}
       {{ template "curriculum-modification-unit-content-pane" . }}
       {{ template "proposal-history-pane" . }}
+      {{ if .ShowProposalHistory }}{{ template "reviewed-proposal-pane" . }}{{ end }}
       {{ template "curriculum-modification-editor-panels" . }}
     </main>
   </div>
