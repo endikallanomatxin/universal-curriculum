@@ -10,9 +10,12 @@
       {{ template "proposal-index-pane" . }}
       {{ template "proposal-workspace-pane" . }}
       {{ if not .ShowProposalHistory }}{{ template "reviewed-proposal-pane" . }}{{ end }}
-      {{ template "curriculum-modification-unit-content-pane" . }}
+      {{ if not .ShowProposalHistory }}{{ template "curriculum-modification-unit-content-pane" . }}{{ end }}
       {{ template "proposal-history-pane" . }}
-      {{ if .ShowProposalHistory }}{{ template "reviewed-proposal-pane" . }}{{ end }}
+      {{ if .ShowProposalHistory }}
+        {{ template "reviewed-proposal-pane" . }}
+        {{ template "curriculum-modification-unit-content-pane" . }}
+      {{ end }}
       {{ template "curriculum-modification-editor-panels" . }}
     </main>
   </div>

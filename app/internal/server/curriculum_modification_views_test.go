@@ -268,8 +268,8 @@ func TestCurriculumRebaseTimelineKeepsConflictsAndCompressesOtherAcceptedWork(t 
 		t.Fatalf("rebase timeline items = %#v", view.Items)
 	}
 	if len(view.Edges) != 3 ||
-		view.Edges[0].Source != "accepted-5" || view.Edges[0].Target != "accepted-3" ||
-		view.Edges[1].Source != "accepted-3" || view.Edges[1].Target != "base" ||
+		view.Edges[0].Source != "accepted-3" || view.Edges[0].Target != "accepted-5" ||
+		view.Edges[1].Source != "base" || view.Edges[1].Target != "accepted-3" ||
 		view.Edges[2].Source != "base" || view.Edges[2].Target != "draft" {
 		t.Fatalf("rebase timeline edges = %#v", view.Edges)
 	}

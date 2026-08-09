@@ -417,7 +417,20 @@ func TestAcceptedProposalHistoryLinksOpenDetailBesideHistory(t *testing.T) {
 			"ID": accepted.ID, "Title": accepted.Title, "Status": accepted.Status,
 			"AuthorName": accepted.AuthorName, "IsHead": true,
 		}},
-		"ReviewedProposal": &accepted,
+		"ReviewedProposal":        &accepted,
+		"ViewingAcceptedProposal": true,
+		"GraphURL":                "/curriculum-modification?history=1&history-limit=10&review-proposal=8",
+		"Graph":                   map[string]any{"Nodes": []map[string]any{{"ID": 4}}},
+		"GraphView": map[string]any{
+			"IDPrefix": "accepted-proposal", "Description": "Accepted curriculum graph",
+			"Nodes": []map[string]any{{
+				"ID": 4, "Name": "Electric charge", "Lane": 0,
+				"NavigateURL": "/curriculum-modification?history=1&history-limit=10&review-proposal=8&unit=4",
+				"ContentURL":  "/curriculum-modification?history=1&history-limit=10&review-proposal=8&unit=4&content=4",
+			}},
+			"Layout": map[string]any{},
+		},
+		"GraphSearch": map[string]any{"ID": "accepted-search", "Label": "Find a unit", "Placeholder": "Find a unit"},
 	})
 
 	link := `href="/curriculum-modification?history=1&amp;history-limit=10&amp;review-proposal=8"`
@@ -429,6 +442,14 @@ func TestAcceptedProposalHistoryLinksOpenDetailBesideHistory(t *testing.T) {
 	}
 	if strings.Index(output, `id="proposal-history-panel"`) > strings.Index(output, `aria-labelledby="related-proposal-title"`) {
 		t.Error("accepted proposal detail should render to the right of history")
+	}
+	if !strings.Contains(output, "Showing the curriculum produced by this proposal") ||
+		!strings.Contains(output, `href="/curriculum-modification?history=1&amp;history-limit=10&amp;review-proposal=8&amp;unit=4&amp;content=4"`) {
+		t.Error("accepted proposal detail does not expose its read-only curriculum graph and content")
+	}
+	if strings.Contains(output, `data-open-panel="new-unit-panel"`) ||
+		strings.Contains(output, `data-open-panel="edit-dependencies-panel"`) {
+		t.Error("accepted proposal detail exposes curriculum editing controls")
 	}
 }
 
@@ -450,6 +471,9 @@ func TestProposalHistoryShowsNewestFirstAndLoadsOlderEntriesOnDemand(t *testing.
 	}
 	if !strings.Contains(output, `history-limit=20`) || !strings.Contains(output, `>Show more</a>`) {
 		t.Error("paginated proposal history does not offer the next page")
+	}
+	if !strings.Contains(output, `data-rebase-edge data-source="history-accepted-1" data-target="history-accepted-2"`) {
+		t.Error("proposal history should point from older proposals to newer proposals")
 	}
 	if strings.Contains(output, "Initial curriculum") {
 		t.Error("partial proposal history should not connect to the initial curriculum")

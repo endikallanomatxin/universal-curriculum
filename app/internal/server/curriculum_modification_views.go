@@ -22,29 +22,32 @@ type curriculumUnitView struct {
 
 type curriculumModificationPageData struct {
 	userPageData
-	Units                []curriculumUnitView
-	Dependencies         []models.UnitDependency
-	Graph                *models.CurriculumGraphLayout
-	GraphView            curriculumGraphView
-	GraphSearch          unitNavigationSearchView
-	FocusedUnit          *models.Unit
-	ContentUnit          *curriculumUnitView
-	DraftProposals       []curriculumDraftProposalView
-	ActiveProposal       *models.CurriculumProposal
-	ProposalRebase       *services.CurriculumProposalRebasePlan
-	RebaseTimeline       *curriculumRebaseTimelineView
-	ReviewedProposal     *models.CurriculumProposal
-	ProposalHistory      []curriculumProposalHistoryView
-	RootDraftProposals   []curriculumDraftProposalView
-	ShowProposalHistory  bool
-	ProposalHistoryMore  bool
-	ProposalHistoryLimit int
-	ProposalHistoryNext  int
-	CanEditProposal      bool
-	RecognitionSources   []models.Unit
-	RecognitionTargets   []models.Unit
-	PublishWarning       string
-	Error                string
+	Units                   []curriculumUnitView
+	Dependencies            []models.UnitDependency
+	Graph                   *models.CurriculumGraphLayout
+	GraphView               curriculumGraphView
+	GraphSearch             unitNavigationSearchView
+	FocusedUnit             *models.Unit
+	ContentUnit             *curriculumUnitView
+	DraftProposals          []curriculumDraftProposalView
+	ActiveProposal          *models.CurriculumProposal
+	ProposalRebase          *services.CurriculumProposalRebasePlan
+	RebaseTimeline          *curriculumRebaseTimelineView
+	ReviewedProposal        *models.CurriculumProposal
+	ProposalHistory         []curriculumProposalHistoryView
+	RootDraftProposals      []curriculumDraftProposalView
+	ShowProposalHistory     bool
+	ProposalHistoryMore     bool
+	ProposalHistoryLimit    int
+	ProposalHistoryNext     int
+	CanEditProposal         bool
+	ViewingAcceptedProposal bool
+	GraphURL                string
+	UnitContentCloseURL     string
+	RecognitionSources      []models.Unit
+	RecognitionTargets      []models.Unit
+	PublishWarning          string
+	Error                   string
 }
 
 type curriculumRebaseTimelineView struct {
@@ -428,12 +431,12 @@ func curriculumRebaseTimeline(
 		}
 		target := "accepted-" + strconv.FormatInt(item.ID, 10)
 		if previous != "" {
-			view.Edges = append(view.Edges, curriculumRebaseTimelineEdgeView{Source: previous, Target: target})
+			view.Edges = append(view.Edges, curriculumRebaseTimelineEdgeView{Source: target, Target: previous})
 		}
 		previous = target
 	}
 	view.Edges = append(view.Edges,
-		curriculumRebaseTimelineEdgeView{Source: previous, Target: "base"},
+		curriculumRebaseTimelineEdgeView{Source: "base", Target: previous},
 		curriculumRebaseTimelineEdgeView{Source: "base", Target: "draft"},
 	)
 	return view
