@@ -461,13 +461,17 @@ func TestProposalHistoryShowsNewestFirstAndLoadsOlderEntriesOnDemand(t *testing.
 		"ProposalHistoryLimit": 10,
 		"ProposalHistoryNext":  20,
 		"ProposalHistory": []map[string]any{
-			{"ID": 2, "Title": "Newest", "AuthorName": "Ada", "IsHead": true},
+			{"ID": 2, "Title": "Newest", "AuthorName": "Ada", "IsHead": true,
+				"Drafts": []map[string]any{{"ID": 3, "Title": "New draft"}}},
 			{"ID": 1, "Title": "Older", "AuthorName": "Grace"},
 		},
 	})
 
 	if strings.Index(output, "Newest") > strings.Index(output, "Older") {
 		t.Error("proposal history should render newest proposals first")
+	}
+	if strings.Index(output, `data-rebase-node="history-draft-3"`) > strings.Index(output, `data-rebase-node="history-accepted-2"`) {
+		t.Error("draft branches should render above the accepted proposal they come from")
 	}
 	if !strings.Contains(output, `history-limit=20`) || !strings.Contains(output, `>Show more</a>`) {
 		t.Error("paginated proposal history does not offer the next page")
@@ -532,6 +536,9 @@ func TestCurriculumProposalRendersRebaseResolutionInUnifiedWorkspace(t *testing.
 	}
 	if strings.Contains(output, `id="proposal-details-panel"`) {
 		t.Fatal("proposal details should not be rendered as a separate workspace")
+	}
+	if strings.Index(output, `data-rebase-node="draft"`) > strings.Index(output, `data-rebase-node="base"`) {
+		t.Error("the proposal being rebased should render above its base")
 	}
 }
 
