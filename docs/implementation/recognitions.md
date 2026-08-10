@@ -51,6 +51,18 @@ derived from previous learning. Returning a directly completed unit to pending
 rebuilds derived progress and may reveal another recognition route that remains
 supported by the learner's other direct completions.
 
+## Learning-path targets
+
+Publication also migrates personal goals. If a learning path targets any source
+of a recognition, all of the recognition's targets are added. The source stays
+in the path while it remains in the resulting curriculum and is removed only if
+the same proposal deletes it. Unlike progress materialization, this does not
+require the path to contain every source: each selected source is independently
+enough to extend the learner's goals. Target mappings for the proposal are
+captured before paths are changed, so recognitions accepted together do not feed
+one another. Set semantics deduplicate the results of splits, merges and
+overlapping rules.
+
 Future certification imports should record the curriculum proposal whose frozen
 content they certify, independently of when the evidence reaches the platform.
 The same propagation operation can then replay proposal groups from that point

@@ -909,6 +909,9 @@ func PublishCurriculumProposal(
 	if err := db.MaterializeCurriculumRecognitions(tx, proposalID); err != nil {
 		return summary, err
 	}
+	if err := db.MigrateLearningPathTargets(tx, proposalID); err != nil {
+		return summary, err
+	}
 	if err := db.RebuildCurriculumProjection(tx, proposalID); err != nil {
 		return summary, err
 	}

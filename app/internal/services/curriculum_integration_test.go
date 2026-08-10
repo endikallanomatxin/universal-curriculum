@@ -402,8 +402,8 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	}
 	persistedPath, err = db.GetLearningPath(database, authorID, learningPath.ID)
 	if err != nil || persistedPath == nil || len(persistedPath.Units) != 1 ||
-		persistedPath.Units[0].ID != algebra.ID || !persistedPath.Units[0].Retired {
-		t.Fatalf("retired path target did not retain its identity: path=%#v err=%v", persistedPath, err)
+		persistedPath.Units[0].ID != replacement.ID || persistedPath.Units[0].Retired {
+		t.Fatalf("recognition did not migrate the learning path target: path=%#v err=%v", persistedPath, err)
 	}
 	completedUnitIDs, err = db.CompletedUnitIDs(database, authorID)
 	if err != nil || !completedUnitIDs[algebra.ID] || !completedUnitIDs[replacement.ID] {
@@ -455,8 +455,25 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	); err != nil {
 		t.Fatal(err)
 	}
+	activeRecognitionPath, err := CreateLearningPath(
+		database, sameProposalUserID, "Foundations goal", []int64{foundations.ID},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if _, err := PublishCurriculumProposal(database, authorID, advancedProposal.ID); err != nil {
 		t.Fatal(err)
+	}
+	persistedPath, err = db.GetLearningPath(database, sameProposalUserID, activeRecognitionPath.ID)
+	if err != nil || persistedPath == nil || len(persistedPath.Units) != 3 {
+		t.Fatalf("active recognition sources and targets were not preserved in the learning path: path=%#v err=%v", persistedPath, err)
+	}
+	pathTargetIDs := make(map[int64]bool, len(persistedPath.Units))
+	for _, unit := range persistedPath.Units {
+		pathTargetIDs[unit.ID] = true
+	}
+	if !pathTargetIDs[foundations.ID] || !pathTargetIDs[replacement.ID] || !pathTargetIDs[advanced.ID] {
+		t.Fatalf("recognition did not add every target for a path containing one merge source: ids=%v", pathTargetIDs)
 	}
 	completedUnitIDs, err = db.CompletedUnitIDs(database, authorID)
 	if err != nil || !completedUnitIDs[advanced.ID] {
