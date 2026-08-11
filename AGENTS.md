@@ -45,6 +45,8 @@ presentation packages belong below `server`.
 - After changing `docs/plan` or `docs/releases`, run
   `go generate ./internal/server/releaseinfo` from `app` so the web catalog
   remains synchronized with those canonical files.
+- After changing `docs/openapi.yaml`, run `go generate ./internal/server` from
+  `app` so the embedded delivery copy remains synchronized.
 - After user feedback corrects an implementation, consider whether reusable
   repository knowledge available beforehand would have prevented the mistake.
   If so, update the applicable `AGENTS.md` or canonical implementation document

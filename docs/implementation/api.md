@@ -10,8 +10,9 @@ will be chosen before 1.0 when the resource model has enough operational use.
 `docs/openapi.yaml` is the canonical API contract. An implementation change is
 not complete until that document describes the resulting HTTP behaviour. The
 server embeds a delivery copy at `app/internal/server/openapi.yaml` so the
-contract remains available in the minimal production image; release validation
-checks that the two files are identical.
+contract remains available in the minimal production image. After changing the
+canonical document, run `go generate ./internal/server` from `app`; validation
+checks that the generated copy is identical.
 
 ## HTTP conventions
 
