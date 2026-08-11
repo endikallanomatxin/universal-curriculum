@@ -29,40 +29,29 @@ func CurriculumNeighborhood(graph *models.CurriculumGraph, focusID *int64) (*mod
 	if graph == nil {
 		return neighborhood, nil, nil, nil
 	}
-	unitsByID := make(map[int64]models.Unit, len(graph.Units))
-	incoming := make(map[int64]int, len(graph.Units))
-	prerequisites := make(map[int64][]int64)
-	dependents := make(map[int64][]int64)
-	for _, unit := range graph.Units {
-		unitsByID[unit.ID] = unit
-	}
-	for _, dependency := range graph.Dependencies {
-		incoming[dependency.UnitID]++
-		prerequisites[dependency.UnitID] = append(prerequisites[dependency.UnitID], dependency.PrerequisiteID)
-		dependents[dependency.PrerequisiteID] = append(dependents[dependency.PrerequisiteID], dependency.UnitID)
-	}
+	index := models.IndexCurriculumGraph(graph)
 	included := make(map[int64]bool)
 	var focus *models.Unit
 	if focusID == nil {
 		for _, unit := range graph.Units {
-			if incoming[unit.ID] == 0 {
+			if len(index.Prerequisites(unit.ID)) == 0 {
 				included[unit.ID] = true
 			}
 		}
 	} else {
-		unit, exists := unitsByID[*focusID]
-		if !exists {
+		unit := index.Unit(*focusID)
+		if unit == nil {
 			return nil, nil, nil, ErrCurriculumUnitNotFound
 		}
-		focus = &unit
+		focus = unit
 		included[unit.ID] = true
-		includeCurriculumNeighbors(included, prerequisites[unit.ID], curriculumDirectNeighborLimit)
-		directDependents := includeCurriculumNeighbors(included, dependents[unit.ID], curriculumDirectNeighborLimit)
-		includeSecondCurriculumNeighbors(included, directDependents, dependents, curriculumSecondNeighborLimit)
+		includeCurriculumNeighbors(included, index.Prerequisites(unit.ID), curriculumDirectNeighborLimit)
+		directDependents := includeCurriculumNeighbors(included, index.Dependents(unit.ID), curriculumDirectNeighborLimit)
+		includeSecondCurriculumNeighbors(included, directDependents, index, curriculumSecondNeighborLimit)
 
 		coPrerequisites := make(map[int64]bool)
 		for _, dependentID := range directDependents {
-			for _, prerequisiteID := range prerequisites[dependentID] {
+			for _, prerequisiteID := range index.Prerequisites(dependentID) {
 				if prerequisiteID != unit.ID && !included[prerequisiteID] {
 					coPrerequisites[prerequisiteID] = true
 				}
@@ -185,21 +174,16 @@ func CurriculumGraphBoundaries(
 	for _, unit := range visible.Units {
 		visibleIDs[unit.ID] = true
 	}
-	prerequisites := make(map[int64][]int64)
-	dependents := make(map[int64][]int64)
-	for _, dependency := range graph.Dependencies {
-		prerequisites[dependency.UnitID] = append(prerequisites[dependency.UnitID], dependency.PrerequisiteID)
-		dependents[dependency.PrerequisiteID] = append(dependents[dependency.PrerequisiteID], dependency.UnitID)
-	}
+	index := models.IndexCurriculumGraph(graph)
 	var boundaries []models.CurriculumGraphBoundary
 	for _, unit := range visible.Units {
-		hiddenPrerequisites := countHiddenCurriculumNeighbors(prerequisites[unit.ID], visibleIDs)
+		hiddenPrerequisites := countHiddenCurriculumNeighbors(index.Prerequisites(unit.ID), visibleIDs)
 		if hiddenPrerequisites > 0 {
 			boundaries = append(boundaries, models.CurriculumGraphBoundary{
 				UnitID: unit.ID, Direction: "prerequisites", Count: hiddenPrerequisites,
 			})
 		}
-		hiddenDependents := countHiddenCurriculumNeighbors(dependents[unit.ID], visibleIDs)
+		hiddenDependents := countHiddenCurriculumNeighbors(index.Dependents(unit.ID), visibleIDs)
 		if hiddenDependents > 0 {
 			boundaries = append(boundaries, models.CurriculumGraphBoundary{
 				UnitID: unit.ID, Direction: "dependents", Count: hiddenDependents,
@@ -220,11 +204,11 @@ func includeCurriculumNeighbors(included map[int64]bool, candidates []int64, lim
 	return selected
 }
 
-func includeSecondCurriculumNeighbors(included map[int64]bool, first []int64, adjacency map[int64][]int64, limit int) []int64 {
+func includeSecondCurriculumNeighbors(included map[int64]bool, first []int64, index *models.CurriculumGraphIndex, limit int) []int64 {
 	selected := make([]int64, 0, limit)
 	added := 0
 	for _, firstID := range first {
-		for _, candidateID := range adjacency[firstID] {
+		for _, candidateID := range index.Dependents(firstID) {
 			if included[candidateID] {
 				continue
 			}

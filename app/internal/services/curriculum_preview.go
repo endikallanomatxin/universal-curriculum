@@ -6,10 +6,7 @@ func CurriculumGraphWithProposal(graph *models.CurriculumGraph, proposal *models
 	if graph == nil || proposal == nil {
 		return graph
 	}
-	preview := &models.CurriculumGraph{
-		Units:        append([]models.Unit(nil), graph.Units...),
-		Dependencies: append([]models.UnitDependency(nil), graph.Dependencies...),
-	}
+	preview := graph.Clone()
 	unitIndexes := make(map[int64]int, len(preview.Units))
 	for index := range preview.Units {
 		unitIndexes[preview.Units[index].ID] = index
@@ -47,7 +44,7 @@ func CurriculumGraphWithProposal(graph *models.CurriculumGraph, proposal *models
 			}
 			preview.Dependencies = filtered
 		case "add_dependency":
-			if change.PrerequisiteID != nil && !curriculumDependencyExists(preview, change.UnitID, *change.PrerequisiteID) {
+			if change.PrerequisiteID != nil && !preview.HasDependency(change.UnitID, *change.PrerequisiteID) {
 				dependency := models.UnitDependency{
 					UnitID: change.UnitID, PrerequisiteID: *change.PrerequisiteID,
 				}
@@ -74,29 +71,8 @@ func CurriculumGraphWithProposal(graph *models.CurriculumGraph, proposal *models
 	return preview
 }
 
-func curriculumDependencyExists(graph *models.CurriculumGraph, unitID, prerequisiteID int64) bool {
-	for _, dependency := range graph.Dependencies {
-		if dependency.UnitID == unitID && dependency.PrerequisiteID == prerequisiteID {
-			return true
-		}
-	}
-	return false
-}
-
-func curriculumUnitByID(graph *models.CurriculumGraph, unitID int64) *models.Unit {
-	for index := range graph.Units {
-		if graph.Units[index].ID == unitID {
-			return &graph.Units[index]
-		}
-	}
-	return nil
-}
-
 func curriculumDependencyCreatesCycle(graph *models.CurriculumGraph, unitID, prerequisiteID int64) bool {
-	dependents := make(map[int64][]int64, len(graph.Dependencies))
-	for _, dependency := range graph.Dependencies {
-		dependents[dependency.PrerequisiteID] = append(dependents[dependency.PrerequisiteID], dependency.UnitID)
-	}
+	index := models.IndexCurriculumGraph(graph)
 	pending := []int64{unitID}
 	visited := make(map[int64]bool)
 	for len(pending) > 0 {
@@ -109,7 +85,7 @@ func curriculumDependencyCreatesCycle(graph *models.CurriculumGraph, unitID, pre
 			continue
 		}
 		visited[current] = true
-		pending = append(pending, dependents[current]...)
+		pending = append(pending, index.Dependents(current)...)
 	}
 	return false
 }

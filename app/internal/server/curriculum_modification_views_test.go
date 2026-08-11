@@ -90,7 +90,7 @@ func TestDeletedProposalUnitsRemainVisibleForInspection(t *testing.T) {
 
 	visual := curriculumGraphWithRemovedDependencies(working, published, proposal)
 
-	if graphUnitByID(visual, 2) == nil || len(visual.Dependencies) != 1 {
+	if visual.Unit(2) == nil || len(visual.Dependencies) != 1 {
 		t.Fatalf("deleted unit context is missing from proposal graph: %#v", visual)
 	}
 }

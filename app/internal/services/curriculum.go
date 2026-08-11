@@ -382,7 +382,7 @@ func DeleteCurriculumUnit(database *sql.DB, authorID, proposalID, unitID int64) 
 	if len(dependentNames) > 0 {
 		return &UnitIsPrerequisiteError{DependentNames: dependentNames}
 	}
-	if curriculumUnitByID(graph, unitID) == nil {
+	if graph.Unit(unitID) == nil {
 		return ErrUnitNotFound
 	}
 	for _, change := range proposal.Changes {
@@ -489,10 +489,10 @@ func setUnitDependency(database *sql.DB, authorID, proposalID, unitID, prerequis
 		return err
 	}
 	workingGraph := CurriculumGraphWithProposal(graph, proposal)
-	if curriculumUnitByID(workingGraph, unitID) == nil || curriculumUnitByID(workingGraph, prerequisiteID) == nil {
+	if workingGraph.Unit(unitID) == nil || workingGraph.Unit(prerequisiteID) == nil {
 		return ErrUnitNotFound
 	}
-	exists := curriculumDependencyExists(workingGraph, unitID, prerequisiteID)
+	exists := workingGraph.HasDependency(unitID, prerequisiteID)
 	if desired {
 		if exists {
 			return ErrDependencyExists
@@ -514,7 +514,7 @@ func setUnitDependency(database *sql.DB, authorID, proposalID, unitID, prerequis
 			return err
 		}
 	}
-	if desired != curriculumDependencyExists(graph, unitID, prerequisiteID) {
+	if desired != graph.HasDependency(unitID, prerequisiteID) {
 		kind := "remove_dependency"
 		if desired {
 			kind = "add_dependency"

@@ -41,14 +41,14 @@ func AddCurriculumRecognition(
 	result := CurriculumGraphWithProposal(base, proposal)
 	recognition := &models.Recognition{}
 	for _, unitID := range sourceUnitIDs {
-		unit := curriculumUnitByID(base, unitID)
+		unit := base.Unit(unitID)
 		if unit == nil {
 			return ErrUnitNotFound
 		}
 		recognition.Sources = append(recognition.Sources, *unit)
 	}
 	for _, unitID := range targetUnitIDs {
-		unit := curriculumUnitByID(result, unitID)
+		unit := result.Unit(unitID)
 		if unit == nil {
 			return ErrUnitNotFound
 		}

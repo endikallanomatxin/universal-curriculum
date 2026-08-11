@@ -234,7 +234,7 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 			}
 		}
 		if data.ContentUnit == nil {
-			if historical := graphUnitByID(proposalBaseGraph, contentID); historical != nil {
+			if historical := proposalBaseGraph.Unit(contentID); historical != nil {
 				data.ContentUnit = &curriculumUnitView{Unit: *historical, Historical: true}
 			} else {
 				http.Error(writer, "Curriculum unit not found", http.StatusNotFound)
