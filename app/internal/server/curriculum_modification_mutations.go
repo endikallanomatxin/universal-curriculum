@@ -323,46 +323,47 @@ func (server *Server) renderCurriculumMutationError(writer http.ResponseWriter, 
 
 func curriculumErrorResponse(err error) (string, int) {
 	var prerequisiteError *services.UnitIsPrerequisiteError
-	switch {
-	case errors.As(err, &prerequisiteError):
+	switch services.ClassifyDomainError(err) {
+	case services.DomainErrorUnitIsPrerequisite:
+		errors.As(err, &prerequisiteError)
 		return "Remove the dependencies from " + joinNames(prerequisiteError.DependentNames) + " before deleting this unit.", http.StatusConflict
-	case errors.Is(err, services.ErrUnitNameRequired):
+	case services.DomainErrorUnitNameRequired:
 		return "A unit name is required.", http.StatusBadRequest
-	case errors.Is(err, services.ErrUnitNameTooLong):
+	case services.DomainErrorUnitNameTooLong:
 		return "A unit name cannot exceed 200 characters.", http.StatusBadRequest
-	case errors.Is(err, services.ErrUnitContentRequired):
+	case services.DomainErrorUnitContentRequired:
 		return "Unit content cannot be empty.", http.StatusBadRequest
-	case errors.Is(err, services.ErrUnitNotFound):
+	case services.DomainErrorUnitNotFound:
 		return "The selected unit no longer exists.", http.StatusNotFound
-	case errors.Is(err, services.ErrDependencyExists):
+	case services.DomainErrorDependencyExists:
 		return "That dependency already exists.", http.StatusConflict
-	case errors.Is(err, services.ErrDependencyNotFound):
+	case services.DomainErrorDependencyNotFound:
 		return "That dependency no longer exists.", http.StatusNotFound
-	case errors.Is(err, services.ErrDependencyCycle):
+	case services.DomainErrorDependencyCycle:
 		return "That dependency would create a cycle.", http.StatusConflict
-	case errors.Is(err, services.ErrProposalNotFound):
+	case services.DomainErrorProposalNotFound:
 		return "Select an editable draft proposal first.", http.StatusNotFound
-	case errors.Is(err, services.ErrProposalTitleRequired):
+	case services.DomainErrorProposalTitleRequired:
 		return "A proposal title is required.", http.StatusBadRequest
-	case errors.Is(err, services.ErrProposalTitleTooLong):
+	case services.DomainErrorProposalTitleTooLong:
 		return "A proposal title cannot exceed 200 characters.", http.StatusBadRequest
-	case errors.Is(err, services.ErrProposalRationaleRequired):
+	case services.DomainErrorProposalRationaleRequired:
 		return "Explain the purpose of the proposal.", http.StatusBadRequest
-	case errors.Is(err, services.ErrProposalRationaleTooLong):
+	case services.DomainErrorProposalRationaleTooLong:
 		return "A proposal rationale cannot exceed 1000 characters.", http.StatusBadRequest
-	case errors.Is(err, services.ErrProposalEmpty):
+	case services.DomainErrorProposalEmpty:
 		return "Add at least one proposed change before publishing.", http.StatusBadRequest
-	case errors.Is(err, services.ErrProposalOutdated):
+	case services.DomainErrorProposalOutdated:
 		return "The proposal base could not be reconciled with the accepted curriculum history.", http.StatusConflict
-	case errors.Is(err, services.ErrProposalRebaseRequired):
+	case services.DomainErrorProposalRebaseRequired:
 		return "Review the proposal changes that overlap with newer accepted work before continuing.", http.StatusConflict
-	case errors.Is(err, services.ErrRebaseResolutionRequired):
+	case services.DomainErrorRebaseResolutionRequired:
 		return "Choose a valid resolution for every conflicting change.", http.StatusBadRequest
-	case errors.Is(err, services.ErrRecognitionSourcesRequired):
+	case services.DomainErrorRecognitionSourcesRequired:
 		return "Select at least one source unit.", http.StatusBadRequest
-	case errors.Is(err, services.ErrRecognitionTargetsRequired):
+	case services.DomainErrorRecognitionTargetsRequired:
 		return "Select at least one target unit.", http.StatusBadRequest
-	case errors.Is(err, services.ErrProposalInvalid):
+	case services.DomainErrorProposalInvalid:
 		return err.Error(), http.StatusConflict
 	default:
 		return "Unable to modify the curriculum.", http.StatusInternalServerError

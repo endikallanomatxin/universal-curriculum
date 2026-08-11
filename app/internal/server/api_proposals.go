@@ -543,15 +543,16 @@ func newAPIRebasePlan(plan *services.CurriculumProposalRebasePlan) apiRebasePlan
 
 func (server *Server) writeAPICurriculumError(writer http.ResponseWriter, err error) {
 	message, status := curriculumErrorResponse(err)
+	domainCode := services.ClassifyDomainError(err)
 	code := "validation_failed"
 	switch status {
 	case http.StatusNotFound:
 		code = "not_found"
-		if errors.Is(err, services.ErrProposalNotFound) {
+		if domainCode == services.DomainErrorProposalNotFound {
 			code = "proposal_not_found"
-		} else if errors.Is(err, services.ErrUnitNotFound) {
+		} else if domainCode == services.DomainErrorUnitNotFound {
 			code = "unit_not_found"
-		} else if errors.Is(err, services.ErrDependencyNotFound) {
+		} else if domainCode == services.DomainErrorDependencyNotFound {
 			code = "dependency_not_found"
 		}
 	case http.StatusConflict:

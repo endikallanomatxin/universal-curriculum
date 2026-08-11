@@ -200,16 +200,16 @@ func (application *adapter) getRecommendations(
 func learningPathFailure[T any](
 	operation string, err error,
 ) (*mcp.CallToolResult, toolOutput[T], error) {
-	switch {
-	case errors.Is(err, services.ErrLearningPathNotFound):
+	switch services.ClassifyDomainError(err) {
+	case services.DomainErrorLearningPathNotFound:
 		return failed[T]("learning_path_not_found", "The learning path was not found.", nil)
-	case errors.Is(err, services.ErrLearningPathNameRequired):
+	case services.DomainErrorLearningPathNameRequired:
 		return failed[T]("validation_failed", "The learning path name is required.", map[string]string{"name": "is required"})
-	case errors.Is(err, services.ErrLearningPathNameTooLong):
+	case services.DomainErrorLearningPathNameTooLong:
 		return failed[T]("validation_failed", "The learning path name is too long.", map[string]string{"name": "must not exceed 200 characters"})
-	case errors.Is(err, services.ErrLearningPathUnitsRequired):
+	case services.DomainErrorLearningPathUnitsRequired:
 		return failed[T]("validation_failed", "At least one target unit is required.", map[string]string{"target_unit_ids": "must contain a current unit"})
-	case errors.Is(err, services.ErrUnitNotFound):
+	case services.DomainErrorUnitNotFound:
 		return failed[T]("validation_failed", "A target unit does not exist.", map[string]string{"target_unit_ids": "contains an unknown unit ID"})
 	default:
 		return internalFailure[T](operation, err)

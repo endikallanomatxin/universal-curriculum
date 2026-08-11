@@ -431,16 +431,16 @@ func parseLearningPathUnitIDs(values []string) []int64 {
 }
 
 func learningPathError(err error) string {
-	switch {
-	case errors.Is(err, services.ErrLearningPathNameRequired):
+	switch services.ClassifyDomainError(err) {
+	case services.DomainErrorLearningPathNameRequired:
 		return "A learning path name is required."
-	case errors.Is(err, services.ErrLearningPathNameTooLong):
+	case services.DomainErrorLearningPathNameTooLong:
 		return "A learning path name cannot exceed 200 characters."
-	case errors.Is(err, services.ErrLearningPathUnitsRequired):
+	case services.DomainErrorLearningPathUnitsRequired:
 		return "Select at least one target unit."
-	case errors.Is(err, services.ErrUnitNotFound):
+	case services.DomainErrorUnitNotFound:
 		return "A selected unit no longer exists."
-	case errors.Is(err, services.ErrLearningPathNotFound):
+	case services.DomainErrorLearningPathNotFound:
 		return "Learning path not found."
 	default:
 		return "Unable to save the learning path."
