@@ -439,27 +439,32 @@ func (server *Server) apiVisibleProposal(writer http.ResponseWriter, request *ht
 	if !ok {
 		return nil, false
 	}
-	proposal, err := db.GetCurriculumProposal(server.Database, proposalID)
+	proposal, err := services.GetVisibleCurriculumProposal(server.Database, apiUser(request).ID, proposalID)
 	if err != nil {
+		if errors.Is(err, services.ErrProposalNotFound) {
+			writeAPIError(writer, http.StatusNotFound, "proposal_not_found", "The proposal was not found.", nil)
+			return nil, false
+		}
 		log.Printf("API get proposal: %v", err)
 		writeAPIInternalError(writer)
-		return nil, false
-	}
-	user := apiUser(request)
-	if proposal == nil || proposal.Status == "draft" && !proposal.HasAuthor(user.ID) {
-		writeAPIError(writer, http.StatusNotFound, "proposal_not_found", "The proposal was not found.", nil)
 		return nil, false
 	}
 	return proposal, true
 }
 
 func (server *Server) apiEditableProposal(writer http.ResponseWriter, request *http.Request) (*models.CurriculumProposal, bool) {
-	proposal, ok := server.apiVisibleProposal(writer, request)
+	proposalID, ok := apiProposalID(writer, request)
 	if !ok {
 		return nil, false
 	}
-	if proposal.Status != "draft" || !proposal.HasAuthor(apiUser(request).ID) {
+	proposal, err := services.GetEditableCurriculumProposal(server.Database, apiUser(request).ID, proposalID)
+	if errors.Is(err, services.ErrProposalNotFound) {
 		writeAPIError(writer, http.StatusNotFound, "proposal_not_found", "The editable proposal was not found.", nil)
+		return nil, false
+	}
+	if err != nil {
+		log.Printf("API get editable proposal: %v", err)
+		writeAPIInternalError(writer)
 		return nil, false
 	}
 	return proposal, true

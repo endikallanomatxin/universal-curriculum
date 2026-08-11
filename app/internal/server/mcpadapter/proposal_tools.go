@@ -10,7 +10,6 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"universal-curriculum/internal/db"
-	"universal-curriculum/internal/models"
 	"universal-curriculum/internal/services"
 )
 
@@ -145,7 +144,7 @@ func (application *adapter) getProposal(_ context.Context, request *mcp.CallTool
 	if result, output, err, user := requireAdmin[proposal](request); user == nil {
 		return result, output, err
 	} else {
-		model, err := application.visibleProposal(user.ID, input.ProposalID)
+		model, err := services.GetVisibleCurriculumProposal(application.database, user.ID, input.ProposalID)
 		if err != nil {
 			return curriculumFailure[proposal]("get proposal", err)
 		}
@@ -266,7 +265,7 @@ func (application *adapter) getProposalRebase(_ context.Context, request *mcp.Ca
 	if user == nil {
 		return result, output, authErr
 	}
-	model, err := application.editableProposal(user.ID, input.ProposalID)
+	model, err := services.GetEditableCurriculumProposal(application.database, user.ID, input.ProposalID)
 	if err != nil {
 		return curriculumFailure[rebasePlan]("get proposal rebase", err)
 	}
@@ -282,7 +281,7 @@ func (application *adapter) resolveProposalRebase(_ context.Context, request *mc
 	if user == nil {
 		return result, output, authErr
 	}
-	model, err := application.editableProposal(user.ID, input.ProposalID)
+	model, err := services.GetEditableCurriculumProposal(application.database, user.ID, input.ProposalID)
 	if err != nil {
 		return curriculumFailure[proposal]("inspect proposal rebase", err)
 	}
@@ -315,7 +314,7 @@ func (application *adapter) publishProposal(_ context.Context, request *mcp.Call
 	if !input.Confirmed {
 		return failed[proposal]("confirmation_required", "Publication requires confirmed=true after an explicit user request.", map[string]string{"confirmed": "must be true"})
 	}
-	model, err := application.editableProposal(user.ID, input.ProposalID)
+	model, err := services.GetEditableCurriculumProposal(application.database, user.ID, input.ProposalID)
 	if err != nil {
 		return curriculumFailure[proposal]("inspect proposal before publication", err)
 	}
@@ -330,28 +329,6 @@ func (application *adapter) publishProposal(_ context.Context, request *mcp.Call
 		logRebaseFailures(input.ProposalID, summary.Failures)
 	}
 	return application.reloadProposal(input.ProposalID)
-}
-
-func (application *adapter) visibleProposal(userID, id int64) (*models.CurriculumProposal, error) {
-	model, err := db.GetCurriculumProposal(application.database, id)
-	if err != nil {
-		return nil, err
-	}
-	if model == nil || model.Status == "draft" && !model.HasAuthor(userID) {
-		return nil, services.ErrProposalNotFound
-	}
-	return model, nil
-}
-
-func (application *adapter) editableProposal(userID, id int64) (*models.CurriculumProposal, error) {
-	model, err := application.visibleProposal(userID, id)
-	if err != nil {
-		return nil, err
-	}
-	if model.Status != "draft" || !model.HasAuthor(userID) {
-		return nil, services.ErrProposalNotFound
-	}
-	return model, nil
 }
 
 func (application *adapter) reloadProposal(id int64) (*mcp.CallToolResult, toolOutput[proposal], error) {
