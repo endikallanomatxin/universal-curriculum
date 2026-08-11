@@ -37,6 +37,54 @@
   margin: 0 0 var(--space-5);
 }
 
+.about-release {
+  padding: clamp(2.5rem, 7vh, 5rem) 0;
+  scroll-margin-top: var(--space-5);
+}
+
+.about-release:first-child {
+  padding-top: var(--space-3);
+}
+
+.about-release + .about-release {
+  border-top: 1px solid color-mix(in srgb, var(--color-ink) 18%, transparent);
+}
+
+.about-release__header {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.about-release__header h2 {
+  color: var(--color-ink-strong);
+  font-size: clamp(1.8rem, 3vw, 2.5rem);
+  letter-spacing: -0.035em;
+  margin: 0;
+}
+
+.about-release__header time {
+  color: var(--color-muted);
+  font-size: 0.78rem;
+}
+
+.about-release .about-document h3 {
+  color: var(--color-ink-strong);
+  font-size: var(--font-size-section-title);
+  margin: var(--space-6) 0 var(--space-4);
+}
+
+.about-release .about-document h3:first-child {
+  margin-top: 0;
+}
+
+.about-release .about-document p,
+.about-release .about-document li {
+  line-height: 1.8;
+}
+
 .about-document p {
   line-height: 1.8;
   max-width: 42rem;

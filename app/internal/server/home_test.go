@@ -118,10 +118,17 @@ func TestReleaseAndRoadmapPagesUseSharedContentPanels(t *testing.T) {
 		path      string
 		fragments []string
 	}{
-		{path: "/about/releases", fragments: []string{`<h1 id="about-content-index-title">Releases</h1>`, `href="/about/releases/0.2.7"`, `Refine proposal history navigation and make project evolution visible.`}},
-		{path: "/about/releases/0.2.6", fragments: []string{`<h1 id="about-content-page-title">v0.2.6</h1>`, `Added a read-only graph to accepted proposal details`}},
-		{path: "/about/roadmap", fragments: []string{`<h1 id="about-content-index-title">Roadmap</h1>`, `href="/about/roadmap/0.3.0"`, `Add asset support to the platform.`}},
-		{path: "/about/roadmap/0.3.0", fragments: []string{`<h1 id="about-content-page-title">v0.3.0</h1>`, `Add asset support to the platform.`}},
+		{path: "/about/releases", fragments: []string{
+			`<h1 id="about-content-index-title">Releases</h1>`, `id="release-0-2-7"`,
+			`<time datetime="2026-08-09">9 August 2026</time>`,
+			`Refine proposal history navigation and make project evolution visible.`,
+			`id="release-0-2-6"`, `Added a read-only graph to accepted proposal details`,
+		}},
+		{path: "/about/roadmap", fragments: []string{
+			`<h1 id="about-content-index-title">Roadmap</h1>`, `id="release-0-3-0"`,
+			`Add asset support to the platform.`,
+			`id="release-0-4-0"`, `Open curriculum development to selected contributors`,
+		}},
 	} {
 		response := httptest.NewRecorder()
 		server.routes().ServeHTTP(response, httptest.NewRequest(http.MethodGet, test.path, nil))

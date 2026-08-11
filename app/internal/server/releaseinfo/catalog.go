@@ -4,6 +4,7 @@ package releaseinfo
 
 type Document struct {
 	Version string
+	Date    string
 	Summary string
 	Content string
 }

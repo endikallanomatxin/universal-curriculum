@@ -1,6 +1,6 @@
 {{ define "about-content-index-pane" -}}
-      <section class="ui-pane" aria-labelledby="about-content-index-title" data-nested-panel data-panel-motion="horizontal" data-layout-panel data-panel-modes="collapsed:0 mobile:20 standard:28" {{ if not .Page }}data-panel-fill{{ end }} data-panel-breadcrumb="{{ .SectionTitle }}" data-panel-breadcrumb-url="/about/{{ .SectionSlug }}" data-panel-preserve-scroll>
-        <div class="ui-pane__inner about-index pane-breadcrumb" data-pane-content-width="narrow">
+      <section class="ui-pane" aria-labelledby="about-content-index-title" data-nested-panel data-panel-motion="horizontal" data-layout-panel data-panel-modes="collapsed:0 mobile:20 standard:{{ if .Continuous }}42{{ else }}28{{ end }}" {{ if not .Page }}data-panel-fill{{ end }} data-panel-breadcrumb="{{ .SectionTitle }}" data-panel-breadcrumb-url="/about/{{ .SectionSlug }}" data-panel-preserve-scroll>
+        <div class="ui-pane__inner about-index pane-breadcrumb" data-pane-content-width="{{ if .Continuous }}reading{{ else }}narrow{{ end }}">
           <header class="about-index__header pane-breadcrumb__header">
             <div>
               <h1 id="about-content-index-title">{{ .SectionTitle }}</h1>
@@ -11,13 +11,27 @@
             </a>
           </header>
           <p class="about-content-index__introduction">{{ .SectionIntroduction }}</p>
+          {{ if .Continuous }}
+          <div class="about-release-list">
+            {{ range .Pages }}
+            <article class="about-release" id="{{ .Anchor }}" aria-labelledby="{{ .Anchor }}-title">
+              <header class="about-release__header">
+                <h2 id="{{ .Anchor }}-title">{{ .Title }}</h2>
+                {{ if .Date }}<time datetime="{{ .Date }}">{{ .DateText }}</time>{{ end }}
+              </header>
+              <div class="about-document">{{ .Rendered }}</div>
+            </article>
+            {{ end }}
+          </div>
+          {{ else }}
           <nav class="pane-navigation-list" aria-label="{{ .SectionTitle }} pages">
             {{ range .Pages }}
-            <a class="pane-navigation-card pane-navigation-card--text-only selectable-surface" href="/about/{{ $.SectionSlug }}/{{ .Slug }}" hx-get="/about/{{ $.SectionSlug }}/{{ .Slug }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true" data-panel-navigation="open-or-replace">
-              <span><strong>{{ .Title }}</strong>{{ with .Summary }}<small>{{ . }}</small>{{ end }}</span>
-            </a>
+              <a class="pane-navigation-card pane-navigation-card--text-only selectable-surface" href="/about/{{ $.SectionSlug }}/{{ .Slug }}" hx-get="/about/{{ $.SectionSlug }}/{{ .Slug }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true" data-panel-navigation="open-or-replace">
+                <span><strong>{{ .Title }}</strong>{{ with .Summary }}<small>{{ . }}</small>{{ end }}</span>
+              </a>
             {{ end }}
           </nav>
+          {{ end }}
         </div>
       </section>
 {{- end }}

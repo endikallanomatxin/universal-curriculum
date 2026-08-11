@@ -7,10 +7,12 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type document struct {
 	version string
+	date    string
 	summary string
 	content string
 }
@@ -43,10 +45,21 @@ func readDocuments(directory string, descending bool) []document {
 		if err != nil {
 			panic(err)
 		}
+		metadata, body := frontmatter(string(content))
+		date := metadata["date"]
+		if descending && date == "" {
+			panic(fmt.Sprintf("%s: missing date in frontmatter", filepath.Join(directory, entry.Name())))
+		}
+		if date != "" {
+			if _, err := time.Parse(time.DateOnly, date); err != nil {
+				panic(fmt.Sprintf("%s: invalid date %q", filepath.Join(directory, entry.Name()), date))
+			}
+		}
 		documents = append(documents, document{
 			version: strings.TrimSuffix(entry.Name(), ".md"),
-			summary: mainObjective(string(content)),
-			content: strings.TrimSpace(string(content)),
+			date:    date,
+			summary: mainObjective(body),
+			content: strings.TrimSpace(body),
 		})
 	}
 	sort.Slice(documents, func(i, j int) bool {
@@ -57,6 +70,24 @@ func readDocuments(directory string, descending bool) []document {
 		return comparison < 0
 	})
 	return documents
+}
+
+func frontmatter(content string) (map[string]string, string) {
+	metadata := make(map[string]string)
+	if !strings.HasPrefix(content, "---\n") {
+		return metadata, content
+	}
+	end := strings.Index(content[4:], "\n---\n")
+	if end < 0 {
+		return metadata, content
+	}
+	for _, line := range strings.Split(content[4:4+end], "\n") {
+		key, value, found := strings.Cut(line, ":")
+		if found {
+			metadata[strings.TrimSpace(key)] = strings.TrimSpace(value)
+		}
+	}
+	return metadata, content[4+end+5:]
 }
 
 func mainObjective(content string) string {
@@ -88,7 +119,11 @@ func compareVersions(left, right string) int {
 func writeCatalog(output *strings.Builder, name string, documents []document) {
 	fmt.Fprintf(output, "var %s = []Document{\n", name)
 	for _, document := range documents {
-		fmt.Fprintf(output, "\t{Version: %q, Summary: %q, Content: %q},\n", document.version, document.summary, document.content)
+		fmt.Fprintf(output, "\t{Version: %q, ", document.version)
+		if document.date != "" {
+			fmt.Fprintf(output, "Date: %q, ", document.date)
+		}
+		fmt.Fprintf(output, "Summary: %q, Content: %q},\n", document.summary, document.content)
 	}
 	output.WriteString("}\n\n")
 }
