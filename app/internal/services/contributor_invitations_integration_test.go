@@ -47,3 +47,37 @@ func TestRevokedContributorInvitationCannotBeAccepted(t *testing.T) {
 		t.Fatalf("revoked acceptance = %v", err)
 	}
 }
+
+func TestInvitedContributorRegistrationIsAtomic(t *testing.T) {
+	database := openPostgresIntegrationDatabase(t, "invited_contributor_registration")
+	administrator, _ := db.CreateLocalUser(database, "Administrator", "admin@example.com", []byte("hash"))
+	revoked, err := db.CreateContributorInvitation(database, "revoked@example.com", administrator.ID, time.Now().Add(time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ok, err := db.RevokeContributorInvitation(database, revoked.ID); err != nil || !ok {
+		t.Fatalf("revoke = %v, %v", ok, err)
+	}
+	if _, err := RegisterInvitedContributor(database, "Revoked invitee", revoked.Email, "long enough password", revoked.Token); !errors.Is(err, db.ErrInvalidContributorInvitation) {
+		t.Fatalf("registration with revoked invitation = %v", err)
+	}
+	if _, err := db.CreateLocalUser(database, "Available account", revoked.Email, []byte("hash")); err != nil {
+		t.Fatalf("rolled-back registration retained the email: %v", err)
+	}
+
+	invitation, err := db.CreateContributorInvitation(database, "new@example.com", administrator.ID, time.Now().Add(time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	registered, err := RegisterInvitedContributor(database, "New contributor", invitation.Email, "long enough password", invitation.Token)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !registered.IsContributor {
+		t.Fatalf("registered user = %#v", registered)
+	}
+	stored, err := db.GetUserByID(database, registered.ID)
+	if err != nil || stored == nil || !stored.IsContributor {
+		t.Fatalf("stored contributor = %#v, %v", stored, err)
+	}
+}

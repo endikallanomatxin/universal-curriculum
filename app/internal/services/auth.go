@@ -45,22 +45,54 @@ func EnsureBootstrapAdmin(database *sql.DB, fullName, alias, email, password str
 }
 
 func RegisterLocalUser(database *sql.DB, fullName, email, password string) (*models.User, error) {
+	fullName, email, passwordHash, err := prepareLocalRegistration(fullName, email, password)
+	if err != nil {
+		return nil, err
+	}
+	return db.CreateLocalUser(database, fullName, email, passwordHash)
+}
+
+func RegisterInvitedContributor(database *sql.DB, fullName, email, password, invitationToken string) (*models.User, error) {
+	fullName, email, passwordHash, err := prepareLocalRegistration(fullName, email, password)
+	if err != nil {
+		return nil, err
+	}
+	tx, err := database.Begin()
+	if err != nil {
+		return nil, fmt.Errorf("begin invited contributor registration: %w", err)
+	}
+	defer tx.Rollback()
+	user, err := db.CreateLocalUserInTransaction(tx, fullName, email, passwordHash)
+	if err != nil {
+		return nil, err
+	}
+	if err := db.AcceptContributorInvitationInTransaction(tx, invitationToken, user.ID); err != nil {
+		return nil, err
+	}
+	user.IsContributor = true
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit invited contributor registration: %w", err)
+	}
+	return user, nil
+}
+
+func prepareLocalRegistration(fullName, email, password string) (string, string, []byte, error) {
 	fullName = strings.TrimSpace(fullName)
 	email = models.NormalizeEmail(email)
 	if err := models.ValidateFullName(fullName); err != nil {
-		return nil, err
+		return "", "", nil, err
 	}
 	if err := models.ValidateEmail(email); err != nil {
-		return nil, err
+		return "", "", nil, err
 	}
 	if err := models.ValidatePassword(password); err != nil {
-		return nil, err
+		return "", "", nil, err
 	}
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		return nil, fmt.Errorf("hash local user password: %w", err)
+		return "", "", nil, fmt.Errorf("hash local user password: %w", err)
 	}
-	return db.CreateLocalUser(database, fullName, email, passwordHash)
+	return fullName, email, passwordHash, nil
 }
 
 func AuthenticateLocal(database *sql.DB, email, password string) (*models.User, error) {

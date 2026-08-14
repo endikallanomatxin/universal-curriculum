@@ -86,6 +86,19 @@ func AcceptContributorInvitation(database *sql.DB, token string, userID int64) e
 		return fmt.Errorf("begin contributor invitation acceptance: %w", err)
 	}
 	defer tx.Rollback()
+	if err := AcceptContributorInvitationInTransaction(tx, token, userID); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit contributor invitation acceptance: %w", err)
+	}
+	return nil
+}
+
+func AcceptContributorInvitationInTransaction(tx *sql.Tx, token string, userID int64) error {
+	if token == "" {
+		return ErrInvalidContributorInvitation
+	}
 	result, err := tx.Exec(`
 		UPDATE contributor_invitations invitation
 		SET accepted_by = $2, accepted_at = clock_timestamp()
@@ -107,9 +120,6 @@ func AcceptContributorInvitation(database *sql.DB, token string, userID int64) e
 	}
 	if _, err := tx.Exec(`UPDATE users SET is_contributor = TRUE, updated_at = clock_timestamp() WHERE id = $1`, userID); err != nil {
 		return fmt.Errorf("grant contributor access: %w", err)
-	}
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit contributor invitation acceptance: %w", err)
 	}
 	return nil
 }

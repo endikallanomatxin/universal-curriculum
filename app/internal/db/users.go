@@ -22,9 +22,20 @@ func CreateLocalUser(database *sql.DB, fullName, email string, passwordHash []by
 	}
 	defer tx.Rollback()
 
+	user, err := CreateLocalUserInTransaction(tx, fullName, email, passwordHash)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit local user: %w", err)
+	}
+	return user, nil
+}
+
+func CreateLocalUserInTransaction(tx *sql.Tx, fullName, email string, passwordHash []byte) (*models.User, error) {
 	var user models.User
 	var alias sql.NullString
-	err = tx.QueryRow(`
+	err := tx.QueryRow(`
 		INSERT INTO users (full_name)
 		VALUES ($1)
 		RETURNING id, full_name, alias, is_admin, is_contributor, created_at, updated_at
@@ -48,10 +59,6 @@ func CreateLocalUser(database *sql.DB, fullName, email string, passwordHash []by
 		}
 		return nil, fmt.Errorf("create local user credentials: %w", err)
 	}
-	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("commit local user: %w", err)
-	}
-
 	user.Email = email
 	user.Alias = nullStringPointer(alias)
 	return &user, nil

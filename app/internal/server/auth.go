@@ -211,7 +211,11 @@ func (server *Server) register(writer http.ResponseWriter, request *http.Request
 			})
 			return
 		}
-		user, err := services.RegisterLocalUser(server.Database, fullName, email, password)
+		if invitationToken == "" {
+			_, err = services.RegisterLocalUser(server.Database, fullName, email, password)
+		} else {
+			_, err = services.RegisterInvitedContributor(server.Database, fullName, email, password, invitationToken)
+		}
 		if err != nil {
 			data := registrationPageData{Next: next, InvitationToken: invitationToken}
 			switch {
@@ -227,6 +231,8 @@ func (server *Server) register(writer http.ResponseWriter, request *http.Request
 				data.Error = "Your password must be 72 bytes or fewer."
 			case errors.Is(err, db.ErrEmailAlreadyRegistered):
 				data.Error = "Unable to create an account with those details."
+			case errors.Is(err, db.ErrInvalidContributorInvitation):
+				data.Error = "The contributor invitation is invalid or expired."
 			default:
 				log.Printf("register local user: %v", err)
 				http.Error(writer, "Unable to create account", http.StatusInternalServerError)
@@ -235,13 +241,6 @@ func (server *Server) register(writer http.ResponseWriter, request *http.Request
 			server.renderStatus(writer, http.StatusBadRequest, "register.html", data)
 			return
 		}
-		if invitationToken != "" {
-			if err := db.AcceptContributorInvitation(server.Database, invitationToken, user.ID); err != nil {
-				server.renderStatus(writer, http.StatusBadRequest, "register.html", registrationPageData{Error: "The contributor invitation is invalid or expired.", Next: next, InvitationToken: invitationToken})
-				return
-			}
-		}
-
 		location := "/auth/login?registered=1&next=" + url.QueryEscape(next)
 		http.Redirect(writer, request, location, http.StatusSeeOther)
 	default:
