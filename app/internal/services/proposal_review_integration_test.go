@@ -39,6 +39,13 @@ func TestRejectedProposalIsPreservedAndReadableByItsAuthor(t *testing.T) {
 	if visible, err := GetVisibleCurriculumProposal(database, other.ID, false, proposal.ID); err != nil || visible.Status != "submitted" {
 		t.Fatalf("active proposal visibility = %#v, %v", visible, err)
 	}
+	if _, err := CreateCurriculumProposal(database, other.ID, "Newer private draft", "Must not displace an active proposal."); err != nil {
+		t.Fatal(err)
+	}
+	active, total, err := db.ListSubmittedCurriculumProposals(database, 1, 0)
+	if err != nil || total != 1 || len(active) != 1 || active[0].ID != proposal.ID {
+		t.Fatalf("active proposals = %#v, total %d, err %v", active, total, err)
+	}
 	if err := RejectCurriculumProposal(database, proposal.ID); err != nil {
 		t.Fatal(err)
 	}
@@ -52,6 +59,10 @@ func TestRejectedProposalIsPreservedAndReadableByItsAuthor(t *testing.T) {
 	}
 	if _, err := GetEditableCurriculumProposal(database, author.ID, proposal.ID); err != ErrProposalNotFound {
 		t.Fatalf("edit rejected proposal error = %v", err)
+	}
+	authored, total, err := db.ListCurriculumProposalsByAuthor(database, author.ID, 1, 0)
+	if err != nil || total != 1 || len(authored) != 1 || authored[0].ID != proposal.ID {
+		t.Fatalf("authored proposals = %#v, total %d, err %v", authored, total, err)
 	}
 }
 

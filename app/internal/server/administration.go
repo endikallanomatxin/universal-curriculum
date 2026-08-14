@@ -20,12 +20,20 @@ type administrationPageData struct {
 	ActiveInvitations []models.ContributorInvitation
 	SelectedUser      *models.User
 	UserProposals     []models.CurriculumProposal
+	UserProposalTotal int
+	UserProposalMore  bool
+	UserProposalLimit int
+	UserProposalNext  int
 	Error             string
 }
 
 func (server *Server) administration(writer http.ResponseWriter, request *http.Request) {
 	data, err := server.loadAdministrationPage(request)
 	if err != nil {
+		if errors.Is(err, errInvalidProposalListLimit) {
+			http.Error(writer, "Invalid proposal limit", http.StatusBadRequest)
+			return
+		}
 		if errors.Is(err, services.ErrProposalNotFound) {
 			http.Error(writer, "User not found", http.StatusNotFound)
 			return
@@ -76,15 +84,19 @@ func (server *Server) loadAdministrationPage(request *http.Request) (administrat
 		if data.SelectedUser == nil {
 			return administrationPageData{}, services.ErrProposalNotFound
 		}
-		proposals, _, listErr := db.ListCurriculumProposalsForUser(server.Database, page.User.ID, true, "", 100, 0)
+		proposalLimit, limitErr := growingProposalLimit(request, "proposal-limit")
+		if limitErr != nil {
+			return administrationPageData{}, limitErr
+		}
+		proposals, total, listErr := db.ListCurriculumProposalsByAuthor(server.Database, selectedID, proposalLimit, 0)
 		if listErr != nil {
 			return administrationPageData{}, listErr
 		}
-		for _, proposal := range proposals {
-			if proposal.HasAuthor(selectedID) {
-				data.UserProposals = append(data.UserProposals, proposal)
-			}
-		}
+		data.UserProposals = proposals
+		data.UserProposalTotal = total
+		data.UserProposalMore = len(proposals) < total
+		data.UserProposalLimit = proposalLimit
+		data.UserProposalNext = proposalLimit + curriculumProposalListPageSize
 	}
 	return data, nil
 }

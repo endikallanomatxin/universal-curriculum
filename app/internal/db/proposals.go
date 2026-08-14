@@ -462,9 +462,31 @@ func ListDraftCurriculumProposalsByAuthor(database *sql.DB, authorID int64) ([]m
 func ListCurriculumProposalsForUser(
 	database *sql.DB, userID int64, isAdmin bool, status string, limit, offset int,
 ) ([]models.CurriculumProposal, int, error) {
+	return listCurriculumProposals(database, userID, isAdmin, status, nil, limit, offset)
+}
+
+func ListSubmittedCurriculumProposals(database *sql.DB, limit, offset int) ([]models.CurriculumProposal, int, error) {
+	return listCurriculumProposals(database, 0, false, "submitted", nil, limit, offset)
+}
+
+func ListCurriculumProposalsByAuthor(database *sql.DB, authorID int64, limit, offset int) ([]models.CurriculumProposal, int, error) {
+	return listCurriculumProposals(database, 0, true, "", &authorID, limit, offset)
+}
+
+func ListRejectedCurriculumProposalsByAuthor(database *sql.DB, authorID int64, limit, offset int) ([]models.CurriculumProposal, int, error) {
+	return listCurriculumProposals(database, authorID, false, "rejected", &authorID, limit, offset)
+}
+
+func listCurriculumProposals(
+	database *sql.DB, userID int64, isAdmin bool, status string, authorID *int64, limit, offset int,
+) ([]models.CurriculumProposal, int, error) {
 	statusFilter := any(nil)
 	if status != "" {
 		statusFilter = status
+	}
+	authorFilter := any(nil)
+	if authorID != nil {
+		authorFilter = *authorID
 	}
 	var total int
 	if err := database.QueryRow(`
@@ -478,7 +500,11 @@ func ListCurriculumProposalsForUser(
 				WHERE proposal_id = proposal.id AND user_id = $1
 			)
 		  )
-	`, userID, statusFilter, isAdmin).Scan(&total); err != nil {
+		  AND ($4::BIGINT IS NULL OR EXISTS (
+			SELECT 1 FROM curriculum_proposal_authors
+			WHERE proposal_id = proposal.id AND user_id = $4
+		  ))
+	`, userID, statusFilter, isAdmin, authorFilter).Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("count visible curriculum proposals: %w", err)
 	}
 	rows, err := database.Query(`
@@ -504,10 +530,14 @@ func ListCurriculumProposalsForUser(
 				WHERE proposal_id = proposal.id AND user_id = $1
 			)
 		  )
+		  AND ($4::BIGINT IS NULL OR EXISTS (
+			SELECT 1 FROM curriculum_proposal_authors
+			WHERE proposal_id = proposal.id AND user_id = $4
+		  ))
 		GROUP BY proposal.id, authors.ids, authors.names
 		ORDER BY proposal.created_at DESC, proposal.id DESC
-		LIMIT $4 OFFSET $5
-	`, userID, statusFilter, isAdmin, limit, offset)
+		LIMIT $5 OFFSET $6
+	`, userID, statusFilter, isAdmin, authorFilter, limit, offset)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list visible curriculum proposals: %w", err)
 	}

@@ -11,7 +11,12 @@ import (
 	"universal-curriculum/internal/services"
 )
 
-const curriculumProposalHistoryPageSize = 10
+const (
+	curriculumProposalHistoryPageSize = 10
+	curriculumProposalListPageSize    = 25
+)
+
+var errInvalidProposalListLimit = errors.New("invalid proposal list limit")
 
 func (server *Server) curriculumModification(writer http.ResponseWriter, request *http.Request) {
 	server.renderCurriculumModification(writer, request, http.StatusOK, "")
@@ -181,21 +186,27 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 			ChangeSummary: curriculumProposalChangeSummary(draftProposals[index].ChangeKindCounts),
 		})
 	}
-	visibleProposals, _, err := db.ListCurriculumProposalsForUser(server.Database, userID, user.IsAdmin, "", 100, 0)
+	activeLimit, err := growingProposalLimit(request, "active-limit")
 	if err != nil {
-		log.Printf("load reviewed proposals: %v", err)
-		http.Error(writer, "Unable to load proposals", http.StatusInternalServerError)
+		http.Error(writer, "Invalid active proposal limit", http.StatusBadRequest)
 		return
 	}
-	var reviewedProposals []models.CurriculumProposal
-	var activeProposals []models.CurriculumProposal
-	for _, proposal := range visibleProposals {
-		if proposal.Status == "submitted" {
-			activeProposals = append(activeProposals, proposal)
-		}
-		if proposal.HasAuthor(userID) && proposal.Status == "rejected" {
-			reviewedProposals = append(reviewedProposals, proposal)
-		}
+	activeProposals, activeTotal, err := db.ListSubmittedCurriculumProposals(server.Database, activeLimit, 0)
+	if err != nil {
+		log.Printf("load active proposals: %v", err)
+		http.Error(writer, "Unable to load active proposals", http.StatusInternalServerError)
+		return
+	}
+	reviewedLimit, err := growingProposalLimit(request, "reviewed-limit")
+	if err != nil {
+		http.Error(writer, "Invalid reviewed proposal limit", http.StatusBadRequest)
+		return
+	}
+	reviewedProposals, reviewedTotal, err := db.ListRejectedCurriculumProposalsByAuthor(server.Database, userID, reviewedLimit, 0)
+	if err != nil {
+		log.Printf("load reviewed proposals: %v", err)
+		http.Error(writer, "Unable to load reviewed proposals", http.StatusInternalServerError)
+		return
 	}
 	historyLimit := curriculumProposalHistoryPageSize
 	if value := request.URL.Query().Get("history-limit"); value != "" {
@@ -229,7 +240,15 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 		DraftProposals:          draftViews,
 		ReviewedProposals:       reviewedProposals,
 		ActiveProposals:         activeProposals,
+		ActiveProposalTotal:     activeTotal,
+		ActiveProposalMore:      len(activeProposals) < activeTotal,
+		ActiveProposalLimit:     activeLimit,
+		ActiveProposalNext:      activeLimit + curriculumProposalListPageSize,
 		ActiveProposal:          activeProposal,
+		ReviewedProposalTotal:   reviewedTotal,
+		ReviewedProposalMore:    len(reviewedProposals) < reviewedTotal,
+		ReviewedProposalLimit:   reviewedLimit,
+		ReviewedProposalNext:    reviewedLimit + curriculumProposalListPageSize,
 		ProposalRebase:          rebasePlan,
 		RebaseTimeline:          curriculumRebaseTimeline(rebasePlan, activeProposal),
 		ReviewedProposal:        reviewedProposal,
@@ -312,4 +331,16 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 		navigateURL,
 	)
 	server.renderStatus(writer, status, "curriculum-modification.html", data)
+}
+
+func growingProposalLimit(request *http.Request, name string) (int, error) {
+	limit := curriculumProposalListPageSize
+	if value := request.URL.Query().Get(name); value != "" {
+		parsed, err := strconv.Atoi(value)
+		if err != nil || parsed < curriculumProposalListPageSize {
+			return 0, errInvalidProposalListLimit
+		}
+		limit = parsed
+	}
+	return limit, nil
 }

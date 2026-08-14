@@ -84,12 +84,13 @@ func TestUserAdministrationRendersNestedListAndDetailPanels(t *testing.T) {
 		"ShowUsers": true, "Users": []models.User{*selected}, "SelectedUser": selected,
 		"ActiveInvitations": []models.ContributorInvitation{{ID: 3, Email: "invited@example.com"}},
 		"UserProposals":     []models.CurriculumProposal{{ID: 9, Title: "Proposal", Rationale: "Reason", Status: "rejected"}},
+		"UserProposalTotal": 2, "UserProposalMore": true, "UserProposalNext": 50,
 	})
 	for _, fragment := range []string{
 		`id="user-administration-title"`, `id="contributor-invitations-title"`, "invited@example.com", "New invitation",
 		`href="/admin/users/7"`, ">Contributor<",
 		`id="new-contributor-invitation-panel"`, `hidden aria-labelledby="invite-contributor-title"`,
-		`id="user-detail-title"`, "person@example.com", "Proposals", `href="/curriculum-modification?proposal=9"`,
+		`id="user-detail-title"`, "person@example.com", "Proposals", `href="/curriculum-modification?proposal=9"`, `proposal-limit=50`,
 	} {
 		if !strings.Contains(output, fragment) {
 			t.Errorf("user administration does not contain %q", fragment)
@@ -393,14 +394,15 @@ func TestCurriculumProposalRendersRecognitionWorkflowAndPublishWarning(t *testin
 func TestAdministratorCanOpenAndDecideSubmittedProposal(t *testing.T) {
 	output := renderTemplate(t, loadTestTemplates(t), "curriculum-modification.html", map[string]any{
 		"User": &models.User{FullName: "Admin", IsAdmin: true}, "CSRFToken": "csrf",
-		"ActiveProposals": []models.CurriculumProposal{{ID: 21, Title: "Review me", Rationale: "Useful change", Status: "submitted", AuthorName: "Contributor", ChangeCount: 2}},
-		"ActiveProposal":  &models.CurriculumProposal{ID: 21, Title: "Review me", Rationale: "Useful change", Status: "submitted", AuthorName: "Contributor"},
-		"ContentUnit":     map[string]any{"ID": 7, "Name": "Energy", "Content": "Energy can be stored."},
+		"ActiveProposals":     []models.CurriculumProposal{{ID: 21, Title: "Review me", Rationale: "Useful change", Status: "submitted", AuthorName: "Contributor", ChangeCount: 2}},
+		"ActiveProposalTotal": 26, "ActiveProposalLimit": 25, "ActiveProposalMore": true, "ActiveProposalNext": 50,
+		"ActiveProposal": &models.CurriculumProposal{ID: 21, Title: "Review me", Rationale: "Useful change", Status: "submitted", AuthorName: "Contributor"},
+		"ContentUnit":    map[string]any{"ID": 7, "Name": "Energy", "Content": "Energy can be stored."},
 	})
 	for _, fragment := range []string{
-		`id="active-proposal-queue-title"`, `href="/curriculum-modification?proposal=21"`, "Contributor · 2 changes",
+		`id="active-proposal-queue-title"`, `href="/curriculum-modification?proposal=21&amp;active-limit=25"`, "Contributor · 2 changes",
 		`action="/admin/proposals/21/accept"`, `action="/admin/proposals/21/reject"`,
-		`name="return_to" value="/curriculum-modification?proposal=21"`,
+		`name="return_to" value="/curriculum-modification?proposal=21"`, `active-limit=50`,
 	} {
 		if !strings.Contains(output, fragment) {
 			t.Errorf("submitted proposal review does not contain %q", fragment)
@@ -424,8 +426,9 @@ func TestAdministratorCanOpenAndDecideSubmittedProposal(t *testing.T) {
 func TestContributorCanReadActiveProposalWithoutDecisionActions(t *testing.T) {
 	output := renderTemplate(t, loadTestTemplates(t), "curriculum-modification.html", map[string]any{
 		"User": &models.User{FullName: "Contributor", IsContributor: true}, "CSRFToken": "csrf",
-		"ActiveProposals": []models.CurriculumProposal{{ID: 22, Title: "Shared proposal", Rationale: "Open for review", Status: "submitted", AuthorName: "Another contributor"}},
-		"ActiveProposal":  &models.CurriculumProposal{ID: 22, Title: "Shared proposal", Rationale: "Open for review", Status: "submitted", AuthorName: "Another contributor"},
+		"ActiveProposals":     []models.CurriculumProposal{{ID: 22, Title: "Shared proposal", Rationale: "Open for review", Status: "submitted", AuthorName: "Another contributor"}},
+		"ActiveProposalTotal": 1, "ActiveProposalLimit": 25,
+		"ActiveProposal": &models.CurriculumProposal{ID: 22, Title: "Shared proposal", Rationale: "Open for review", Status: "submitted", AuthorName: "Another contributor"},
 	})
 	if !strings.Contains(output, "Active proposals") || !strings.Contains(output, "Shared proposal") {
 		t.Fatal("contributor cannot see active proposal")
