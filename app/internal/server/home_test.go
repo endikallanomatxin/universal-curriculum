@@ -43,7 +43,7 @@ func TestAboutPageIsPublicAndUsesShellNavigation(t *testing.T) {
 		`href="/about/documentation"`,
 		`href="/about/releases"`,
 		`href="/about/roadmap"`,
-		`Current version · v0.2.8`,
+		`Current version · v0.3.0`,
 		`href="/license"`,
 		`href="/about" aria-current="page"`,
 		`hx-get="/about"`,
@@ -119,15 +119,15 @@ func TestReleaseAndRoadmapPagesUseSharedContentPanels(t *testing.T) {
 		fragments []string
 	}{
 		{path: "/about/releases", fragments: []string{
-			`<h1 id="about-content-index-title">Releases</h1>`, `id="release-0-2-7"`,
-			`<time datetime="2026-08-09">9 August 2026</time>`,
-			`Refine proposal history navigation and make project evolution visible.`,
-			`id="release-0-2-6"`, `Added a read-only graph to accepted proposal details`,
+			`<h1 id="about-content-index-title">Releases</h1>`, `id="release-0-3-0"`,
+			`<time datetime="2026-08-14">14 August 2026</time>`,
+			`Open curriculum development to selected contributors`,
+			`id="release-0-2-8"`, `Strengthen curriculum workflows`,
 		}},
 		{path: "/about/roadmap", fragments: []string{
-			`<h1 id="about-content-index-title">Roadmap</h1>`, `id="release-0-3-0"`,
-			`Add asset support to the platform.`,
-			`id="release-0-4-0"`, `Open curriculum development to selected contributors`,
+			`<h1 id="about-content-index-title">Roadmap</h1>`, `id="release-0-4-0"`,
+			`Extend the invitation system`,
+			`id="release-0-5-0"`, `Add asset support to the platform.`,
 		}},
 	} {
 		response := httptest.NewRecorder()
