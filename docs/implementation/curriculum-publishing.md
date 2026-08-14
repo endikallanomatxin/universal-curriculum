@@ -32,8 +32,9 @@ without mutating the published projection. A hypothetical unit receives its
 stable ID as soon as its creation change is stored, so subsequent changes in the
 draft can refer to it normally.
 
-Publication accepts every change in the proposal atomically. It succeeds only
-when the proposal's base is still the current accepted proposal. The projection
+Submission freezes every change in the proposal for administrator review.
+Acceptance applies every change atomically. It succeeds only when the
+proposal's base is still the current accepted proposal. The projection
 is rebuilt by following that proposal lineage inside the same transaction.
 Recognition changes also materialize the progress they grant from the evidence
 that predates the proposal before the transaction commits.
@@ -87,21 +88,24 @@ become no-ops. The normalized proposal is validated as a whole
 before its base moves. Until then ordinary curriculum edits and publication are
 blocked, while proposal metadata and draft deletion remain available.
 
-The proposal workspace combines metadata, changes, publication and rebase
+The proposal workspace combines metadata, changes, submission and rebase
 resolution. Accepted proposals form a single publication line in the history
 view, with current drafts rendered as branches from their recorded bases.
 Proposal title and rationale are document-like inline fields which autosave
 after a short input delay; their list and breadcrumb mirrors update immediately
 without replacing the workspace or moving focus. Status, author and change
-count precede the rationale as a compact vertical definition list. Publication
-and deletion are terminal actions and therefore remain at the end of the full
-proposal workspace rather than alongside frequently edited metadata.
+count precede the rationale as a compact vertical definition list. Submission
+and deletion are terminal draft actions and therefore remain at the end of the
+full proposal workspace rather than alongside frequently edited metadata.
 
-## Accepted history
+## Reviewed history
 
-Accepted proposals and their changes are permanently immutable. Mistakes in the
-published curriculum are corrected through a subsequent proposal based on the
-current accepted state, preserving the complete publication history.
+Submitted, accepted and rejected proposals and their changes are permanently
+immutable. Rejection records an administrator's reason without changing the
+curriculum. Rejected proposals remain readable by their authors and
+administrators as historical reference. Mistakes in the published curriculum
+are corrected through a subsequent proposal based on the current accepted
+state, preserving the complete publication history.
 
 A deleted unit is not restored by a new change type. Creating similar curriculum
 later creates a new unit identity; replacement and equivalence relationships

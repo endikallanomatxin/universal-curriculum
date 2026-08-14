@@ -187,6 +187,11 @@ Email addresses identify local accounts case-insensitively and cannot be shared
 by multiple accounts. Public registration creates a regular member account and
 never grants administrative access.
 
+Administrators may invite selected members to become contributors. An
+invitation is addressed to one email address, expires and can be used only
+once. Accepting it grants contributor access to the matching existing account
+or to the account created while accepting the invitation.
+
 ## 6. Exercises and feedback
 
 Exercises help students verify understanding. They are not certification exams
@@ -221,8 +226,8 @@ safe and useful.
 
 ## 7. Collaborative curriculum development
 
-Anyone can inspect the process. Creating proposals, commenting and voting
-require an authenticated account.
+Anyone can inspect the public process. Creating proposals requires contributor
+access; commenting and voting require an authenticated account.
 
 ### 7.1 Proposals
 
@@ -237,6 +242,11 @@ A proposal is a coherent collection of changes. It may change:
 
 A proposal contains its authors, rationale, the accepted proposal on which it
 is based and a readable diff of both content and graph changes.
+
+A draft is private to its authors and administrators. Submitting a proposal
+makes it available for review and ends draft editing. A rejected proposal is
+retained with its decision and remains readable by its authors and
+administrators, so it can be consulted when preparing later work.
 
 A recognition marks every target as recognized for each learner who had
 completed all of its sources before the proposal was accepted. It is a
@@ -331,16 +341,21 @@ decisions, but it must remain proportionate and protect participants' privacy.
 
 ### 7.7 Publication and acceptance
 
-Publishing submits a proposal for consideration. Acceptance confirms that its
+Submitting a proposal requests consideration. Acceptance confirms that its
 changes have been incorporated into the shared curriculum. They are distinct
-domain events even when one operation performs both. The current workflow
-accepts a proposal automatically when it is published, but later workflows may
-leave published proposals pending a separate decision.
+domain events. Contributors submit proposals; an administrator manually accepts
+or rejects them. A rejection records its reason and does not delete the
+proposal or change the curriculum.
 
 An accepted proposal is validated against the current graph and applied
 atomically. Its units, dependencies, recognitions, resources,
 translations and decision record are either published together or not
 published at all.
+
+Because the curriculum may change while a proposal awaits review, acceptance
+validates it against the then-current curriculum. A proposal that requires
+author input to resolve conflicts cannot be accepted until that work is
+represented by a new draft proposal.
 
 ## 8. Languages
 
