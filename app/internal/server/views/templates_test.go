@@ -423,6 +423,20 @@ func TestAdministratorCanOpenAndDecideSubmittedProposal(t *testing.T) {
 	}
 }
 
+func TestCurriculumModificationHidesEmptyProposalLists(t *testing.T) {
+	output := renderTemplate(t, loadTestTemplates(t), "curriculum-modification.html", map[string]any{
+		"User": &models.User{FullName: "Contributor", IsContributor: true},
+	})
+	if strings.Contains(output, "Active proposals") || strings.Contains(output, "Your drafts") {
+		t.Fatal("empty proposal list headings are visible")
+	}
+	for _, fragment := range []string{"New proposal", "Show history"} {
+		if !strings.Contains(output, fragment) {
+			t.Errorf("empty proposal workspace does not contain %q", fragment)
+		}
+	}
+}
+
 func TestContributorCanReadActiveProposalWithoutDecisionActions(t *testing.T) {
 	output := renderTemplate(t, loadTestTemplates(t), "curriculum-modification.html", map[string]any{
 		"User": &models.User{FullName: "Contributor", IsContributor: true}, "CSRFToken": "csrf",
