@@ -101,7 +101,7 @@ type submitProposalInput struct {
 }
 
 func (application *adapter) addProposalTools(server *mcp.Server) {
-	addTool(server, "list_proposals", "List curriculum proposals", "Lists proposals visible to the administrator; another user's drafts remain private.", readOnly("List curriculum proposals"), application.listProposals)
+	addTool(server, "list_proposals", "List curriculum proposals", "Lists proposals visible to the contributor; another user's drafts and rejected proposals remain private unless the contributor is an administrator.", readOnly("List curriculum proposals"), application.listProposals)
 	addTool(server, "get_proposal", "Get curriculum proposal", "Returns proposal metadata and ordered changes. A draft is visible only to its author.", readOnly("Get curriculum proposal"), application.getProposal)
 	addTool(server, "create_proposal", "Create curriculum proposal", "Creates an empty draft through which curriculum changes can be prepared. Not safe to retry after an ambiguous transport failure.", mutation("Create curriculum proposal", false, false), application.createProposal)
 	addTool(server, "update_proposal", "Update proposal metadata", "Replaces the title and rationale of an authored draft.", mutation("Update proposal metadata", true, false), application.updateProposal)

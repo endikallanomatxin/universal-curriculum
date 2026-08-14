@@ -101,11 +101,10 @@ full proposal workspace rather than alongside frequently edited metadata.
 ## Accepted and rejected proposals
 
 Submitted, accepted and rejected proposals and their changes are permanently
-immutable. Rejection records an administrator's reason without changing the
-curriculum. Rejected proposals remain readable by their authors and
-administrators as historical reference. Mistakes in the published curriculum
-are corrected through a subsequent proposal based on the current accepted
-state, preserving the complete publication history.
+immutable. Rejection does not change the curriculum. Rejected proposals remain
+readable by their authors and administrators as historical reference. Mistakes
+in the published curriculum are corrected through a subsequent proposal based
+on the current accepted state, preserving the complete publication history.
 
 A deleted unit is not restored by a new change type. Creating similar curriculum
 later creates a new unit identity; replacement and equivalence relationships
