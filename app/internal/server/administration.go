@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"universal-curriculum/internal/db"
 	"universal-curriculum/internal/models"
@@ -14,12 +15,12 @@ import (
 
 type administrationPageData struct {
 	userPageData
-	ShowUsers     bool
-	Users         []models.User
-	Invitations   []models.ContributorInvitation
-	SelectedUser  *models.User
-	UserProposals []models.CurriculumProposal
-	Error         string
+	ShowUsers         bool
+	Users             []models.User
+	ActiveInvitations []models.ContributorInvitation
+	SelectedUser      *models.User
+	UserProposals     []models.CurriculumProposal
+	Error             string
 }
 
 func (server *Server) administration(writer http.ResponseWriter, request *http.Request) {
@@ -51,9 +52,15 @@ func (server *Server) loadAdministrationPage(request *http.Request) (administrat
 		return administrationPageData{}, err
 	}
 	data.Users = users
-	data.Invitations, err = db.ListContributorInvitations(server.Database)
+	invitations, err := db.ListContributorInvitations(server.Database)
 	if err != nil {
 		return administrationPageData{}, err
+	}
+	now := time.Now()
+	for _, invitation := range invitations {
+		if invitation.AcceptedAt == nil && invitation.RevokedAt == nil && invitation.ExpiresAt.After(now) {
+			data.ActiveInvitations = append(data.ActiveInvitations, invitation)
+		}
 	}
 	if value := request.PathValue("id"); value != "" {
 		selectedID, parseErr := strconv.ParseInt(value, 10, 64)

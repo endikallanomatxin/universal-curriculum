@@ -5,7 +5,13 @@
       <div><h1 id="user-administration-title">User administration</h1><a class="pane-breadcrumb__title" href="/admin/users" hx-get="/admin/users" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML" hx-push-url="true">User administration</a></div>
       <a class="icon-button ui-pane__close" href="/admin" hx-get="/admin" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML" hx-push-url="true" data-panel-navigation="close" aria-label="Close user administration"><span class="material-symbols-rounded" aria-hidden="true">close</span></a>
     </header>
-    <div class="section-heading administration-users__heading"><div><p class="label">Accounts</p><h2>All users</h2></div><span>{{ len .Users }}</span></div>
+    <section class="administration-invitations" aria-labelledby="contributor-invitations-title">
+      <div class="section-heading administration-invitations__heading"><h2 id="contributor-invitations-title">Contributor invitations</h2><span>{{ len .ActiveInvitations }}</span></div>
+      {{ if .ActiveInvitations }}<ul>{{ range .ActiveInvitations }}<li class="administration-invitation-card"><span class="administration-invitation-card__icon material-symbols-rounded" aria-hidden="true">outgoing_mail</span><span class="administration-invitation-card__identity"><strong>{{ .Email }}</strong><small>Expires {{ .ExpiresAt.Format "2006-01-02" }}</small></span><form action="/admin/invitations/{{ .ID }}/revoke" method="post"><input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}"><button class="secondary-button secondary-button--compact" type="submit">Revoke</button></form></li>{{ end }}</ul>{{ else }}<p class="empty-message">No active contributor invitations.</p>{{ end }}
+      <div class="pane-list-actions"><button class="pane-list-action" type="button" data-open-panel="new-contributor-invitation-panel" aria-controls="new-contributor-invitation-panel" aria-expanded="false"><span class="material-symbols-rounded" aria-hidden="true">person_add</span>New invitation</button></div>
+    </section>
+    <section class="administration-users" aria-labelledby="all-users-title">
+    <div class="section-heading administration-users__heading"><h2 id="all-users-title">All users</h2><span>{{ len .Users }}</span></div>
     {{ if .Users }}
       <div class="administration-user-list">
         {{ range .Users }}{{ $listedUser := . }}
@@ -18,12 +24,7 @@
         {{ end }}
       </div>
     {{ else }}<p class="empty-message">No users have registered.</p>{{ end }}
-    <div class="pane-list-actions">
-      <button class="pane-list-action" type="button" data-open-panel="new-contributor-invitation-panel" aria-controls="new-contributor-invitation-panel" aria-expanded="false"><span class="material-symbols-rounded" aria-hidden="true">person_add</span>Invite contributor</button>
-    </div>
-    {{ if .Invitations }}
-      <details class="administration-invitations"><summary>Invitation history · {{ len .Invitations }}</summary><ul>{{ range .Invitations }}<li><span><strong>{{ .Email }}</strong><small>{{ if .AcceptedAt }}Accepted{{ else if .RevokedAt }}Revoked{{ else }}Expires {{ .ExpiresAt.Format "2006-01-02" }}{{ end }}</small></span>{{ if and (not .AcceptedAt) (not .RevokedAt) }}<form action="/admin/invitations/{{ .ID }}/revoke" method="post"><input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}"><button class="secondary-button secondary-button--compact" type="submit">Revoke</button></form>{{ end }}</li>{{ end }}</ul></details>
-    {{ end }}
+    </section>
   </div>
 </section>
 {{- end }}

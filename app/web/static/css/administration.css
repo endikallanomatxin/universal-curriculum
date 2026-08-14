@@ -88,39 +88,65 @@
 }
 
 .administration-invitations {
-  border-top: 1px solid var(--color-panel-end);
-  margin-top: var(--space-5);
-  padding-top: var(--space-4);
+  margin-top: var(--space-4);
 }
 
-.administration-invitations summary {
-  color: var(--color-muted);
-  cursor: pointer;
-  font-size: 0.78rem;
-  font-weight: 700;
+.administration-invitations__heading {
+  margin-bottom: var(--space-3);
 }
 
 .administration-invitations ul {
   display: grid;
   gap: var(--space-2);
   list-style: none;
-  margin: var(--space-3) 0 0;
+  margin: 0;
   padding: 0;
 }
 
-.administration-invitations li {
+.administration-invitation-card {
   align-items: center;
-  display: flex;
-  gap: var(--space-2);
-  justify-content: space-between;
+  background: color-mix(in srgb, var(--color-ink) 2%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-ink) 7%, transparent);
+  border-radius: var(--radius-surface);
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: 2.4rem minmax(0, 1fr) auto;
+  padding: var(--space-3);
 }
 
-.administration-invitations li span,
-.administration-invitations li small {
+.administration-invitation-card__icon {
+  align-items: center;
+  background: color-mix(in srgb, var(--color-dependency) 12%, var(--color-surface));
+  border-radius: 50%;
+  color: var(--color-ink-strong);
+  display: flex;
+  font-size: 1.2rem;
+  height: 2.4rem;
+  justify-content: center;
+  width: 2.4rem;
+}
+
+.administration-invitation-card__identity,
+.administration-invitation-card__identity small {
   display: block;
 }
 
-.administration-invitations li small {
+.administration-invitation-card__identity {
+  min-width: 0;
+}
+
+.administration-invitation-card__identity strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.administration-users {
+  border-top: 1px solid var(--color-panel-end);
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+}
+
+.administration-invitation-card__identity small {
   color: var(--color-muted);
   font-size: 0.7rem;
   margin-top: 0.15rem;

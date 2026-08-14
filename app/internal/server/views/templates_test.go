@@ -82,10 +82,12 @@ func TestUserAdministrationRendersNestedListAndDetailPanels(t *testing.T) {
 	output := renderTemplate(t, loadTestTemplates(t), "administration.html", map[string]any{
 		"User": &models.User{FullName: "Admin", IsAdmin: true}, "CSRFToken": "csrf",
 		"ShowUsers": true, "Users": []models.User{*selected}, "SelectedUser": selected,
-		"UserProposals": []models.CurriculumProposal{{ID: 9, Title: "Proposal", Rationale: "Reason", Status: "rejected"}},
+		"ActiveInvitations": []models.ContributorInvitation{{ID: 3, Email: "invited@example.com"}},
+		"UserProposals":     []models.CurriculumProposal{{ID: 9, Title: "Proposal", Rationale: "Reason", Status: "rejected"}},
 	})
 	for _, fragment := range []string{
-		`id="user-administration-title"`, `href="/admin/users/7"`, ">Contributor<",
+		`id="user-administration-title"`, `id="contributor-invitations-title"`, "invited@example.com", "New invitation",
+		`href="/admin/users/7"`, ">Contributor<",
 		`id="new-contributor-invitation-panel"`, `hidden aria-labelledby="invite-contributor-title"`,
 		`id="user-detail-title"`, "person@example.com", "Proposals", `href="/curriculum-modification?proposal=9"`,
 	} {
