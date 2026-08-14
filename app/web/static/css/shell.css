@@ -521,6 +521,7 @@
 .primary-menu__about-item,
 .primary-menu__curriculum-modification-item,
 .primary-menu__account-item,
+.primary-menu__administration-item,
 .primary-menu__login-item,
 .primary-menu__logout-item {
   align-self: center;
@@ -533,9 +534,14 @@
 
 .primary-menu__curriculum-modification-item,
 .primary-menu__about-item,
+.primary-menu__administration-item,
 .primary-menu__account-item,
 .primary-menu__login-item {
   margin-top: var(--space-4);
+}
+
+.primary-menu__account-item--with-administration {
+  margin-top: 0;
 }
 
 .primary-menu__curriculum-modification-item .primary-menu__link {
