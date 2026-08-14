@@ -46,7 +46,7 @@ func TestMCPAgentWorkflowWithPostgreSQL(t *testing.T) {
 	if err := services.SubmitCurriculumProposal(database, admin.ID, baseProposal.ID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := services.AcceptCurriculumProposal(database, admin.ID, baseProposal.ID); err != nil {
+	if _, err := services.AcceptCurriculumProposal(database, baseProposal.ID); err != nil {
 		t.Fatal(err)
 	}
 

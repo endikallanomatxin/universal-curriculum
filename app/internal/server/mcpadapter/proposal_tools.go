@@ -337,7 +337,7 @@ func (application *adapter) acceptProposal(_ context.Context, request *mcp.CallT
 	if user == nil {
 		return result, output, authErr
 	}
-	if _, err := services.AcceptCurriculumProposal(application.database, user.ID, input.ProposalID); err != nil {
+	if _, err := services.AcceptCurriculumProposal(application.database, input.ProposalID); err != nil {
 		return curriculumFailure[proposal]("accept proposal", err)
 	}
 	return application.reloadProposal(input.ProposalID)
@@ -348,7 +348,7 @@ func (application *adapter) rejectProposal(_ context.Context, request *mcp.CallT
 	if user == nil {
 		return result, output, authErr
 	}
-	if err := services.RejectCurriculumProposal(application.database, user.ID, input.ProposalID); err != nil {
+	if err := services.RejectCurriculumProposal(application.database, input.ProposalID); err != nil {
 		return curriculumFailure[proposal]("reject proposal", err)
 	}
 	return application.reloadProposal(input.ProposalID)

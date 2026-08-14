@@ -8,17 +8,23 @@ ALTER TABLE curriculum_proposals
     CHECK (status IN ('draft', 'submitted', 'accepted', 'rejected'));
 ALTER TABLE curriculum_proposals
     ADD COLUMN submitted_at TIMESTAMPTZ,
-    ADD COLUMN decided_at TIMESTAMPTZ,
-    ADD COLUMN decided_by BIGINT REFERENCES users(id) ON DELETE RESTRICT;
+    ADD COLUMN decided_at TIMESTAMPTZ;
 ALTER TABLE curriculum_proposals DROP CONSTRAINT curriculum_proposals_check1;
+ALTER TABLE curriculum_proposals DISABLE TRIGGER curriculum_proposals_accepted_immutable;
+UPDATE curriculum_proposals
+SET submitted_at = COALESCE(accepted_at, created_at),
+    decided_at = COALESCE(accepted_at, created_at)
+WHERE status IN ('accepted', 'rejected');
+SET CONSTRAINTS ALL IMMEDIATE;
+ALTER TABLE curriculum_proposals ENABLE TRIGGER curriculum_proposals_accepted_immutable;
 ALTER TABLE curriculum_proposals ADD CHECK (
-    (status = 'draft' AND submitted_at IS NULL AND decided_at IS NULL AND decided_by IS NULL AND accepted_at IS NULL)
+    (status = 'draft' AND submitted_at IS NULL AND decided_at IS NULL AND accepted_at IS NULL)
     OR
-    (status = 'submitted' AND submitted_at IS NOT NULL AND decided_at IS NULL AND decided_by IS NULL AND accepted_at IS NULL)
+    (status = 'submitted' AND submitted_at IS NOT NULL AND decided_at IS NULL AND accepted_at IS NULL)
     OR
-    (status = 'accepted' AND submitted_at IS NOT NULL AND decided_at IS NOT NULL AND decided_by IS NOT NULL AND accepted_at = decided_at)
+    (status = 'accepted' AND submitted_at IS NOT NULL AND decided_at IS NOT NULL AND accepted_at = decided_at)
     OR
-    (status = 'rejected' AND submitted_at IS NOT NULL AND decided_at IS NOT NULL AND decided_by IS NOT NULL AND accepted_at IS NULL)
+    (status = 'rejected' AND submitted_at IS NOT NULL AND decided_at IS NOT NULL AND accepted_at IS NULL)
 );
 
 CREATE TABLE contributor_invitations (
@@ -50,7 +56,6 @@ CREATE INDEX contributor_invitations_expires_at_idx
 DROP TABLE contributor_invitations;
 ALTER TABLE curriculum_proposals DROP CONSTRAINT curriculum_proposals_check1;
 ALTER TABLE curriculum_proposals
-    DROP COLUMN decided_by,
     DROP COLUMN decided_at,
     DROP COLUMN submitted_at;
 ALTER TABLE curriculum_proposals DROP CONSTRAINT curriculum_proposals_status_check;

@@ -133,8 +133,7 @@ func (server *Server) acceptCurriculumProposal(writer http.ResponseWriter, reque
 		http.Error(writer, "Invalid proposal", http.StatusBadRequest)
 		return
 	}
-	administratorID, _ := services.SessionUserID(request)
-	if _, err := services.AcceptCurriculumProposal(server.Database, administratorID, id); err != nil {
+	if _, err := services.AcceptCurriculumProposal(server.Database, id); err != nil {
 		server.renderCurriculumMutationError(writer, request, err)
 		return
 	}
@@ -150,8 +149,7 @@ func (server *Server) rejectCurriculumProposal(writer http.ResponseWriter, reque
 		http.Error(writer, "Invalid proposal", http.StatusBadRequest)
 		return
 	}
-	administratorID, _ := services.SessionUserID(request)
-	if err := services.RejectCurriculumProposal(server.Database, administratorID, id); err != nil {
+	if err := services.RejectCurriculumProposal(server.Database, id); err != nil {
 		server.renderCurriculumMutationError(writer, request, err)
 		return
 	}

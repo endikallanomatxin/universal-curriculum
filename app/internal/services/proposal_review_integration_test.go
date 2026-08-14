@@ -39,7 +39,7 @@ func TestRejectedProposalIsPreservedAndReadableByItsAuthor(t *testing.T) {
 	if visible, err := GetVisibleCurriculumProposal(database, other.ID, false, proposal.ID); err != nil || visible.Status != "submitted" {
 		t.Fatalf("active proposal visibility = %#v, %v", visible, err)
 	}
-	if err := RejectCurriculumProposal(database, administrator.ID, proposal.ID); err != nil {
+	if err := RejectCurriculumProposal(database, proposal.ID); err != nil {
 		t.Fatal(err)
 	}
 
@@ -58,7 +58,6 @@ func TestRejectedProposalIsPreservedAndReadableByItsAuthor(t *testing.T) {
 func TestSubmittedProposalRequiresAdministratorDecision(t *testing.T) {
 	database := openPostgresIntegrationDatabase(t, "proposal_acceptance")
 	author, _ := db.CreateLocalUser(database, "Contributor", "contributor@example.com", []byte("hash"))
-	administrator, _ := db.CreateLocalUser(database, "Administrator", "admin@example.com", []byte("hash"))
 	proposal, err := CreateCurriculumProposal(database, author.ID, "Accepted work", "Add a useful unit.")
 	if err != nil {
 		t.Fatal(err)
@@ -73,7 +72,7 @@ func TestSubmittedProposalRequiresAdministratorDecision(t *testing.T) {
 	if before != nil {
 		t.Fatalf("curriculum changed on submission: %d", *before)
 	}
-	if _, err := AcceptCurriculumProposal(database, administrator.ID, proposal.ID); err != nil {
+	if _, err := AcceptCurriculumProposal(database, proposal.ID); err != nil {
 		t.Fatal(err)
 	}
 	after, _ := db.GetCurrentCurriculumProposalID(database)

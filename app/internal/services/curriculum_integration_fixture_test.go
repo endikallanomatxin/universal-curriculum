@@ -9,7 +9,7 @@ func submitAndAcceptCurriculumProposal(database *sql.DB, authorID, proposalID in
 	if err := SubmitCurriculumProposal(database, authorID, proposalID); err != nil {
 		return CurriculumProposalRebaseSummary{}, err
 	}
-	return AcceptCurriculumProposal(database, authorID, proposalID)
+	return AcceptCurriculumProposal(database, proposalID)
 }
 
 func publishIntegrationUnit(t *testing.T, database *sql.DB) (int64, int64) {

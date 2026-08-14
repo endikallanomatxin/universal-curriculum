@@ -14,7 +14,6 @@ type CurriculumProposal struct {
 	AcceptedAt       *time.Time
 	SubmittedAt      *time.Time
 	DecidedAt        *time.Time
-	DecidedBy        *int64
 	Changes          []CurriculumProposalChange
 	ChangeCount      int
 	ChangeKindCounts map[string]int

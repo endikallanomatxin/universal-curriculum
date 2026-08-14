@@ -404,7 +404,7 @@ func (server *Server) apiAcceptProposal(writer http.ResponseWriter, request *htt
 	if !ok {
 		return
 	}
-	if _, err := services.AcceptCurriculumProposal(server.Database, apiUser(request).ID, proposalID); err != nil {
+	if _, err := services.AcceptCurriculumProposal(server.Database, proposalID); err != nil {
 		server.writeAPICurriculumError(writer, err)
 		return
 	}
@@ -419,7 +419,7 @@ func (server *Server) apiRejectProposal(writer http.ResponseWriter, request *htt
 	if !ok {
 		return
 	}
-	if err := services.RejectCurriculumProposal(server.Database, apiUser(request).ID, proposalID); err != nil {
+	if err := services.RejectCurriculumProposal(server.Database, proposalID); err != nil {
 		server.writeAPICurriculumError(writer, err)
 		return
 	}

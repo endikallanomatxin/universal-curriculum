@@ -65,12 +65,11 @@ func GetCurriculumProposal(q curriculumExecutor, proposalID int64) (*models.Curr
 	var proposal models.CurriculumProposal
 	var baseProposalID sql.NullInt64
 	var acceptedAt, submittedAt, decidedAt sql.NullTime
-	var decidedBy sql.NullInt64
 	err := q.QueryRow(`
 		SELECT proposal.id, authors.ids, authors.names,
 		       proposal.title, proposal.rationale, proposal.status, proposal.base_proposal_id,
 		       proposal.created_at, proposal.accepted_at, proposal.submitted_at,
-		       proposal.decided_at, proposal.decided_by
+		       proposal.decided_at
 		FROM curriculum_proposals proposal
 		JOIN LATERAL (
 			SELECT array_agg(user_id ORDER BY users.full_name, user_id) AS ids,
@@ -83,7 +82,7 @@ func GetCurriculumProposal(q curriculumExecutor, proposalID int64) (*models.Curr
 	`, proposalID).Scan(
 		&proposal.ID, pq.Array(&proposal.AuthorIDs), &proposal.AuthorName, &proposal.Title,
 		&proposal.Rationale, &proposal.Status, &baseProposalID,
-		&proposal.CreatedAt, &acceptedAt, &submittedAt, &decidedAt, &decidedBy,
+		&proposal.CreatedAt, &acceptedAt, &submittedAt, &decidedAt,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
@@ -102,9 +101,6 @@ func GetCurriculumProposal(q curriculumExecutor, proposalID int64) (*models.Curr
 	}
 	if decidedAt.Valid {
 		proposal.DecidedAt = &decidedAt.Time
-	}
-	if decidedBy.Valid {
-		proposal.DecidedBy = &decidedBy.Int64
 	}
 	changes, err := listCurriculumProposalChanges(q, proposal.ID)
 	if err != nil {
@@ -240,13 +236,13 @@ func SubmitDraftCurriculumProposal(q curriculumExecutor, proposalID, authorID in
 	return count == 1, err
 }
 
-func AcceptSubmittedCurriculumProposal(q curriculumExecutor, proposalID, administratorID int64) (bool, error) {
+func AcceptSubmittedCurriculumProposal(q curriculumExecutor, proposalID int64) (bool, error) {
 	result, err := q.Exec(`
 		UPDATE curriculum_proposals
 		SET status = 'accepted', accepted_at = statement_timestamp(),
-		    decided_at = statement_timestamp(), decided_by = $2
+		    decided_at = statement_timestamp()
 		WHERE id = $1 AND status = 'submitted'
-	`, proposalID, administratorID)
+	`, proposalID)
 	if err != nil {
 		return false, fmt.Errorf("accept submitted curriculum proposal: %w", err)
 	}
@@ -254,12 +250,12 @@ func AcceptSubmittedCurriculumProposal(q curriculumExecutor, proposalID, adminis
 	return count == 1, err
 }
 
-func RejectSubmittedCurriculumProposal(q curriculumExecutor, proposalID, administratorID int64) (bool, error) {
+func RejectSubmittedCurriculumProposal(q curriculumExecutor, proposalID int64) (bool, error) {
 	result, err := q.Exec(`
 		UPDATE curriculum_proposals
-		SET status = 'rejected', decided_at = clock_timestamp(), decided_by = $2
+		SET status = 'rejected', decided_at = clock_timestamp()
 		WHERE id = $1 AND status = 'submitted'
-	`, proposalID, administratorID)
+	`, proposalID)
 	if err != nil {
 		return false, fmt.Errorf("reject submitted curriculum proposal: %w", err)
 	}
@@ -489,7 +485,7 @@ func ListCurriculumProposalsForUser(
 		SELECT proposal.id, authors.ids, authors.names,
 		       proposal.title, proposal.rationale, proposal.status,
 		       proposal.base_proposal_id, proposal.created_at, proposal.accepted_at,
-		       proposal.submitted_at, proposal.decided_at, proposal.decided_by,
+		       proposal.submitted_at, proposal.decided_at,
 		       count(change.id)
 		FROM curriculum_proposals proposal
 		JOIN LATERAL (
@@ -521,12 +517,11 @@ func ListCurriculumProposalsForUser(
 		var proposal models.CurriculumProposal
 		var baseProposalID sql.NullInt64
 		var acceptedAt, submittedAt, decidedAt sql.NullTime
-		var decidedBy sql.NullInt64
 		if err := rows.Scan(
 			&proposal.ID, pq.Array(&proposal.AuthorIDs), &proposal.AuthorName,
 			&proposal.Title, &proposal.Rationale, &proposal.Status,
 			&baseProposalID, &proposal.CreatedAt, &acceptedAt, &submittedAt, &decidedAt,
-			&decidedBy, &proposal.ChangeCount,
+			&proposal.ChangeCount,
 		); err != nil {
 			return nil, 0, fmt.Errorf("scan visible curriculum proposal: %w", err)
 		}
@@ -541,9 +536,6 @@ func ListCurriculumProposalsForUser(
 		}
 		if decidedAt.Valid {
 			proposal.DecidedAt = &decidedAt.Time
-		}
-		if decidedBy.Valid {
-			proposal.DecidedBy = &decidedBy.Int64
 		}
 		proposals = append(proposals, proposal)
 	}

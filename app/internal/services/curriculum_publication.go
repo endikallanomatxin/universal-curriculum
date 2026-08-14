@@ -66,7 +66,7 @@ func SubmitCurriculumProposal(
 	return tx.Commit()
 }
 
-func AcceptCurriculumProposal(database *sql.DB, administratorID, proposalID int64) (CurriculumProposalRebaseSummary, error) {
+func AcceptCurriculumProposal(database *sql.DB, proposalID int64) (CurriculumProposalRebaseSummary, error) {
 	var summary CurriculumProposalRebaseSummary
 	tx, err := beginCurriculumProposal(database)
 	if err != nil {
@@ -94,7 +94,7 @@ func AcceptCurriculumProposal(database *sql.DB, administratorID, proposalID int6
 	if err := validateCurriculumProposal(graph, proposal); err != nil {
 		return summary, err
 	}
-	ok, err := db.AcceptSubmittedCurriculumProposal(tx, proposalID, administratorID)
+	ok, err := db.AcceptSubmittedCurriculumProposal(tx, proposalID)
 	if err != nil {
 		return summary, err
 	}
@@ -116,8 +116,8 @@ func AcceptCurriculumProposal(database *sql.DB, administratorID, proposalID int6
 	return RebaseDraftCurriculumProposals(database), nil
 }
 
-func RejectCurriculumProposal(database *sql.DB, administratorID, proposalID int64) error {
-	ok, err := db.RejectSubmittedCurriculumProposal(database, proposalID, administratorID)
+func RejectCurriculumProposal(database *sql.DB, proposalID int64) error {
+	ok, err := db.RejectSubmittedCurriculumProposal(database, proposalID)
 	if err != nil {
 		return err
 	}
