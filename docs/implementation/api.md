@@ -40,7 +40,7 @@ other implementation details.
 ## Authentication and authorization
 
 Private endpoints accept `Authorization: Bearer <token>`. API tokens represent
-one user and use that user's current permissions; 0.2.7 does not define scopes.
+one user and use that user's current permissions; 0.2.8 does not define scopes.
 The raw token is returned only by its creation request. Persistence stores its
 SHA-256 hash, a short non-secret prefix for identification, and management
 metadata.

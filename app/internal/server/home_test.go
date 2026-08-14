@@ -43,7 +43,7 @@ func TestAboutPageIsPublicAndUsesShellNavigation(t *testing.T) {
 		`href="/about/documentation"`,
 		`href="/about/releases"`,
 		`href="/about/roadmap"`,
-		`Current version · v0.2.7`,
+		`Current version · v0.2.8`,
 		`href="/license"`,
 		`href="/about" aria-current="page"`,
 		`hx-get="/about"`,
