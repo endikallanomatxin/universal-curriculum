@@ -53,6 +53,18 @@ presentation packages belong below `server`.
   in the same change; keep one-off preferences and visual tuning in code and
   tests.
 
+## Release workflow
+
+- Prepare each release on `develop`, including its release document and
+  generated catalogs or contracts.
+- Merge `develop` into `main` with `--no-ff` and the commit message
+  `Release X.Y.Z`, then place the annotated tag `vX.Y.Z` on that merge.
+- Immediately fast-forward `develop` to `main` with `git merge --ff-only main`;
+  do not create a second merge from `main` back into `develop`.
+- After a release, `main` and `develop` must point to the release merge, and new
+  work must continue on `develop` from that shared commit.
+- Push `main`, `develop` and the release tag together after validation.
+
 ## Tests
 
 - Prefer tests that protect relevant behaviour, business rules, regressions,
