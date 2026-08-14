@@ -150,13 +150,8 @@ func (server *Server) rejectCurriculumProposal(writer http.ResponseWriter, reque
 		http.Error(writer, "Invalid proposal", http.StatusBadRequest)
 		return
 	}
-	reason := strings.TrimSpace(request.FormValue("reason"))
 	administratorID, _ := services.SessionUserID(request)
-	if err := services.RejectCurriculumProposal(server.Database, administratorID, id, reason); err != nil {
-		if errors.Is(err, services.ErrProposalRationaleRequired) {
-			http.Error(writer, "A rejection reason is required", http.StatusBadRequest)
-			return
-		}
+	if err := services.RejectCurriculumProposal(server.Database, administratorID, id); err != nil {
 		server.renderCurriculumMutationError(writer, request, err)
 		return
 	}

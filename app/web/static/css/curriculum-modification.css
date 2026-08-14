@@ -360,36 +360,6 @@
   align-items: end;
 }
 
-.proposal-workspace__rejection-form {
-  align-items: end;
-  display: grid;
-  flex: 1 1 24rem;
-  gap: var(--space-2);
-  grid-template-columns: minmax(12rem, 1fr) auto;
-}
-
-.proposal-workspace__rejection-form label {
-  color: var(--color-muted);
-  font-size: 0.72rem;
-  font-weight: 700;
-  grid-column: 1 / -1;
-}
-
-.proposal-workspace__rejection-form input {
-  background: color-mix(in srgb, var(--color-surface) 70%, transparent);
-  width: 100%;
-}
-
-@container proposal-pane (max-width: 34rem) {
-  .proposal-workspace__rejection-form {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .proposal-workspace__rejection-form label {
-    grid-column: auto;
-  }
-}
-
 .proposal-workspace__terminal-actions .primary-button,
 .proposal-workspace__terminal-actions .secondary-button,
 .proposal-rebase__actions .primary-button {

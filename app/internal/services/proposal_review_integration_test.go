@@ -39,7 +39,7 @@ func TestRejectedProposalIsPreservedAndReadableByItsAuthor(t *testing.T) {
 	if visible, err := GetVisibleCurriculumProposal(database, other.ID, false, proposal.ID); err != nil || visible.Status != "submitted" {
 		t.Fatalf("active proposal visibility = %#v, %v", visible, err)
 	}
-	if err := RejectCurriculumProposal(database, administrator.ID, proposal.ID, "Needs a narrower scope."); err != nil {
+	if err := RejectCurriculumProposal(database, administrator.ID, proposal.ID); err != nil {
 		t.Fatal(err)
 	}
 
@@ -47,7 +47,7 @@ func TestRejectedProposalIsPreservedAndReadableByItsAuthor(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if stored.Status != "rejected" || stored.RejectionReason != "Needs a narrower scope." || len(stored.Changes) != 1 {
+	if stored.Status != "rejected" || len(stored.Changes) != 1 {
 		t.Fatalf("rejected proposal = %#v", stored)
 	}
 	if _, err := GetEditableCurriculumProposal(database, author.ID, proposal.ID); err != ErrProposalNotFound {

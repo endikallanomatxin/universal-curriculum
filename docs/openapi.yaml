@@ -625,16 +625,6 @@ paths:
       tags: [Proposals]
       operationId: rejectProposal
       security: [{bearerAuth: []}]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              required: [reason]
-              properties:
-                reason: {type: string, minLength: 1, maxLength: 1000}
       responses:
         '200':
           description: Rejected and preserved proposal
@@ -854,7 +844,6 @@ components:
         accepted_at: {type: [string, 'null'], format: date-time}
         submitted_at: {type: [string, 'null'], format: date-time}
         decided_at: {type: [string, 'null'], format: date-time}
-        rejection_reason: {type: string}
     Proposal:
       allOf:
         - $ref: '#/components/schemas/ProposalSummary'

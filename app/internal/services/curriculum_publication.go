@@ -3,7 +3,6 @@ package services
 import (
 	"database/sql"
 	"fmt"
-	"strings"
 
 	"universal-curriculum/internal/db"
 )
@@ -117,12 +116,8 @@ func AcceptCurriculumProposal(database *sql.DB, administratorID, proposalID int6
 	return RebaseDraftCurriculumProposals(database), nil
 }
 
-func RejectCurriculumProposal(database *sql.DB, administratorID, proposalID int64, reason string) error {
-	reason = strings.TrimSpace(reason)
-	if reason == "" {
-		return ErrProposalRationaleRequired
-	}
-	ok, err := db.RejectSubmittedCurriculumProposal(database, proposalID, administratorID, reason)
+func RejectCurriculumProposal(database *sql.DB, administratorID, proposalID int64) error {
+	ok, err := db.RejectSubmittedCurriculumProposal(database, proposalID, administratorID)
 	if err != nil {
 		return err
 	}

@@ -145,7 +145,7 @@
               </form>
             </footer>{{ else if and .User.IsAdmin (eq .ActiveProposal.Status "submitted") }}<footer class="proposal-workspace__terminal-actions proposal-workspace__review-actions" aria-label="Proposal review decision">
               <form action="/admin/proposals/{{ .ActiveProposal.ID }}/accept" method="post"><input type="hidden" name="csrf_token" value="{{ .CSRFToken }}"><input type="hidden" name="return_to" value="/curriculum-modification?proposal={{ .ActiveProposal.ID }}"><button class="primary-button" type="submit"><span class="material-symbols-rounded" aria-hidden="true">check</span>Accept proposal</button></form>
-              <form class="proposal-workspace__rejection-form" action="/admin/proposals/{{ .ActiveProposal.ID }}/reject" method="post"><input type="hidden" name="csrf_token" value="{{ .CSRFToken }}"><input type="hidden" name="return_to" value="/curriculum-modification?proposal={{ .ActiveProposal.ID }}"><label for="proposal-rejection-reason">Rejection reason</label><input id="proposal-rejection-reason" name="reason" required maxlength="1000" placeholder="Explain what should change"><button class="secondary-button destructive-action" type="submit">Reject proposal</button></form>
+              <form action="/admin/proposals/{{ .ActiveProposal.ID }}/reject" method="post"><input type="hidden" name="csrf_token" value="{{ .CSRFToken }}"><input type="hidden" name="return_to" value="/curriculum-modification?proposal={{ .ActiveProposal.ID }}"><button class="secondary-button destructive-action" type="submit">Reject proposal</button></form>
             </footer>{{ end }}
           </div>
         </section>

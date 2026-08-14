@@ -71,7 +71,7 @@
                 Show history
               </a>
             </div>
-            {{ if .ReviewedProposals }}<section aria-labelledby="reviewed-proposals-title"><h2 id="reviewed-proposals-title">Your submitted proposals</h2><ul class="proposal-list">{{ range .ReviewedProposals }}<li><a href="/curriculum-modification?proposal={{ .ID }}" hx-get="/curriculum-modification?proposal={{ .ID }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML" hx-push-url="true">{{ .Title }}</a> — {{ .Status }}{{ if .RejectionReason }}<p>{{ .RejectionReason }}</p>{{ end }}</li>{{ end }}</ul></section>{{ end }}
+            {{ if .ReviewedProposals }}<section aria-labelledby="reviewed-proposals-title"><h2 id="reviewed-proposals-title">Your submitted proposals</h2><ul class="proposal-list">{{ range .ReviewedProposals }}<li><a href="/curriculum-modification?proposal={{ .ID }}" hx-get="/curriculum-modification?proposal={{ .ID }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML" hx-push-url="true">{{ .Title }}</a> — {{ .Status }}</li>{{ end }}</ul></section>{{ end }}
           </section>
         </div>
       </section>

@@ -399,7 +399,7 @@ func TestAdministratorCanOpenAndDecideSubmittedProposal(t *testing.T) {
 	for _, fragment := range []string{
 		`id="active-proposal-queue-title"`, `href="/curriculum-modification?proposal=21"`, "Contributor · 2 changes",
 		`action="/admin/proposals/21/accept"`, `action="/admin/proposals/21/reject"`,
-		`name="return_to" value="/curriculum-modification?proposal=21"`, `name="reason" required`,
+		`name="return_to" value="/curriculum-modification?proposal=21"`,
 	} {
 		if !strings.Contains(output, fragment) {
 			t.Errorf("submitted proposal review does not contain %q", fragment)

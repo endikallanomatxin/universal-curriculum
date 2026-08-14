@@ -100,11 +100,6 @@ type submitProposalInput struct {
 	Confirmed     bool   `json:"confirmed" jsonschema:"Must be true only after the user explicitly requests submission."`
 }
 
-type rejectProposalInput struct {
-	ProposalID int64  `json:"proposal_id"`
-	Reason     string `json:"reason"`
-}
-
 func (application *adapter) addProposalTools(server *mcp.Server) {
 	addTool(server, "list_proposals", "List curriculum proposals", "Lists proposals visible to the administrator; another user's drafts remain private.", readOnly("List curriculum proposals"), application.listProposals)
 	addTool(server, "get_proposal", "Get curriculum proposal", "Returns proposal metadata and ordered changes. A draft is visible only to its author.", readOnly("Get curriculum proposal"), application.getProposal)
@@ -124,7 +119,7 @@ func (application *adapter) addProposalTools(server *mcp.Server) {
 
 func (application *adapter) addProposalDecisionTools(server *mcp.Server) {
 	addTool(server, "accept_proposal", "Accept curriculum proposal", "Accepts a submitted proposal into the shared curriculum.", mutation("Accept curriculum proposal", true, true), application.acceptProposal)
-	addTool(server, "reject_proposal", "Reject curriculum proposal", "Rejects and preserves a submitted proposal with a reason.", mutation("Reject curriculum proposal", true, true), application.rejectProposal)
+	addTool(server, "reject_proposal", "Reject curriculum proposal", "Rejects and preserves a submitted proposal.", mutation("Reject curriculum proposal", true, true), application.rejectProposal)
 }
 
 func (application *adapter) listProposals(_ context.Context, request *mcp.CallToolRequest, input listProposalsInput) (*mcp.CallToolResult, toolOutput[proposalsOutput], error) {
@@ -348,12 +343,12 @@ func (application *adapter) acceptProposal(_ context.Context, request *mcp.CallT
 	return application.reloadProposal(input.ProposalID)
 }
 
-func (application *adapter) rejectProposal(_ context.Context, request *mcp.CallToolRequest, input rejectProposalInput) (*mcp.CallToolResult, toolOutput[proposal], error) {
+func (application *adapter) rejectProposal(_ context.Context, request *mcp.CallToolRequest, input proposalIDInput) (*mcp.CallToolResult, toolOutput[proposal], error) {
 	result, output, authErr, user := requireAdmin[proposal](request)
 	if user == nil {
 		return result, output, authErr
 	}
-	if err := services.RejectCurriculumProposal(application.database, user.ID, input.ProposalID, input.Reason); err != nil {
+	if err := services.RejectCurriculumProposal(application.database, user.ID, input.ProposalID); err != nil {
 		return curriculumFailure[proposal]("reject proposal", err)
 	}
 	return application.reloadProposal(input.ProposalID)

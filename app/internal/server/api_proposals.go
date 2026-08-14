@@ -419,13 +419,7 @@ func (server *Server) apiRejectProposal(writer http.ResponseWriter, request *htt
 	if !ok {
 		return
 	}
-	var input struct {
-		Reason string `json:"reason"`
-	}
-	if !decodeAPIInput(writer, request, &input) {
-		return
-	}
-	if err := services.RejectCurriculumProposal(server.Database, apiUser(request).ID, proposalID, input.Reason); err != nil {
+	if err := services.RejectCurriculumProposal(server.Database, apiUser(request).ID, proposalID); err != nil {
 		server.writeAPICurriculumError(writer, err)
 		return
 	}

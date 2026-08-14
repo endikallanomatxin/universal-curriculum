@@ -70,8 +70,7 @@ func GetCurriculumProposal(q curriculumExecutor, proposalID int64) (*models.Curr
 		SELECT proposal.id, authors.ids, authors.names,
 		       proposal.title, proposal.rationale, proposal.status, proposal.base_proposal_id,
 		       proposal.created_at, proposal.accepted_at, proposal.submitted_at,
-		       proposal.decided_at, proposal.decided_by,
-		       COALESCE(proposal.rejection_reason, '')
+		       proposal.decided_at, proposal.decided_by
 		FROM curriculum_proposals proposal
 		JOIN LATERAL (
 			SELECT array_agg(user_id ORDER BY users.full_name, user_id) AS ids,
@@ -85,7 +84,6 @@ func GetCurriculumProposal(q curriculumExecutor, proposalID int64) (*models.Curr
 		&proposal.ID, pq.Array(&proposal.AuthorIDs), &proposal.AuthorName, &proposal.Title,
 		&proposal.Rationale, &proposal.Status, &baseProposalID,
 		&proposal.CreatedAt, &acceptedAt, &submittedAt, &decidedAt, &decidedBy,
-		&proposal.RejectionReason,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
@@ -245,8 +243,8 @@ func SubmitDraftCurriculumProposal(q curriculumExecutor, proposalID, authorID in
 func AcceptSubmittedCurriculumProposal(q curriculumExecutor, proposalID, administratorID int64) (bool, error) {
 	result, err := q.Exec(`
 		UPDATE curriculum_proposals
-		SET status = 'accepted', accepted_at = clock_timestamp(),
-		    decided_at = clock_timestamp(), decided_by = $2
+		SET status = 'accepted', accepted_at = statement_timestamp(),
+		    decided_at = statement_timestamp(), decided_by = $2
 		WHERE id = $1 AND status = 'submitted'
 	`, proposalID, administratorID)
 	if err != nil {
@@ -256,13 +254,12 @@ func AcceptSubmittedCurriculumProposal(q curriculumExecutor, proposalID, adminis
 	return count == 1, err
 }
 
-func RejectSubmittedCurriculumProposal(q curriculumExecutor, proposalID, administratorID int64, reason string) (bool, error) {
+func RejectSubmittedCurriculumProposal(q curriculumExecutor, proposalID, administratorID int64) (bool, error) {
 	result, err := q.Exec(`
 		UPDATE curriculum_proposals
-		SET status = 'rejected', decided_at = clock_timestamp(), decided_by = $2,
-		    rejection_reason = $3
+		SET status = 'rejected', decided_at = clock_timestamp(), decided_by = $2
 		WHERE id = $1 AND status = 'submitted'
-	`, proposalID, administratorID, reason)
+	`, proposalID, administratorID)
 	if err != nil {
 		return false, fmt.Errorf("reject submitted curriculum proposal: %w", err)
 	}
@@ -493,7 +490,6 @@ func ListCurriculumProposalsForUser(
 		       proposal.title, proposal.rationale, proposal.status,
 		       proposal.base_proposal_id, proposal.created_at, proposal.accepted_at,
 		       proposal.submitted_at, proposal.decided_at, proposal.decided_by,
-		       COALESCE(proposal.rejection_reason, ''),
 		       count(change.id)
 		FROM curriculum_proposals proposal
 		JOIN LATERAL (
@@ -530,7 +526,7 @@ func ListCurriculumProposalsForUser(
 			&proposal.ID, pq.Array(&proposal.AuthorIDs), &proposal.AuthorName,
 			&proposal.Title, &proposal.Rationale, &proposal.Status,
 			&baseProposalID, &proposal.CreatedAt, &acceptedAt, &submittedAt, &decidedAt,
-			&decidedBy, &proposal.RejectionReason, &proposal.ChangeCount,
+			&decidedBy, &proposal.ChangeCount,
 		); err != nil {
 			return nil, 0, fmt.Errorf("scan visible curriculum proposal: %w", err)
 		}

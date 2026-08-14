@@ -9,20 +9,16 @@ ALTER TABLE curriculum_proposals
 ALTER TABLE curriculum_proposals
     ADD COLUMN submitted_at TIMESTAMPTZ,
     ADD COLUMN decided_at TIMESTAMPTZ,
-    ADD COLUMN decided_by BIGINT REFERENCES users(id) ON DELETE RESTRICT,
-    ADD COLUMN rejection_reason TEXT CHECK (
-        rejection_reason IS NULL OR
-        (rejection_reason <> '' AND rejection_reason = btrim(rejection_reason))
-    );
+    ADD COLUMN decided_by BIGINT REFERENCES users(id) ON DELETE RESTRICT;
 ALTER TABLE curriculum_proposals DROP CONSTRAINT curriculum_proposals_check1;
 ALTER TABLE curriculum_proposals ADD CHECK (
-    (status = 'draft' AND submitted_at IS NULL AND decided_at IS NULL AND decided_by IS NULL AND accepted_at IS NULL AND rejection_reason IS NULL)
+    (status = 'draft' AND submitted_at IS NULL AND decided_at IS NULL AND decided_by IS NULL AND accepted_at IS NULL)
     OR
-    (status = 'submitted' AND submitted_at IS NOT NULL AND decided_at IS NULL AND decided_by IS NULL AND accepted_at IS NULL AND rejection_reason IS NULL)
+    (status = 'submitted' AND submitted_at IS NOT NULL AND decided_at IS NULL AND decided_by IS NULL AND accepted_at IS NULL)
     OR
-    (status = 'accepted' AND submitted_at IS NOT NULL AND decided_at IS NOT NULL AND decided_by IS NOT NULL AND accepted_at = decided_at AND rejection_reason IS NULL)
+    (status = 'accepted' AND submitted_at IS NOT NULL AND decided_at IS NOT NULL AND decided_by IS NOT NULL AND accepted_at = decided_at)
     OR
-    (status = 'rejected' AND submitted_at IS NOT NULL AND decided_at IS NOT NULL AND decided_by IS NOT NULL AND accepted_at IS NULL AND rejection_reason IS NOT NULL)
+    (status = 'rejected' AND submitted_at IS NOT NULL AND decided_at IS NOT NULL AND decided_by IS NOT NULL AND accepted_at IS NULL)
 );
 
 CREATE TABLE contributor_invitations (
@@ -54,7 +50,6 @@ CREATE INDEX contributor_invitations_expires_at_idx
 DROP TABLE contributor_invitations;
 ALTER TABLE curriculum_proposals DROP CONSTRAINT curriculum_proposals_check1;
 ALTER TABLE curriculum_proposals
-    DROP COLUMN rejection_reason,
     DROP COLUMN decided_by,
     DROP COLUMN decided_at,
     DROP COLUMN submitted_at;

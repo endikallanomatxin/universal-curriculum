@@ -345,8 +345,8 @@ decisions, but it must remain proportionate and protect participants' privacy.
 Submitting a proposal requests consideration. Acceptance confirms that its
 changes have been incorporated into the shared curriculum. They are distinct
 domain events. Contributors submit proposals; an administrator manually accepts
-or rejects them. A rejection records its reason and does not delete the
-proposal or change the curriculum.
+or rejects them. A rejection does not delete the proposal or change the
+curriculum.
 
 An accepted proposal is validated against the current graph and applied
 atomically. Its units, dependencies, recognitions, resources,
