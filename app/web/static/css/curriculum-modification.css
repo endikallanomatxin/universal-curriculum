@@ -34,6 +34,10 @@
   justify-content: flex-end;
 }
 
+.curriculum-modification__unit-actions + .empty-state {
+  margin-top: var(--space-3);
+}
+
 .curriculum-modification__units > .section-heading h2 {
   color: var(--color-muted);
   font-size: 0.72rem;
