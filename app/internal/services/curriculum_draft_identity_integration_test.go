@@ -65,7 +65,7 @@ func TestDraftUnitIdentityCleanupAndAutomaticRebase(t *testing.T) {
 	if err := UpdateCurriculumUnitContent(database, authorID, upstreamRevision.ID, currentUnitID, "An independent upstream content revision."); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := PublishCurriculumProposal(database, authorID, upstreamRevision.ID); err != nil {
+	if _, err := submitAndAcceptCurriculumProposal(database, authorID, upstreamRevision.ID); err != nil {
 		t.Fatal(err)
 	}
 	rebasedCreation, err = db.GetCurriculumProposal(database, rebasedCreation.ID)
@@ -76,7 +76,7 @@ func TestDraftUnitIdentityCleanupAndAutomaticRebase(t *testing.T) {
 		rebasedCreation.Changes[0].UnitContent != "Rebased final content." {
 		t.Fatalf("automatic rebase changed the final unit creation: proposal=%#v err=%v", rebasedCreation, err)
 	}
-	if _, err := PublishCurriculumProposal(database, authorID, rebasedCreation.ID); err != nil {
+	if _, err := submitAndAcceptCurriculumProposal(database, authorID, rebasedCreation.ID); err != nil {
 		t.Fatal(err)
 	}
 	publishedRebasedUnit, err := db.GetUnit(database, rebasedUnit.ID)

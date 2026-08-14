@@ -88,7 +88,7 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	}
 
 	// Publish the unit creations first: later proposals can refer to their stable IDs.
-	if _, err := PublishCurriculumProposal(database, authorID, proposal.ID); err != nil {
+	if _, err := submitAndAcceptCurriculumProposal(database, authorID, proposal.ID); err != nil {
 		t.Fatal(err)
 	}
 	learningPath, err := CreateLearningPath(
@@ -120,7 +120,7 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if err := invalidChangeTx.Commit(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := PublishCurriculumProposal(database, authorID, invalidProposal.ID); !errors.Is(err, ErrProposalInvalid) {
+	if _, err := submitAndAcceptCurriculumProposal(database, authorID, invalidProposal.ID); !errors.Is(err, ErrProposalInvalid) {
 		t.Fatalf("publish invalid proposal error = %v, want %v", err, ErrProposalInvalid)
 	}
 	invalidProposal, err = db.GetCurriculumProposal(database, invalidProposal.ID)
@@ -207,7 +207,7 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if changeCounts["rename_unit"] != 1 || changeCounts["update_content"] != 1 {
 		t.Fatalf("unit edits accumulated duplicate proposal changes: %#v", draft.Changes)
 	}
-	if _, err := PublishCurriculumProposal(database, authorID, proposal.ID); err != nil {
+	if _, err := submitAndAcceptCurriculumProposal(database, authorID, proposal.ID); err != nil {
 		t.Fatal(err)
 	}
 	automaticallyRebased, err := db.GetCurriculumProposal(database, staleProposal.ID)
@@ -266,7 +266,7 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if err := DeleteCurriculumProposal(database, authorID, conflictingProposal.ID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := PublishCurriculumProposal(database, authorID, staleProposal.ID); err != nil {
+	if _, err := submitAndAcceptCurriculumProposal(database, authorID, staleProposal.ID); err != nil {
 		t.Fatalf("publish automatically rebased proposal: %v", err)
 	}
 	graph, err = db.GetCurriculumGraph(database)
@@ -363,7 +363,7 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if err := UpdateCurriculumUnit(database, authorID, retirement.ID, algebra.ID, "Renamed after deletion"); err != ErrUnitNotFound {
 		t.Fatalf("rename deleted unit error = %v, want %v", err, ErrUnitNotFound)
 	}
-	if _, err := PublishCurriculumProposal(database, authorID, retirement.ID); err != nil {
+	if _, err := submitAndAcceptCurriculumProposal(database, authorID, retirement.ID); err != nil {
 		t.Fatal(err)
 	}
 	recognitionChangeID := normalizedRetirement.Changes[1].ID
@@ -433,7 +433,7 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := PublishCurriculumProposal(database, authorID, advancedProposal.ID); err != nil {
+	if _, err := submitAndAcceptCurriculumProposal(database, authorID, advancedProposal.ID); err != nil {
 		t.Fatal(err)
 	}
 	persistedPath, err = db.GetLearningPath(database, sameProposalUserID, activeRecognitionPath.ID)
@@ -524,7 +524,7 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := PublishCurriculumProposal(database, authorID, contentRevision.ID); err != nil {
+	if _, err := submitAndAcceptCurriculumProposal(database, authorID, contentRevision.ID); err != nil {
 		t.Fatal(err)
 	}
 	completionStatuses, err = db.UnitCompletionStatuses(database, authorID)

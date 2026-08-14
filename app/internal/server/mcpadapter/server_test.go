@@ -73,8 +73,8 @@ func TestDiscoveryAdvertisesAgentGuidanceResourcesAndTools(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(tools.Tools) != 24 {
-		t.Fatalf("tool count = %d, want 24", len(tools.Tools))
+	if len(tools.Tools) != 26 {
+		t.Fatalf("tool count = %d, want 26", len(tools.Tools))
 	}
 	byName := make(map[string]*mcp.Tool, len(tools.Tools))
 	for _, tool := range tools.Tools {
@@ -89,10 +89,10 @@ func TestDiscoveryAdvertisesAgentGuidanceResourcesAndTools(t *testing.T) {
 	if !byName["search_units"].Annotations.ReadOnlyHint || !byName["search_units"].Annotations.IdempotentHint {
 		t.Fatalf("search annotations = %#v", byName["search_units"].Annotations)
 	}
-	if byName["publish_proposal"].Annotations.ReadOnlyHint ||
-		byName["publish_proposal"].Annotations.DestructiveHint == nil ||
-		!*byName["publish_proposal"].Annotations.DestructiveHint {
-		t.Fatalf("publication annotations = %#v", byName["publish_proposal"].Annotations)
+	if byName["submit_proposal"].Annotations.ReadOnlyHint ||
+		byName["submit_proposal"].Annotations.DestructiveHint == nil ||
+		!*byName["submit_proposal"].Annotations.DestructiveHint {
+		t.Fatalf("submission annotations = %#v", byName["submit_proposal"].Annotations)
 	}
 	assertSchemaContains(t, byName["create_learning_path"].InputSchema,
 		`"maxLength":200`, `"minItems":1`, `"uniqueItems":true`)
@@ -107,7 +107,7 @@ func TestDiscoveryAdvertisesAgentGuidanceResourcesAndTools(t *testing.T) {
 	}
 	assertSchemaContains(t, byName["add_proposal_recognition"].InputSchema,
 		`"minItems":1`, `"uniqueItems":true`)
-	assertSchemaContains(t, byName["publish_proposal"].InputSchema,
+	assertSchemaContains(t, byName["submit_proposal"].InputSchema,
 		`"confirmed"`, `"expected_title"`)
 }
 

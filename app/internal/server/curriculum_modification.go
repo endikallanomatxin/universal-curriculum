@@ -41,7 +41,7 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 	var activeProposal *models.CurriculumProposal
 	if proposalValue := request.URL.Query().Get("proposal"); proposalValue != "" {
 		if proposalID, parseErr := parsePositiveID(proposalValue); parseErr == nil {
-			activeProposal, err = services.GetEditableCurriculumProposal(server.Database, userID, proposalID)
+			activeProposal, err = services.GetVisibleCurriculumProposal(server.Database, userID, user.IsAdmin, proposalID)
 			if err != nil && !errors.Is(err, services.ErrProposalNotFound) {
 				log.Printf("load active curriculum proposal: %v", err)
 				http.Error(writer, "Unable to load curriculum proposal", http.StatusInternalServerError)
@@ -54,7 +54,7 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 	}
 	var rebasePlan *services.CurriculumProposalRebasePlan
 	proposalBaseGraph := graph
-	if activeProposal != nil {
+	if activeProposal != nil && activeProposal.Status == "draft" {
 		rebasePlan, err = services.PlanCurriculumProposalRebase(server.Database, activeProposal)
 		if err != nil {
 			log.Printf("plan curriculum proposal rebase: %v", err)
@@ -68,6 +68,14 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 				http.Error(writer, "Unable to load proposal base curriculum", http.StatusInternalServerError)
 				return
 			}
+		}
+		services.PopulateCurriculumProposalPreviousState(proposalBaseGraph, activeProposal)
+	} else if activeProposal != nil {
+		proposalBaseGraph, err = services.CurriculumGraphAtProposal(server.Database, activeProposal.BaseProposalID)
+		if err != nil {
+			log.Printf("load proposal base curriculum: %v", err)
+			http.Error(writer, "Unable to load curriculum proposal base", http.StatusInternalServerError)
+			return
 		}
 		services.PopulateCurriculumProposalPreviousState(proposalBaseGraph, activeProposal)
 	}
@@ -173,6 +181,18 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 			ChangeSummary: curriculumProposalChangeSummary(draftProposals[index].ChangeKindCounts),
 		})
 	}
+	visibleProposals, _, err := db.ListCurriculumProposalsForUser(server.Database, userID, user.IsAdmin, "", 100, 0)
+	if err != nil {
+		log.Printf("load reviewed proposals: %v", err)
+		http.Error(writer, "Unable to load proposals", http.StatusInternalServerError)
+		return
+	}
+	var reviewedProposals []models.CurriculumProposal
+	for _, proposal := range visibleProposals {
+		if proposal.HasAuthor(userID) && (proposal.Status == "submitted" || proposal.Status == "rejected") {
+			reviewedProposals = append(reviewedProposals, proposal)
+		}
+	}
 	historyLimit := curriculumProposalHistoryPageSize
 	if value := request.URL.Query().Get("history-limit"); value != "" {
 		parsed, parseErr := strconv.Atoi(value)
@@ -203,6 +223,7 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 		Graph:                   layout,
 		FocusedUnit:             focusedUnit,
 		DraftProposals:          draftViews,
+		ReviewedProposals:       reviewedProposals,
 		ActiveProposal:          activeProposal,
 		ProposalRebase:          rebasePlan,
 		RebaseTimeline:          curriculumRebaseTimeline(rebasePlan, activeProposal),
@@ -213,7 +234,7 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 		ProposalHistoryMore:     historyHasMore,
 		ProposalHistoryLimit:    historyLimit,
 		ProposalHistoryNext:     historyLimit + curriculumProposalHistoryPageSize,
-		CanEditProposal:         activeProposal != nil && (rebasePlan == nil || !rebasePlan.NeedsReview()),
+		CanEditProposal:         activeProposal != nil && activeProposal.Status == "draft" && (rebasePlan == nil || !rebasePlan.NeedsReview()),
 		ViewingAcceptedProposal: reviewedWorkingGraph != nil,
 		RecognitionSources:      proposalBaseGraph.Units,
 		RecognitionTargets:      workingGraph.Units,

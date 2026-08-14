@@ -30,6 +30,7 @@ type curriculumModificationPageData struct {
 	FocusedUnit             *models.Unit
 	ContentUnit             *curriculumUnitView
 	DraftProposals          []curriculumDraftProposalView
+	ReviewedProposals       []models.CurriculumProposal
 	ActiveProposal          *models.CurriculumProposal
 	ProposalRebase          *services.CurriculumProposalRebasePlan
 	RebaseTimeline          *curriculumRebaseTimelineView

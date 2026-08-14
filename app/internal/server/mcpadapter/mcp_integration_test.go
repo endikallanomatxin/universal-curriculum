@@ -43,7 +43,10 @@ func TestMCPAgentWorkflowWithPostgreSQL(t *testing.T) {
 	if err := services.AddUnitDependency(database, admin.ID, baseProposal.ID, advanced.ID, foundation.ID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := services.PublishCurriculumProposal(database, admin.ID, baseProposal.ID); err != nil {
+	if err := services.SubmitCurriculumProposal(database, admin.ID, baseProposal.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := services.AcceptCurriculumProposal(database, admin.ID, baseProposal.ID); err != nil {
 		t.Fatal(err)
 	}
 
@@ -180,17 +183,21 @@ func TestMCPAgentWorkflowWithPostgreSQL(t *testing.T) {
 	if cycle.OK || cycle.Error == nil || cycle.Error.Code != "conflict" {
 		t.Fatalf("cycle response = %#v", cycle)
 	}
-	unconfirmed := callIntegrationTool[proposal](t, adminSession, "publish_proposal", map[string]any{
+	unconfirmed := callIntegrationTool[proposal](t, adminSession, "submit_proposal", map[string]any{
 		"proposal_id": proposalID, "expected_title": proposalResult.Data.Title, "confirmed": false,
 	})
 	if unconfirmed.OK || unconfirmed.Error.Code != "confirmation_required" {
-		t.Fatalf("unconfirmed publication = %#v", unconfirmed)
+		t.Fatalf("unconfirmed submission = %#v", unconfirmed)
 	}
-	published := callIntegrationTool[proposal](t, adminSession, "publish_proposal", map[string]any{
+	submitted := callIntegrationTool[proposal](t, adminSession, "submit_proposal", map[string]any{
 		"proposal_id": proposalID, "expected_title": proposalResult.Data.Title, "confirmed": true,
 	})
+	if !submitted.OK || submitted.Data.Status != "submitted" {
+		t.Fatalf("submission result = %#v", submitted)
+	}
+	published := callIntegrationTool[proposal](t, adminSession, "accept_proposal", map[string]any{"proposal_id": proposalID})
 	if !published.OK || published.Data.Status != "accepted" {
-		t.Fatalf("publication result = %#v", published)
+		t.Fatalf("acceptance result = %#v", published)
 	}
 	readCreated := callIntegrationTool[unit](t, adminSession, "get_unit", map[string]any{"unit_id": createdUnitID})
 	if !readCreated.OK || readCreated.Data.Name != "Final applied topic" || readCreated.Data.Content != "Apply the final topic." {

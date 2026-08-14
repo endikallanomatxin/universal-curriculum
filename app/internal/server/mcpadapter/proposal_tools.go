@@ -14,7 +14,7 @@ import (
 )
 
 type listProposalsInput struct {
-	Status string `json:"status,omitempty" jsonschema:"Optional status filter: draft, accepted or rejected."`
+	Status string `json:"status,omitempty" jsonschema:"Optional status filter: draft, submitted, accepted or rejected."`
 	Limit  int    `json:"limit,omitempty" jsonschema:"Maximum results from 1 to 100; defaults to 25."`
 	Offset int    `json:"offset,omitempty" jsonschema:"Zero-based result offset."`
 }
@@ -94,10 +94,15 @@ type resolveRebaseInput struct {
 	Resolutions []rebaseResolution `json:"resolutions" jsonschema:"One resolution for every conflict returned by get_proposal_rebase."`
 }
 
-type publishProposalInput struct {
+type submitProposalInput struct {
 	ProposalID    int64  `json:"proposal_id" jsonschema:"Draft proposal ID inspected immediately before publication."`
 	ExpectedTitle string `json:"expected_title" jsonschema:"Current proposal title, used to guard against publishing the wrong draft."`
-	Confirmed     bool   `json:"confirmed" jsonschema:"Must be true only after the user explicitly requests publication."`
+	Confirmed     bool   `json:"confirmed" jsonschema:"Must be true only after the user explicitly requests submission."`
+}
+
+type rejectProposalInput struct {
+	ProposalID int64  `json:"proposal_id"`
+	Reason     string `json:"reason"`
 }
 
 func (application *adapter) addProposalTools(server *mcp.Server) {
@@ -114,22 +119,27 @@ func (application *adapter) addProposalTools(server *mcp.Server) {
 	addTool(server, "delete_proposal_change", "Delete proposal change", "Deletes one draft change by its stable change ID.", mutation("Delete proposal change", true, true), application.deleteProposalChange)
 	addTool(server, "get_proposal_rebase", "Inspect proposal rebase", "Reports whether an authored draft is current, automatically rebasable, or needs review and identifies conflicts.", readOnly("Inspect proposal rebase"), application.getProposalRebase)
 	addTool(server, "resolve_proposal_rebase", "Resolve proposal rebase", "Advances an automatic rebase with no resolutions, or applies one keep, drop or edit decision for every reported conflict. Inspect the plan first.", mutation("Resolve proposal rebase", true, true), application.resolveProposalRebase)
-	addTool(server, "publish_proposal", "Publish curriculum proposal", "Publishes an authored draft into the shared curriculum. Call only after an explicit user request; confirmed and the current title are required.", mutation("Publish curriculum proposal", true, true), application.publishProposal)
+	addTool(server, "submit_proposal", "Submit curriculum proposal", "Submits an authored draft for administrator review. Call only after an explicit user request; confirmed and the current title are required.", mutation("Submit curriculum proposal", true, true), application.submitProposal)
+}
+
+func (application *adapter) addProposalDecisionTools(server *mcp.Server) {
+	addTool(server, "accept_proposal", "Accept curriculum proposal", "Accepts a submitted proposal into the shared curriculum.", mutation("Accept curriculum proposal", true, true), application.acceptProposal)
+	addTool(server, "reject_proposal", "Reject curriculum proposal", "Rejects and preserves a submitted proposal with a reason.", mutation("Reject curriculum proposal", true, true), application.rejectProposal)
 }
 
 func (application *adapter) listProposals(_ context.Context, request *mcp.CallToolRequest, input listProposalsInput) (*mcp.CallToolResult, toolOutput[proposalsOutput], error) {
-	if result, output, err, user := requireAdmin[proposalsOutput](request); user == nil {
+	if result, output, err, user := requireContributor[proposalsOutput](request); user == nil {
 		return result, output, err
 	} else {
-		return application.listProposalsForUser(user.ID, input)
+		return application.listProposalsForUser(user.ID, user.IsAdmin, input)
 	}
 }
 
-func (application *adapter) listProposalsForUser(userID int64, input listProposalsInput) (*mcp.CallToolResult, toolOutput[proposalsOutput], error) {
+func (application *adapter) listProposalsForUser(userID int64, isAdmin bool, input listProposalsInput) (*mcp.CallToolResult, toolOutput[proposalsOutput], error) {
 	if input.Limit == 0 {
 		input.Limit = 25
 	}
-	models, total, err := db.ListCurriculumProposalsForUser(application.database, userID, input.Status, input.Limit, input.Offset)
+	models, total, err := db.ListCurriculumProposalsForUser(application.database, userID, isAdmin, input.Status, input.Limit, input.Offset)
 	if err != nil {
 		return internalFailure[proposalsOutput]("list proposals", err)
 	}
@@ -141,10 +151,10 @@ func (application *adapter) listProposalsForUser(userID int64, input listProposa
 }
 
 func (application *adapter) getProposal(_ context.Context, request *mcp.CallToolRequest, input proposalIDInput) (*mcp.CallToolResult, toolOutput[proposal], error) {
-	if result, output, err, user := requireAdmin[proposal](request); user == nil {
+	if result, output, err, user := requireContributor[proposal](request); user == nil {
 		return result, output, err
 	} else {
-		model, err := services.GetVisibleCurriculumProposal(application.database, user.ID, input.ProposalID)
+		model, err := services.GetVisibleCurriculumProposal(application.database, user.ID, user.IsAdmin, input.ProposalID)
 		if err != nil {
 			return curriculumFailure[proposal]("get proposal", err)
 		}
@@ -153,7 +163,7 @@ func (application *adapter) getProposal(_ context.Context, request *mcp.CallTool
 }
 
 func (application *adapter) createProposal(_ context.Context, request *mcp.CallToolRequest, input createProposalInput) (*mcp.CallToolResult, toolOutput[proposal], error) {
-	if result, output, err, user := requireAdmin[proposal](request); user == nil {
+	if result, output, err, user := requireContributor[proposal](request); user == nil {
 		return result, output, err
 	} else {
 		created, err := services.CreateCurriculumProposal(application.database, user.ID, input.Title, input.Rationale)
@@ -165,7 +175,7 @@ func (application *adapter) createProposal(_ context.Context, request *mcp.CallT
 }
 
 func (application *adapter) updateProposal(_ context.Context, request *mcp.CallToolRequest, input updateProposalInput) (*mcp.CallToolResult, toolOutput[proposal], error) {
-	if result, output, err, user := requireAdmin[proposal](request); user == nil {
+	if result, output, err, user := requireContributor[proposal](request); user == nil {
 		return result, output, err
 	} else {
 		err := services.UpdateCurriculumProposal(application.database, user.ID, input.ProposalID, input.Title, input.Rationale)
@@ -177,7 +187,7 @@ func (application *adapter) updateProposal(_ context.Context, request *mcp.CallT
 }
 
 func (application *adapter) deleteProposal(_ context.Context, request *mcp.CallToolRequest, input proposalIDInput) (*mcp.CallToolResult, toolOutput[deleteOutput], error) {
-	result, output, authErr, user := requireAdmin[deleteOutput](request)
+	result, output, authErr, user := requireContributor[deleteOutput](request)
 	if user == nil {
 		return result, output, authErr
 	}
@@ -189,7 +199,7 @@ func (application *adapter) deleteProposal(_ context.Context, request *mcp.CallT
 }
 
 func (application *adapter) createProposalUnit(_ context.Context, request *mcp.CallToolRequest, input createProposalUnitInput) (*mcp.CallToolResult, toolOutput[unit], error) {
-	result, output, authErr, user := requireAdmin[unit](request)
+	result, output, authErr, user := requireContributor[unit](request)
 	if user == nil {
 		return result, output, authErr
 	}
@@ -201,7 +211,7 @@ func (application *adapter) createProposalUnit(_ context.Context, request *mcp.C
 }
 
 func (application *adapter) updateProposalUnit(_ context.Context, request *mcp.CallToolRequest, input updateProposalUnitInput) (*mcp.CallToolResult, toolOutput[unit], error) {
-	result, output, authErr, user := requireAdmin[unit](request)
+	result, output, authErr, user := requireContributor[unit](request)
 	if user == nil {
 		return result, output, authErr
 	}
@@ -213,7 +223,7 @@ func (application *adapter) updateProposalUnit(_ context.Context, request *mcp.C
 }
 
 func (application *adapter) deleteProposalUnit(_ context.Context, request *mcp.CallToolRequest, input proposalUnitIDInput) (*mcp.CallToolResult, toolOutput[deleteOutput], error) {
-	result, output, authErr, user := requireAdmin[deleteOutput](request)
+	result, output, authErr, user := requireContributor[deleteOutput](request)
 	if user == nil {
 		return result, output, authErr
 	}
@@ -225,7 +235,7 @@ func (application *adapter) deleteProposalUnit(_ context.Context, request *mcp.C
 }
 
 func (application *adapter) setProposalDependency(_ context.Context, request *mcp.CallToolRequest, input setDependencyInput) (*mcp.CallToolResult, toolOutput[dependencyState], error) {
-	result, output, authErr, user := requireAdmin[dependencyState](request)
+	result, output, authErr, user := requireContributor[dependencyState](request)
 	if user == nil {
 		return result, output, authErr
 	}
@@ -237,7 +247,7 @@ func (application *adapter) setProposalDependency(_ context.Context, request *mc
 }
 
 func (application *adapter) addProposalRecognition(_ context.Context, request *mcp.CallToolRequest, input addRecognitionInput) (*mcp.CallToolResult, toolOutput[proposal], error) {
-	result, output, authErr, user := requireAdmin[proposal](request)
+	result, output, authErr, user := requireContributor[proposal](request)
 	if user == nil {
 		return result, output, authErr
 	}
@@ -249,7 +259,7 @@ func (application *adapter) addProposalRecognition(_ context.Context, request *m
 }
 
 func (application *adapter) deleteProposalChange(_ context.Context, request *mcp.CallToolRequest, input changeIDInput) (*mcp.CallToolResult, toolOutput[proposal], error) {
-	result, output, authErr, user := requireAdmin[proposal](request)
+	result, output, authErr, user := requireContributor[proposal](request)
 	if user == nil {
 		return result, output, authErr
 	}
@@ -261,7 +271,7 @@ func (application *adapter) deleteProposalChange(_ context.Context, request *mcp
 }
 
 func (application *adapter) getProposalRebase(_ context.Context, request *mcp.CallToolRequest, input proposalIDInput) (*mcp.CallToolResult, toolOutput[rebasePlan], error) {
-	result, output, authErr, user := requireAdmin[rebasePlan](request)
+	result, output, authErr, user := requireContributor[rebasePlan](request)
 	if user == nil {
 		return result, output, authErr
 	}
@@ -277,7 +287,7 @@ func (application *adapter) getProposalRebase(_ context.Context, request *mcp.Ca
 }
 
 func (application *adapter) resolveProposalRebase(_ context.Context, request *mcp.CallToolRequest, input resolveRebaseInput) (*mcp.CallToolResult, toolOutput[proposal], error) {
-	result, output, authErr, user := requireAdmin[proposal](request)
+	result, output, authErr, user := requireContributor[proposal](request)
 	if user == nil {
 		return result, output, authErr
 	}
@@ -306,27 +316,45 @@ func (application *adapter) resolveProposalRebase(_ context.Context, request *mc
 	return application.reloadProposal(input.ProposalID)
 }
 
-func (application *adapter) publishProposal(_ context.Context, request *mcp.CallToolRequest, input publishProposalInput) (*mcp.CallToolResult, toolOutput[proposal], error) {
-	result, output, authErr, user := requireAdmin[proposal](request)
+func (application *adapter) submitProposal(_ context.Context, request *mcp.CallToolRequest, input submitProposalInput) (*mcp.CallToolResult, toolOutput[proposal], error) {
+	result, output, authErr, user := requireContributor[proposal](request)
 	if user == nil {
 		return result, output, authErr
 	}
 	if !input.Confirmed {
-		return failed[proposal]("confirmation_required", "Publication requires confirmed=true after an explicit user request.", map[string]string{"confirmed": "must be true"})
+		return failed[proposal]("confirmation_required", "Submission requires confirmed=true after an explicit user request.", map[string]string{"confirmed": "must be true"})
 	}
 	model, err := services.GetEditableCurriculumProposal(application.database, user.ID, input.ProposalID)
 	if err != nil {
-		return curriculumFailure[proposal]("inspect proposal before publication", err)
+		return curriculumFailure[proposal]("inspect proposal before submission", err)
 	}
 	if strings.TrimSpace(input.ExpectedTitle) != model.Title {
 		return failed[proposal]("confirmation_mismatch", "expected_title does not match the current proposal title. Inspect the proposal again.", map[string]string{"expected_title": "does not match"})
 	}
-	summary, err := services.PublishCurriculumProposal(application.database, user.ID, input.ProposalID)
-	if err != nil {
-		return curriculumFailure[proposal]("publish proposal", err)
+	if err := services.SubmitCurriculumProposal(application.database, user.ID, input.ProposalID); err != nil {
+		return curriculumFailure[proposal]("submit proposal", err)
 	}
-	if summary.Failures != nil {
-		logRebaseFailures(input.ProposalID, summary.Failures)
+	return application.reloadProposal(input.ProposalID)
+}
+
+func (application *adapter) acceptProposal(_ context.Context, request *mcp.CallToolRequest, input proposalIDInput) (*mcp.CallToolResult, toolOutput[proposal], error) {
+	result, output, authErr, user := requireAdmin[proposal](request)
+	if user == nil {
+		return result, output, authErr
+	}
+	if _, err := services.AcceptCurriculumProposal(application.database, user.ID, input.ProposalID); err != nil {
+		return curriculumFailure[proposal]("accept proposal", err)
+	}
+	return application.reloadProposal(input.ProposalID)
+}
+
+func (application *adapter) rejectProposal(_ context.Context, request *mcp.CallToolRequest, input rejectProposalInput) (*mcp.CallToolResult, toolOutput[proposal], error) {
+	result, output, authErr, user := requireAdmin[proposal](request)
+	if user == nil {
+		return result, output, authErr
+	}
+	if err := services.RejectCurriculumProposal(application.database, user.ID, input.ProposalID, input.Reason); err != nil {
+		return curriculumFailure[proposal]("reject proposal", err)
 	}
 	return application.reloadProposal(input.ProposalID)
 }

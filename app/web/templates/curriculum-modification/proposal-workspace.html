@@ -139,9 +139,9 @@
                 <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
                 <button class="secondary-button destructive-action" type="submit"><span class="material-symbols-rounded" aria-hidden="true">delete</span>Delete proposal</button>
               </form>
-              <form action="/curriculum-modification/proposals/{{ .ActiveProposal.ID }}/publish" method="post" {{ with .PublishWarning }}onsubmit="return confirm('{{ . }}')"{{ end }}>
+              <form action="/curriculum-modification/proposals/{{ .ActiveProposal.ID }}/submit" method="post" {{ with .PublishWarning }}onsubmit="return confirm('{{ . }}')"{{ end }}>
                 <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
-                <button class="primary-button" type="submit" {{ if not .CanEditProposal }}disabled{{ if and .ProposalRebase (eq .ProposalRebase.Status "needs_review") }} title="Resolve the rebase before publishing"{{ end }}{{ end }}>Publish proposal</button>
+                <button class="primary-button" type="submit" {{ if not .CanEditProposal }}disabled{{ if and .ProposalRebase (eq .ProposalRebase.Status "needs_review") }} title="Resolve the rebase before submitting"{{ end }}{{ end }}>Submit proposal</button>
               </form>
             </footer>
           </div>

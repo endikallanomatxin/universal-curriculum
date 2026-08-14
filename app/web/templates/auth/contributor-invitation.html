@@ -1,0 +1,7 @@
+{{ define "contributor-invitation.html" -}}
+<!doctype html><html lang="en"><head>{{ template "document-head" "Contributor invitation · Universal Curriculum" }}</head><body><main class="auth-page"><section class="auth-form">
+<a class="brand" href="/">universal curriculum</a><h1>Contributor invitation</h1>
+{{ if .Error }}<p class="form-error" role="alert">{{ .Error }}</p>{{ end }}
+{{ if .User }}<p>Accept this invitation as {{ .User.Email }}.</p><form action="/auth/contributor-invitation" method="post"><input type="hidden" name="token" value="{{ .Token }}"><input type="hidden" name="csrf_token" value="{{ .CSRFToken }}"><button class="primary-button" type="submit">Accept invitation</button></form>
+{{ else }}<p>Log in or create an account with the invited email address.</p><a class="primary-button" href="/auth/login?next=/auth/contributor-invitation%3Ftoken%3D{{ .Token }}">Log in</a><a href="/auth/register?invitation={{ .Token }}&amp;next=/curriculum-modification">Create account</a>{{ end }}
+</section></main></body></html>{{- end }}

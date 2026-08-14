@@ -9,6 +9,7 @@
       <h1>Create account</h1>
       {{ if .Error }}<p class="form-error" role="alert">{{ .Error }}</p>{{ end }}
       <input type="hidden" name="next" value="{{ .Next }}">
+      <input type="hidden" name="invitation_token" value="{{ .InvitationToken }}">
       <label for="full-name">Name</label>
       <input id="full-name" name="full_name" autocomplete="name" maxlength="200" required autofocus>
       <label for="email">Email</label>

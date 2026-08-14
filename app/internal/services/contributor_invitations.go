@@ -37,6 +37,7 @@ func InviteContributor(ctx context.Context, database *sql.DB, sender EmailSender
 		IdempotencyKey: emailIdempotencyKey("contributor-invitation", invitation.Token),
 	})
 	if err != nil {
+		_, _ = db.RevokeContributorInvitation(database, invitation.ID)
 		return nil, err
 	}
 	return invitation, nil

@@ -10,12 +10,12 @@ import (
 // GetVisibleCurriculumProposal returns a proposal when it is public or the
 // requesting user is one of its authors. Private drafts are indistinguishable
 // from missing proposals to avoid exposing their existence.
-func GetVisibleCurriculumProposal(database *sql.DB, userID, proposalID int64) (*models.CurriculumProposal, error) {
+func GetVisibleCurriculumProposal(database *sql.DB, userID int64, isAdmin bool, proposalID int64) (*models.CurriculumProposal, error) {
 	proposal, err := db.GetCurriculumProposal(database, proposalID)
 	if err != nil {
 		return nil, err
 	}
-	if proposal == nil || proposal.Status == "draft" && !proposal.HasAuthor(userID) {
+	if proposal == nil || proposal.Status != "accepted" && !isAdmin && !proposal.HasAuthor(userID) {
 		return nil, ErrProposalNotFound
 	}
 	return proposal, nil
@@ -25,7 +25,7 @@ func GetVisibleCurriculumProposal(database *sql.DB, userID, proposalID int64) (*
 // states and drafts owned by someone else follow the same not-found semantics
 // as visibility checks.
 func GetEditableCurriculumProposal(database *sql.DB, userID, proposalID int64) (*models.CurriculumProposal, error) {
-	proposal, err := GetVisibleCurriculumProposal(database, userID, proposalID)
+	proposal, err := GetVisibleCurriculumProposal(database, userID, false, proposalID)
 	if err != nil {
 		return nil, err
 	}

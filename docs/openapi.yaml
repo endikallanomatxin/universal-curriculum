@@ -286,10 +286,10 @@ paths:
         - $ref: '#/components/parameters/Offset'
         - name: status
           in: query
-          schema: {type: string, enum: [draft, accepted, rejected]}
+          schema: {type: string, enum: [draft, submitted, accepted, rejected]}
       responses:
         '200':
-          description: Proposals visible to an administrator
+          description: Accepted proposals and private proposals visible to the contributor
           content:
             application/json:
               schema:
@@ -581,16 +581,63 @@ paths:
         '404': {$ref: '#/components/responses/NotFound'}
         '409': {$ref: '#/components/responses/Conflict'}
         '500': {$ref: '#/components/responses/InternalError'}
-  /proposals/{proposalId}/publish:
+  /proposals/{proposalId}/submit:
     parameters:
       - $ref: '#/components/parameters/ProposalID'
     post:
       tags: [Proposals]
-      operationId: publishProposal
+      operationId: submitProposal
+      security: [{bearerAuth: []}]
+      responses:
+        '200':
+          description: Submitted proposal
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Proposal'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '500': {$ref: '#/components/responses/InternalError'}
+  /proposals/{proposalId}/accept:
+    parameters:
+      - $ref: '#/components/parameters/ProposalID'
+    post:
+      tags: [Proposals]
+      operationId: acceptProposal
       security: [{bearerAuth: []}]
       responses:
         '200':
           description: Accepted proposal
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Proposal'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '500': {$ref: '#/components/responses/InternalError'}
+  /proposals/{proposalId}/reject:
+    parameters:
+      - $ref: '#/components/parameters/ProposalID'
+    post:
+      tags: [Proposals]
+      operationId: rejectProposal
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [reason]
+              properties:
+                reason: {type: string, minLength: 1, maxLength: 1000}
+      responses:
+        '200':
+          description: Rejected and preserved proposal
           content:
             application/json:
               schema: {$ref: '#/components/schemas/Proposal'}
@@ -796,7 +843,7 @@ components:
         id: {type: integer, format: int64}
         title: {type: string, minLength: 1, maxLength: 200}
         rationale: {type: string, minLength: 1, maxLength: 1000}
-        status: {type: string, enum: [draft, accepted, rejected]}
+        status: {type: string, enum: [draft, submitted, accepted, rejected]}
         base_proposal_id: {type: [integer, 'null'], format: int64}
         author_ids:
           type: array
@@ -805,6 +852,9 @@ components:
         change_count: {type: integer}
         created_at: {type: string, format: date-time}
         accepted_at: {type: [string, 'null'], format: date-time}
+        submitted_at: {type: [string, 'null'], format: date-time}
+        decided_at: {type: [string, 'null'], format: date-time}
+        rejection_reason: {type: string}
     Proposal:
       allOf:
         - $ref: '#/components/schemas/ProposalSummary'

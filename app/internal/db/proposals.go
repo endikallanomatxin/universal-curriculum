@@ -467,7 +467,7 @@ func ListDraftCurriculumProposalsByAuthor(database *sql.DB, authorID int64) ([]m
 }
 
 func ListCurriculumProposalsForUser(
-	database *sql.DB, userID int64, status string, limit, offset int,
+	database *sql.DB, userID int64, isAdmin bool, status string, limit, offset int,
 ) ([]models.CurriculumProposal, int, error) {
 	statusFilter := any(nil)
 	if status != "" {
@@ -479,19 +479,21 @@ func ListCurriculumProposalsForUser(
 		FROM curriculum_proposals proposal
 		WHERE ($2::TEXT IS NULL OR proposal.status = $2)
 		  AND (
-			proposal.status <> 'draft'
+			proposal.status = 'accepted' OR $3
 			OR EXISTS (
 				SELECT 1 FROM curriculum_proposal_authors
 				WHERE proposal_id = proposal.id AND user_id = $1
 			)
 		  )
-	`, userID, statusFilter).Scan(&total); err != nil {
+	`, userID, statusFilter, isAdmin).Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("count visible curriculum proposals: %w", err)
 	}
 	rows, err := database.Query(`
 		SELECT proposal.id, authors.ids, authors.names,
 		       proposal.title, proposal.rationale, proposal.status,
 		       proposal.base_proposal_id, proposal.created_at, proposal.accepted_at,
+		       proposal.submitted_at, proposal.decided_at, proposal.decided_by,
+		       COALESCE(proposal.rejection_reason, ''),
 		       count(change.id)
 		FROM curriculum_proposals proposal
 		JOIN LATERAL (
@@ -504,7 +506,7 @@ func ListCurriculumProposalsForUser(
 		LEFT JOIN curriculum_proposal_changes change ON change.proposal_id = proposal.id
 		WHERE ($2::TEXT IS NULL OR proposal.status = $2)
 		  AND (
-			proposal.status <> 'draft'
+			proposal.status = 'accepted' OR $3
 			OR EXISTS (
 				SELECT 1 FROM curriculum_proposal_authors
 				WHERE proposal_id = proposal.id AND user_id = $1
@@ -512,8 +514,8 @@ func ListCurriculumProposalsForUser(
 		  )
 		GROUP BY proposal.id, authors.ids, authors.names
 		ORDER BY proposal.created_at DESC, proposal.id DESC
-		LIMIT $3 OFFSET $4
-	`, userID, statusFilter, limit, offset)
+		LIMIT $4 OFFSET $5
+	`, userID, statusFilter, isAdmin, limit, offset)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list visible curriculum proposals: %w", err)
 	}
@@ -522,11 +524,13 @@ func ListCurriculumProposalsForUser(
 	for rows.Next() {
 		var proposal models.CurriculumProposal
 		var baseProposalID sql.NullInt64
-		var acceptedAt sql.NullTime
+		var acceptedAt, submittedAt, decidedAt sql.NullTime
+		var decidedBy sql.NullInt64
 		if err := rows.Scan(
 			&proposal.ID, pq.Array(&proposal.AuthorIDs), &proposal.AuthorName,
 			&proposal.Title, &proposal.Rationale, &proposal.Status,
-			&baseProposalID, &proposal.CreatedAt, &acceptedAt, &proposal.ChangeCount,
+			&baseProposalID, &proposal.CreatedAt, &acceptedAt, &submittedAt, &decidedAt,
+			&decidedBy, &proposal.RejectionReason, &proposal.ChangeCount,
 		); err != nil {
 			return nil, 0, fmt.Errorf("scan visible curriculum proposal: %w", err)
 		}
@@ -535,6 +539,15 @@ func ListCurriculumProposalsForUser(
 		}
 		if acceptedAt.Valid {
 			proposal.AcceptedAt = &acceptedAt.Time
+		}
+		if submittedAt.Valid {
+			proposal.SubmittedAt = &submittedAt.Time
+		}
+		if decidedAt.Valid {
+			proposal.DecidedAt = &decidedAt.Time
+		}
+		if decidedBy.Valid {
+			proposal.DecidedBy = &decidedBy.Int64
 		}
 		proposals = append(proposals, proposal)
 	}

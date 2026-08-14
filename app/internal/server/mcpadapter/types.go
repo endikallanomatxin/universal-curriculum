@@ -89,17 +89,20 @@ type recommendedUnit struct {
 }
 
 type proposal struct {
-	ID             int64            `json:"id"`
-	Title          string           `json:"title"`
-	Rationale      string           `json:"rationale"`
-	Status         string           `json:"status"`
-	BaseProposalID *int64           `json:"base_proposal_id,omitempty"`
-	AuthorIDs      []int64          `json:"author_ids"`
-	AuthorName     string           `json:"author_name"`
-	ChangeCount    int              `json:"change_count"`
-	CreatedAt      string           `json:"created_at"`
-	AcceptedAt     *string          `json:"accepted_at,omitempty"`
-	Changes        []proposalChange `json:"changes,omitempty"`
+	ID              int64            `json:"id"`
+	Title           string           `json:"title"`
+	Rationale       string           `json:"rationale"`
+	Status          string           `json:"status"`
+	BaseProposalID  *int64           `json:"base_proposal_id,omitempty"`
+	AuthorIDs       []int64          `json:"author_ids"`
+	AuthorName      string           `json:"author_name"`
+	ChangeCount     int              `json:"change_count"`
+	CreatedAt       string           `json:"created_at"`
+	AcceptedAt      *string          `json:"accepted_at,omitempty"`
+	SubmittedAt     *string          `json:"submitted_at,omitempty"`
+	DecidedAt       *string          `json:"decided_at,omitempty"`
+	RejectionReason string           `json:"rejection_reason,omitempty"`
+	Changes         []proposalChange `json:"changes,omitempty"`
 }
 
 type proposalChange struct {
@@ -187,6 +190,15 @@ func newProposal(model models.CurriculumProposal, includeChanges bool) proposal 
 		formatted := model.AcceptedAt.UTC().Format(time.RFC3339)
 		result.AcceptedAt = &formatted
 	}
+	if model.SubmittedAt != nil {
+		formatted := model.SubmittedAt.UTC().Format(time.RFC3339)
+		result.SubmittedAt = &formatted
+	}
+	if model.DecidedAt != nil {
+		formatted := model.DecidedAt.UTC().Format(time.RFC3339)
+		result.DecidedAt = &formatted
+	}
+	result.RejectionReason = model.RejectionReason
 	if !includeChanges {
 		return result
 	}

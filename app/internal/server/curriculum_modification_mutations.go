@@ -229,7 +229,7 @@ func (server *Server) deleteCurriculumProposal(writer http.ResponseWriter, reque
 	http.Redirect(writer, request, "/curriculum-modification", http.StatusSeeOther)
 }
 
-func (server *Server) publishCurriculumProposal(writer http.ResponseWriter, request *http.Request) {
+func (server *Server) submitCurriculumProposal(writer http.ResponseWriter, request *http.Request) {
 	if !server.parseCurriculumMutation(writer, request) {
 		return
 	}
@@ -239,13 +239,9 @@ func (server *Server) publishCurriculumProposal(writer http.ResponseWriter, requ
 		return
 	}
 	authorID, _ := services.SessionUserID(request)
-	rebaseSummary, err := services.PublishCurriculumProposal(server.Database, authorID, proposalID)
-	if err != nil {
+	if err := services.SubmitCurriculumProposal(server.Database, authorID, proposalID); err != nil {
 		server.renderCurriculumMutationError(writer, request, err)
 		return
-	}
-	if rebaseSummary.Failures != nil {
-		log.Printf("rebase drafts after curriculum publication: %v", rebaseSummary.Failures)
 	}
 	http.Redirect(writer, request, "/curriculum-modification", http.StatusSeeOther)
 }

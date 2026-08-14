@@ -67,16 +67,6 @@ func SubmitCurriculumProposal(
 	return tx.Commit()
 }
 
-// PublishCurriculumProposal preserves the pre-0.3 workflow for internal
-// callers while adapters migrate to the separate submission and decision
-// operations.
-func PublishCurriculumProposal(database *sql.DB, authorID, proposalID int64) (CurriculumProposalRebaseSummary, error) {
-	if err := SubmitCurriculumProposal(database, authorID, proposalID); err != nil {
-		return CurriculumProposalRebaseSummary{}, err
-	}
-	return AcceptCurriculumProposal(database, authorID, proposalID)
-}
-
 func AcceptCurriculumProposal(database *sql.DB, administratorID, proposalID int64) (CurriculumProposalRebaseSummary, error) {
 	var summary CurriculumProposalRebaseSummary
 	tx, err := beginCurriculumProposal(database)
