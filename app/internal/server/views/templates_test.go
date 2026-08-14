@@ -44,6 +44,12 @@ func TestLoadTemplatesCompilesAndRendersRepresentativePages(t *testing.T) {
 				"User": user, "CSRFToken": "csrf", "CurrentSection": "curriculum-modification",
 			},
 		},
+		{
+			name: "administration.html",
+			data: map[string]any{
+				"User": user, "CSRFToken": "csrf", "CurrentSection": "administration",
+			},
+		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			output := renderTemplate(t, templates, test.name, test.data)
@@ -51,6 +57,20 @@ func TestLoadTemplatesCompilesAndRendersRepresentativePages(t *testing.T) {
 				t.Fatalf("%s did not render a complete document", test.name)
 			}
 		})
+	}
+}
+
+func TestAdministrationRendersVisibleWorkspace(t *testing.T) {
+	output := renderTemplate(t, loadTestTemplates(t), "administration.html", map[string]any{
+		"User": &models.User{FullName: "Admin", IsAdmin: true}, "CSRFToken": "csrf",
+	})
+	for _, fragment := range []string{
+		`class="pane-stack" id="workspace"`, `data-panel-required-mode="content"`,
+		`class="ui-pane"`, `id="administration-title"`, "Invite contributor", "Users", "Proposals",
+	} {
+		if !strings.Contains(output, fragment) {
+			t.Errorf("administration page does not contain %q", fragment)
+		}
 	}
 }
 
