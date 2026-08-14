@@ -98,7 +98,7 @@ count precede the rationale as a compact vertical definition list. Submission
 and deletion are terminal draft actions and therefore remain at the end of the
 full proposal workspace rather than alongside frequently edited metadata.
 
-## Reviewed history
+## Accepted and rejected proposals
 
 Submitted, accepted and rejected proposals and their changes are permanently
 immutable. Rejection records an administrator's reason without changing the

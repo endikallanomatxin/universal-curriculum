@@ -7,17 +7,20 @@ import (
 )
 
 type apiProposal struct {
-	ID             int64                `json:"id"`
-	Title          string               `json:"title"`
-	Rationale      string               `json:"rationale"`
-	Status         string               `json:"status"`
-	BaseProposalID *int64               `json:"base_proposal_id"`
-	AuthorIDs      []int64              `json:"author_ids"`
-	AuthorName     string               `json:"author_name"`
-	ChangeCount    int                  `json:"change_count"`
-	CreatedAt      time.Time            `json:"created_at"`
-	AcceptedAt     *time.Time           `json:"accepted_at"`
-	Changes        *[]apiProposalChange `json:"changes,omitempty"`
+	ID              int64                `json:"id"`
+	Title           string               `json:"title"`
+	Rationale       string               `json:"rationale"`
+	Status          string               `json:"status"`
+	BaseProposalID  *int64               `json:"base_proposal_id"`
+	AuthorIDs       []int64              `json:"author_ids"`
+	AuthorName      string               `json:"author_name"`
+	ChangeCount     int                  `json:"change_count"`
+	CreatedAt       time.Time            `json:"created_at"`
+	AcceptedAt      *time.Time           `json:"accepted_at"`
+	SubmittedAt     *time.Time           `json:"submitted_at"`
+	DecidedAt       *time.Time           `json:"decided_at"`
+	RejectionReason string               `json:"rejection_reason,omitempty"`
+	Changes         *[]apiProposalChange `json:"changes,omitempty"`
 }
 
 type apiProposalChange struct {
@@ -41,6 +44,8 @@ func newAPIProposal(proposal models.CurriculumProposal, includeChanges bool) api
 		Status: proposal.Status, BaseProposalID: proposal.BaseProposalID,
 		AuthorIDs: append([]int64{}, proposal.AuthorIDs...), AuthorName: proposal.AuthorName,
 		ChangeCount: proposal.ChangeCount, CreatedAt: proposal.CreatedAt, AcceptedAt: proposal.AcceptedAt,
+		SubmittedAt: proposal.SubmittedAt, DecidedAt: proposal.DecidedAt,
+		RejectionReason: proposal.RejectionReason,
 	}
 	if !includeChanges {
 		return resource
