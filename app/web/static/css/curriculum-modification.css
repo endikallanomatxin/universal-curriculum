@@ -34,6 +34,10 @@
   justify-content: flex-end;
 }
 
+.curriculum-modification__unit-actions + .empty-state {
+  margin-top: var(--space-3);
+}
+
 .curriculum-modification__units > .section-heading h2 {
   color: var(--color-muted);
   font-size: 0.72rem;
@@ -51,6 +55,19 @@
 
 .active-proposals {
   margin-bottom: var(--space-5);
+}
+
+.active-proposal-queue {
+  margin-bottom: var(--space-5);
+}
+
+.active-proposal-queue .section-heading {
+  margin-bottom: var(--space-3);
+}
+
+.active-proposal-queue + .section-heading {
+  border-top: 1px solid color-mix(in srgb, var(--color-ink) 10%, transparent);
+  padding-top: var(--space-4);
 }
 
 .active-proposal-list {
@@ -239,7 +256,8 @@
   width: calc(100% + 0.9rem);
 }
 
-.proposal-workspace__title-input {
+.proposal-workspace__title-input,
+.proposal-workspace__title {
   color: var(--color-ink-strong);
   font-size: var(--font-size-pane-title);
   font-weight: 700;
@@ -247,9 +265,20 @@
   line-height: 1;
 }
 
-.proposal-workspace__rationale-input {
+.proposal-workspace__title {
+  margin: 0.35rem 0;
+  overflow-wrap: anywhere;
+}
+
+.proposal-workspace__rationale-input,
+.proposal-workspace__rationale {
   font-size: 1rem;
   line-height: 1.65;
+}
+
+.proposal-workspace__rationale {
+  margin: 0.35rem 0;
+  white-space: pre-wrap;
 }
 
 .proposal-workspace__title-input:focus,
@@ -337,6 +366,10 @@
 .proposal-workspace__terminal-actions form {
   flex: none;
   margin: 0;
+}
+
+.proposal-workspace__review-actions {
+  align-items: end;
 }
 
 .proposal-workspace__terminal-actions .primary-button,

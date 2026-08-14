@@ -10,11 +10,16 @@
 
           {{ if .Error }}<p class="form-error proposal-index__error" role="alert">{{ .Error }}</p>{{ end }}
 
-          <section class="active-proposals" aria-labelledby="active-proposals-title">
+          <section class="active-proposals" aria-label="Proposal lists">
+            {{ if .ActiveProposals }}<section class="active-proposal-queue" id="active-proposal-queue" aria-labelledby="active-proposal-queue-title">
+              <div class="section-heading"><h2 id="active-proposal-queue-title">Active proposals</h2><span>{{ .ActiveProposalTotal }}</span></div>
+              <div class="active-proposal-list">{{ range .ActiveProposals }}{{ $proposal := . }}<article class="active-proposal-card selectable-surface {{ with $.ActiveProposal }}{{ if eq .ID $proposal.ID }}is-selected{{ end }}{{ end }}"><a class="active-proposal-card__identity active-proposal-card__work" href="/curriculum-modification?proposal={{ .ID }}&amp;active-limit={{ $.ActiveProposalLimit }}" hx-get="/curriculum-modification?proposal={{ .ID }}&amp;active-limit={{ $.ActiveProposalLimit }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML" hx-push-url="true" data-panel-navigation="{{ if $.ActiveProposal }}replace{{ else }}open{{ end }}" aria-label="Open {{ .Title }}"><span class="material-symbols-rounded active-proposal-card__icon" aria-hidden="true">overview</span><strong class="active-proposal-card__title">{{ .Title }}</strong><span class="active-proposal-card__rationale">{{ .Rationale }}</span><span class="active-proposal-card__meta">{{ .AuthorName }} · {{ .ChangeCount }} {{ if eq .ChangeCount 1 }}change{{ else }}changes{{ end }}</span></a></article>{{ end }}</div>
+              {{ if .ActiveProposalMore }}<div class="pane-list-actions"><a class="pane-list-action" href="/curriculum-modification?{{ if .ActiveProposal }}proposal={{ .ActiveProposal.ID }}&amp;{{ end }}active-limit={{ .ActiveProposalNext }}" hx-get="/curriculum-modification?{{ if .ActiveProposal }}proposal={{ .ActiveProposal.ID }}&amp;{{ end }}active-limit={{ .ActiveProposalNext }}" hx-target="#active-proposal-queue" hx-select="#active-proposal-queue" hx-swap="outerHTML">Show more</a></div>{{ end }}
+            </section>{{ end }}
+            {{ if .DraftProposals }}
             <div class="section-heading">
               <h2 id="active-proposals-title" style="view-transition-name:active-proposals-title;">Your drafts</h2>
             </div>
-            {{ if .DraftProposals }}
               <div class="active-proposal-list">
                 {{ range .DraftProposals }}
                   {{ $proposal := . }}
@@ -45,8 +50,6 @@
                   </article>
                 {{ end }}
               </div>
-            {{ else }}
-              <p class="empty-message">No active proposals. Create one to start collecting curriculum changes.</p>
             {{ end }}
             <div class="pane-list-actions">
               <button class="pane-list-action" type="button" data-open-panel="new-proposal-panel" aria-controls="new-proposal-panel" aria-expanded="false">
@@ -67,6 +70,7 @@
                 Show history
               </a>
             </div>
+            {{ if .ReviewedProposals }}<section id="reviewed-proposals" aria-labelledby="reviewed-proposals-title"><div class="section-heading"><h2 id="reviewed-proposals-title">Your submitted proposals</h2><span>{{ .ReviewedProposalTotal }}</span></div><ul class="proposal-list">{{ range .ReviewedProposals }}<li><a href="/curriculum-modification?proposal={{ .ID }}&amp;reviewed-limit={{ $.ReviewedProposalLimit }}" hx-get="/curriculum-modification?proposal={{ .ID }}&amp;reviewed-limit={{ $.ReviewedProposalLimit }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML" hx-push-url="true">{{ .Title }}</a> — {{ .Status }}</li>{{ end }}</ul>{{ if .ReviewedProposalMore }}<div class="pane-list-actions"><a class="pane-list-action" href="/curriculum-modification?{{ if .ActiveProposal }}proposal={{ .ActiveProposal.ID }}&amp;{{ end }}reviewed-limit={{ .ReviewedProposalNext }}" hx-get="/curriculum-modification?{{ if .ActiveProposal }}proposal={{ .ActiveProposal.ID }}&amp;{{ end }}reviewed-limit={{ .ReviewedProposalNext }}" hx-target="#reviewed-proposals" hx-select="#reviewed-proposals" hx-swap="outerHTML">Show more</a></div>{{ end }}</section>{{ end }}
           </section>
         </div>
       </section>

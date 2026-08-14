@@ -3,19 +3,21 @@
       {{ if .ActiveProposal }}
         <section class="ui-pane ui-pane--wide proposal-workspace-pane" id="proposal-workspace-panel" data-nested-panel data-panel-motion="horizontal" data-layout-panel data-panel-modes="collapsed:0 breadcrumb:4 mobile:20 content:34 wide:46" data-panel-required-mode="mobile" data-panel-fill data-panel-breadcrumb="Working on {{ .ActiveProposal.Title }}" data-panel-breadcrumb-url="/curriculum-modification?proposal={{ .ActiveProposal.ID }}" data-panel-preserve-scroll aria-labelledby="proposal-workspace-title">
           <div class="ui-pane__inner proposal-pane pane-breadcrumb" data-pane-content-width="wide">
-            <form class="proposal-workspace__metadata pane-breadcrumb__container"
+            {{ if eq .ActiveProposal.Status "draft" }}<form class="proposal-workspace__metadata pane-breadcrumb__container"
                   data-proposal-metadata="{{ .ActiveProposal.ID }}"
                   action="/curriculum-modification/proposals/{{ .ActiveProposal.ID }}"
                   method="post"
                   hx-post="/curriculum-modification/proposals/{{ .ActiveProposal.ID }}"
                   hx-trigger="input changed delay:700ms from:#working-proposal-title, input changed delay:700ms from:#working-proposal-rationale"
                   hx-target="#proposal-metadata-save-status"
-                  hx-swap="outerHTML">
+                  hx-swap="outerHTML">{{ else }}<div class="proposal-workspace__metadata pane-breadcrumb__container">{{ end }}
+              {{ if eq .ActiveProposal.Status "draft" }}
               <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+              {{ end }}
               <header class="nested-panel__header proposal-pane__header proposal-workspace__main-header pane-breadcrumb__header">
                 <div>
-                  <label class="visually-hidden" for="working-proposal-title">Proposal title</label>
-                  <textarea class="proposal-workspace__title-input" id="working-proposal-title" name="title" required maxlength="200" rows="1" data-autoresize data-autoresize-unbounded data-proposal-title-input>{{ .ActiveProposal.Title }}</textarea>
+                  {{ if eq .ActiveProposal.Status "draft" }}<label class="visually-hidden" for="working-proposal-title">Proposal title</label>
+                  <textarea class="proposal-workspace__title-input" id="working-proposal-title" name="title" required maxlength="200" rows="1" data-autoresize data-autoresize-unbounded data-proposal-title-input>{{ .ActiveProposal.Title }}</textarea>{{ else }}<h1 class="proposal-workspace__title">{{ .ActiveProposal.Title }}</h1>{{ end }}
                 <a class="pane-breadcrumb__title" href="/curriculum-modification?proposal={{ .ActiveProposal.ID }}" hx-get="/curriculum-modification?proposal={{ .ActiveProposal.ID }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true">Working on {{ .ActiveProposal.Title }}</a>
                 </div>
                 <a class="icon-button ui-pane__close" href="/curriculum-modification" hx-get="/curriculum-modification" hx-trigger="panel-close" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML" hx-push-url="true" data-panel-navigation="close" aria-label="Close proposal workspace">
@@ -27,15 +29,16 @@
                 <div class="proposal-workspace__metadata-summary">
                   <dl class="proposal-details">
                     <div><dt class="label">Author</dt><dd>{{ .ActiveProposal.AuthorName }}</dd></div>
-                    <div><dt class="label">Status</dt><dd>{{ if and .ProposalRebase (eq .ProposalRebase.Status "needs_review") }}Needs rebase review{{ else }}Up to date{{ end }}</dd></div>
+                    <div><dt class="label">Status</dt><dd>{{ if eq .ActiveProposal.Status "submitted" }}Pending review{{ else if and .ProposalRebase (eq .ProposalRebase.Status "needs_review") }}Needs rebase review{{ else }}Up to date{{ end }}</dd></div>
                   </dl>
-                  {{ template "proposal-metadata-save-status" . }}
+                  {{ if eq .ActiveProposal.Status "draft" }}{{ template "proposal-metadata-save-status" . }}{{ end }}
                 </div>
-                <label class="label proposal-workspace__purpose-label" for="working-proposal-rationale">Purpose</label>
+                {{ if eq .ActiveProposal.Status "draft" }}<label class="label proposal-workspace__purpose-label" for="working-proposal-rationale">Purpose</label>
                 <textarea class="proposal-workspace__rationale-input" id="working-proposal-rationale" name="rationale" required rows="1" maxlength="1000" data-autoresize data-autoresize-unbounded data-proposal-rationale-input>{{ .ActiveProposal.Rationale }}</textarea>
-                <noscript><button class="secondary-button" type="submit">Save proposal details</button></noscript>
+                <noscript><button class="secondary-button" type="submit">Save proposal details</button></noscript>{{ else }}<h2 class="label proposal-workspace__purpose-label">Purpose</h2>
+                <p class="proposal-workspace__rationale">{{ .ActiveProposal.Rationale }}</p>{{ end }}
               </section>
-            </form>
+            {{ if eq .ActiveProposal.Status "draft" }}</form>{{ else }}</div>{{ end }}
 
             {{ template "proposal-rebase-pane" . }}
             <section class="proposal-workspace__changes {{ if and .ProposalRebase (eq .ProposalRebase.Status "needs_review") }}proposal-workspace__changes--locked{{ end }}" aria-labelledby="proposal-changes-title">
@@ -134,16 +137,19 @@
               {{ end }}
             </section>
 
-            <footer class="proposal-workspace__terminal-actions" aria-label="Proposal actions">
+            {{ if eq .ActiveProposal.Status "draft" }}<footer class="proposal-workspace__terminal-actions" aria-label="Proposal actions">
               <form action="/curriculum-modification/proposals/{{ .ActiveProposal.ID }}/delete" method="post" onsubmit="return confirm('Delete this draft proposal?')">
                 <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
                 <button class="secondary-button destructive-action" type="submit"><span class="material-symbols-rounded" aria-hidden="true">delete</span>Delete proposal</button>
               </form>
-              <form action="/curriculum-modification/proposals/{{ .ActiveProposal.ID }}/publish" method="post" {{ with .PublishWarning }}onsubmit="return confirm('{{ . }}')"{{ end }}>
+              <form action="/curriculum-modification/proposals/{{ .ActiveProposal.ID }}/submit" method="post" {{ with .PublishWarning }}onsubmit="return confirm('{{ . }}')"{{ end }}>
                 <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
-                <button class="primary-button" type="submit" {{ if not .CanEditProposal }}disabled{{ if and .ProposalRebase (eq .ProposalRebase.Status "needs_review") }} title="Resolve the rebase before publishing"{{ end }}{{ end }}>Publish proposal</button>
+                <button class="primary-button" type="submit" {{ if not .CanEditProposal }}disabled{{ if and .ProposalRebase (eq .ProposalRebase.Status "needs_review") }} title="Resolve the rebase before submitting"{{ end }}{{ end }}>Submit proposal</button>
               </form>
-            </footer>
+            </footer>{{ else if and .User.IsAdmin (eq .ActiveProposal.Status "submitted") }}<footer class="proposal-workspace__terminal-actions proposal-workspace__review-actions" aria-label="Proposal review decision">
+              <form action="/admin/proposals/{{ .ActiveProposal.ID }}/accept" method="post"><input type="hidden" name="csrf_token" value="{{ .CSRFToken }}"><input type="hidden" name="return_to" value="/curriculum-modification?proposal={{ .ActiveProposal.ID }}"><button class="primary-button" type="submit"><span class="material-symbols-rounded" aria-hidden="true">check</span>Accept proposal</button></form>
+              <form action="/admin/proposals/{{ .ActiveProposal.ID }}/reject" method="post"><input type="hidden" name="csrf_token" value="{{ .CSRFToken }}"><input type="hidden" name="return_to" value="/curriculum-modification?proposal={{ .ActiveProposal.ID }}"><button class="secondary-button destructive-action" type="submit">Reject proposal</button></form>
+            </footer>{{ end }}
           </div>
         </section>
       {{ end }}

@@ -32,8 +32,9 @@ type adapter struct {
 }
 
 type servers struct {
-	standard *mcp.Server
-	admin    *mcp.Server
+	standard    *mcp.Server
+	contributor *mcp.Server
+	admin       *mcp.Server
 }
 
 func NewHandler(database *sql.DB, baseURL string) http.Handler {
@@ -73,8 +74,9 @@ func NewHandler(database *sql.DB, baseURL string) http.Handler {
 
 func newServers(application *adapter) servers {
 	return servers{
-		standard: newServer(application, false),
-		admin:    newServer(application, true),
+		standard:    newPermissionServer(application, false, false),
+		contributor: newPermissionServer(application, true, false),
+		admin:       newPermissionServer(application, true, true),
 	}
 }
 
@@ -82,10 +84,17 @@ func (servers servers) forToken(info *auth.TokenInfo) *mcp.Server {
 	if userFromTokenInfo(info).IsAdmin {
 		return servers.admin
 	}
+	if userFromTokenInfo(info).IsContributor {
+		return servers.contributor
+	}
 	return servers.standard
 }
 
 func newServer(application *adapter, admin bool) *mcp.Server {
+	return newPermissionServer(application, admin, admin)
+}
+
+func newPermissionServer(application *adapter, contributor, admin bool) *mcp.Server {
 	server := mcp.NewServer(&mcp.Implementation{
 		Name: "universal-curriculum", Title: "Universal Curriculum", Version: appinfo.Release,
 		Description: "Agent-oriented access to Universal Curriculum.", WebsiteURL: application.baseURL,
@@ -99,8 +108,11 @@ func newServer(application *adapter, admin bool) *mcp.Server {
 	application.addResources(server)
 	application.addReadTools(server)
 	application.addLearningTools(server)
-	if admin {
+	if contributor {
 		application.addProposalTools(server)
+	}
+	if admin {
+		application.addProposalDecisionTools(server)
 	}
 	return server
 }
@@ -187,6 +199,15 @@ func requireAdmin[T any](request *mcp.CallToolRequest) (*mcp.CallToolResult, too
 	return result, output, err, nil
 }
 
+func requireContributor[T any](request *mcp.CallToolRequest) (*mcp.CallToolResult, toolOutput[T], error, *models.User) {
+	user := userFromRequest(request)
+	if user.CanContribute() {
+		return nil, toolOutput[T]{}, nil, user
+	}
+	result, output, err := failed[T]("permission_denied", "Contributor permission is required.", nil)
+	return result, output, err, nil
+}
+
 func constrainSchema(schema *jsonschema.Schema) {
 	for _, definition := range schema.Defs {
 		constrainSchema(definition)
@@ -219,7 +240,7 @@ func constrainSchema(schema *jsonschema.Schema) {
 				property.Items.Minimum = jsonschema.Ptr(1.0)
 			}
 		case "status":
-			property.Enum = []any{"draft", "accepted", "rejected"}
+			property.Enum = []any{"draft", "submitted", "accepted", "rejected"}
 		case "choice":
 			property.Enum = []any{"keep", "drop", "edit"}
 		}

@@ -21,9 +21,50 @@ type authPageData struct {
 	Next   string
 }
 
+func (server *Server) contributorInvitation(writer http.ResponseWriter, request *http.Request) {
+	token := request.URL.Query().Get("token")
+	if request.Method == http.MethodPost {
+		request.Body = http.MaxBytesReader(writer, request.Body, 1<<20)
+		if err := request.ParseForm(); err != nil {
+			http.Error(writer, "Invalid invitation", http.StatusBadRequest)
+			return
+		}
+		token = request.FormValue("token")
+		if !services.ValidCSRFToken(request, request.FormValue("csrf_token")) {
+			http.Error(writer, "Invalid CSRF token", http.StatusForbidden)
+			return
+		}
+		userID, ok := services.SessionUserID(request)
+		if !ok {
+			http.Redirect(writer, request, "/auth/login?next="+url.QueryEscape("/auth/contributor-invitation?token="+token), http.StatusSeeOther)
+			return
+		}
+		if err := db.AcceptContributorInvitation(server.Database, token, userID); err != nil {
+			server.renderStatus(writer, http.StatusBadRequest, "contributor-invitation.html", contributorInvitationPageData{Token: token, Error: "This invitation is invalid, expired or belongs to another email address."})
+			return
+		}
+		http.Redirect(writer, request, "/curriculum-modification", http.StatusSeeOther)
+		return
+	}
+	data := contributorInvitationPageData{Token: token}
+	if userID, ok := services.SessionUserID(request); ok {
+		data.User, _ = db.GetUserByID(server.Database, userID)
+		data.CSRFToken, _ = services.SessionCSRFToken(request)
+	}
+	server.render(writer, "contributor-invitation.html", data)
+}
+
 type registrationPageData struct {
-	Error string
-	Next  string
+	Error           string
+	Next            string
+	InvitationToken string
+}
+
+type contributorInvitationPageData struct {
+	Token     string
+	Error     string
+	User      *models.User
+	CSRFToken string
 }
 
 type forgotPasswordPageData struct {
@@ -128,7 +169,8 @@ func (server *Server) register(writer http.ResponseWriter, request *http.Request
 	switch request.Method {
 	case http.MethodGet:
 		server.render(writer, "register.html", registrationPageData{
-			Next: safeRedirectPath(request.URL.Query().Get("next"), "/account"),
+			Next:            safeRedirectPath(request.URL.Query().Get("next"), "/account"),
+			InvitationToken: request.URL.Query().Get("invitation"),
 		})
 	case http.MethodPost:
 		request.Body = http.MaxBytesReader(writer, request.Body, 1<<20)
@@ -144,6 +186,14 @@ func (server *Server) register(writer http.ResponseWriter, request *http.Request
 		email := models.NormalizeEmail(request.FormValue("email"))
 		password := request.FormValue("password")
 		next := safeRedirectPath(request.FormValue("next"), "/account")
+		invitationToken := request.FormValue("invitation_token")
+		if invitationToken != "" {
+			invitedEmail, invitationErr := db.ValidContributorInvitationEmail(server.Database, invitationToken)
+			if invitationErr != nil || invitedEmail != email {
+				server.renderStatus(writer, http.StatusBadRequest, "register.html", registrationPageData{Error: "The contributor invitation is invalid, expired or belongs to another email address.", Next: next, InvitationToken: invitationToken})
+				return
+			}
+		}
 		blocked, err := server.registerAuthenticationRateEvent(
 			request,
 			(*services.AuthenticationRateLimiter).RegisterRegistration,
@@ -161,9 +211,13 @@ func (server *Server) register(writer http.ResponseWriter, request *http.Request
 			})
 			return
 		}
-		_, err = services.RegisterLocalUser(server.Database, fullName, email, password)
+		if invitationToken == "" {
+			_, err = services.RegisterLocalUser(server.Database, fullName, email, password)
+		} else {
+			_, err = services.RegisterInvitedContributor(server.Database, fullName, email, password, invitationToken)
+		}
 		if err != nil {
-			data := registrationPageData{Next: next}
+			data := registrationPageData{Next: next, InvitationToken: invitationToken}
 			switch {
 			case errors.Is(err, models.ErrFullNameRequired):
 				data.Error = "Enter your name."
@@ -177,6 +231,8 @@ func (server *Server) register(writer http.ResponseWriter, request *http.Request
 				data.Error = "Your password must be 72 bytes or fewer."
 			case errors.Is(err, db.ErrEmailAlreadyRegistered):
 				data.Error = "Unable to create an account with those details."
+			case errors.Is(err, db.ErrInvalidContributorInvitation):
+				data.Error = "The contributor invitation is invalid or expired."
 			default:
 				log.Printf("register local user: %v", err)
 				http.Error(writer, "Unable to create account", http.StatusInternalServerError)
@@ -185,7 +241,6 @@ func (server *Server) register(writer http.ResponseWriter, request *http.Request
 			server.renderStatus(writer, http.StatusBadRequest, "register.html", data)
 			return
 		}
-
 		location := "/auth/login?registered=1&next=" + url.QueryEscape(next)
 		http.Redirect(writer, request, location, http.StatusSeeOther)
 	default:

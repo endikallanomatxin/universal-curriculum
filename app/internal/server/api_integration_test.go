@@ -118,7 +118,9 @@ func TestExperimentalAPIEndToEnd(t *testing.T) {
 		nil, http.StatusNoContent)
 
 	apiIntegrationRequest(t, application, token.Token, http.MethodPost,
-		fmt.Sprintf("/api/proposals/%d/publish", proposal.ID), nil, http.StatusOK)
+		fmt.Sprintf("/api/proposals/%d/submit", proposal.ID), nil, http.StatusOK)
+	apiIntegrationRequest(t, application, token.Token, http.MethodPost,
+		fmt.Sprintf("/api/proposals/%d/accept", proposal.ID), nil, http.StatusOK)
 	apiIntegrationRequest(t, application, "", http.MethodGet,
 		fmt.Sprintf("/api/units/%d", unit.ID), nil, http.StatusOK)
 	apiIntegrationRequest(t, application, token.Token, http.MethodPost, "/api/learning-paths", map[string]any{

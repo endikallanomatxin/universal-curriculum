@@ -5,6 +5,13 @@ import (
 	"testing"
 )
 
+func submitAndAcceptCurriculumProposal(database *sql.DB, authorID, proposalID int64) (CurriculumProposalRebaseSummary, error) {
+	if err := SubmitCurriculumProposal(database, authorID, proposalID); err != nil {
+		return CurriculumProposalRebaseSummary{}, err
+	}
+	return AcceptCurriculumProposal(database, proposalID)
+}
+
 func publishIntegrationUnit(t *testing.T, database *sql.DB) (int64, int64) {
 	t.Helper()
 	var authorID int64
@@ -21,7 +28,7 @@ func publishIntegrationUnit(t *testing.T, database *sql.DB) (int64, int64) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := PublishCurriculumProposal(database, authorID, proposal.ID); err != nil {
+	if _, err := submitAndAcceptCurriculumProposal(database, authorID, proposal.ID); err != nil {
 		t.Fatal(err)
 	}
 	return authorID, unit.ID

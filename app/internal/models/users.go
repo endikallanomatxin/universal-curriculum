@@ -23,13 +23,28 @@ var (
 )
 
 type User struct {
-	ID        int64
-	FullName  string
-	Alias     *string
-	Email     string
-	IsAdmin   bool
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID            int64
+	FullName      string
+	Alias         *string
+	Email         string
+	IsAdmin       bool
+	IsContributor bool
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+func (user User) CanContribute() bool { return user.IsAdmin || user.IsContributor }
+
+type ContributorInvitation struct {
+	ID         int64
+	Email      string
+	Token      string
+	InvitedBy  int64
+	AcceptedBy *int64
+	ExpiresAt  time.Time
+	AcceptedAt *time.Time
+	RevokedAt  *time.Time
+	CreatedAt  time.Time
 }
 
 type APIToken struct {

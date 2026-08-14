@@ -22,8 +22,8 @@ Only `POST /mcp` carries protocol messages; unsupported methods receive `405`.
 The endpoint intentionally does not provide server-initiated subscriptions or
 an autonomous Universal Curriculum agent.
 
-The transport reuses two immutable MCP server catalogs, one with the regular
-tools and one with the administrator tools. Authentication selects the catalog
+The transport reuses three immutable MCP server catalogs for members,
+contributors and administrators. Authentication selects the catalog
 for each request, while tool handlers read the current user from that request's
 SDK `TokenInfo`; no server instance contains request-specific identity.
 
@@ -37,7 +37,7 @@ workflow:
 - use `get_recommendations` rather than independently inferring the next unit;
 - treat recorded progress as authoritative;
 - inspect rebase state before changing a stale proposal; and
-- publish only after an explicit user request, never as an implied part of
+- submit only after an explicit user request, never as an implied part of
   editing or preparing a proposal.
 
 These instructions guide a model; permissions and invariants are still enforced
@@ -56,12 +56,13 @@ Parameterized reads and actions are tools. The current conceptual groups are:
 - learning: `get_learning_paths`, `create_learning_path`,
   `update_learning_path`, `delete_learning_path`, `get_progress`,
   `set_progress`, `get_recommendations`;
-- administrator-only proposals: list, inspect, create, update and delete proposals; create, update
+- contributor proposals: list, inspect, create, update and delete proposals; create, update
   and delete proposal units; converge a dependency; ensure a recognition;
-  delete a proposal change; inspect and resolve rebase state; and publish.
+  delete a proposal change; inspect and resolve rebase state; and submit;
+- administrator proposal decisions: accept or reject a submitted proposal.
 
-Proposal tools are registered only for administrators. Their handlers still
-enforce administrator permission and draft authorship so discovery filtering is
+Proposal tools are registered for contributors and administrators. Their handlers still
+enforce contributor permission and draft authorship so discovery filtering is
 an ergonomic optimization rather than an authorization boundary.
 
 Every tool has an explicit input and output schema. Results use an `ok` envelope
@@ -153,10 +154,10 @@ the complete remote OAuth flow.
 - Personal and OAuth tokens inherit all current account permissions. There are
   no finer MCP scopes yet; only authorize clients that should receive the same
   access as the account.
-- Draft visibility and ownership, administrator checks, proposal invariants and
-  publication authorization are enforced server-side.
-- `publish_proposal` is destructive metadata-wise, requires an administrator
-  who authors the draft, requires `confirmed: true`, and requires the current
+- Draft visibility and ownership, contributor and administrator checks,
+  proposal invariants and decision authorization are enforced server-side.
+- `submit_proposal` is destructive metadata-wise, requires a contributor who
+  authors the draft, requires `confirmed: true`, and requires the current
   title as a stale/wrong-proposal guard. Clients should still show their own
   user confirmation UI.
 - The OAuth consent page grants the single `mcp` scope. Account lists connected

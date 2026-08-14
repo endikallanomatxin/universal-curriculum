@@ -88,14 +88,14 @@ func AuthenticateAPIToken(database *sql.DB, raw string) (*models.User, error) {
 	var alias sql.NullString
 	err := database.QueryRow(`
 		SELECT users.id, users.full_name, users.alias, authentication.email,
-		       users.is_admin, users.created_at, users.updated_at
+		       users.is_admin, users.is_contributor, users.created_at, users.updated_at
 		FROM api_tokens token
 		JOIN users ON users.id = token.user_id
 		JOIN local_authentications authentication ON authentication.user_id = users.id
 		WHERE token.token_hash = $1
 	`, hashAPIToken(raw)).Scan(
 		&user.ID, &user.FullName, &alias, &user.Email,
-		&user.IsAdmin, &user.CreatedAt, &user.UpdatedAt,
+		&user.IsAdmin, &user.IsContributor, &user.CreatedAt, &user.UpdatedAt,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil

@@ -1,0 +1,15 @@
+{{ define "administration-index-pane" -}}
+<section class="ui-pane administration-index-pane" aria-labelledby="administration-title" data-layout-panel data-panel-modes="collapsed:0 breadcrumb:4 mobile:20 content:24 wide:28" data-panel-required-mode="mobile" data-panel-fill data-panel-breadcrumb="Administration" data-panel-breadcrumb-url="/admin">
+  <div class="ui-pane__inner pane-breadcrumb" data-pane-content-width="narrow">
+    <header class="pane-breadcrumb__header">
+      <div><h1 id="administration-title">Administration</h1><a class="pane-breadcrumb__title" href="/admin" {{ template "shell-link-attributes" "/admin" }}>Administration</a></div>
+    </header>
+    <nav class="pane-navigation-list" aria-label="Administration areas">
+      <a class="pane-navigation-card selectable-surface {{ if .ShowUsers }}is-selected{{ end }}" href="/admin/users" hx-get="/admin/users" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true" data-panel-navigation="open-or-replace">
+        <span class="material-symbols-rounded" aria-hidden="true">group</span>
+        <span><strong>User administration</strong><small>Accounts, contributor access and invitations</small></span>
+      </a>
+    </nav>
+  </div>
+</section>
+{{- end }}

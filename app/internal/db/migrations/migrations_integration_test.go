@@ -43,12 +43,82 @@ func TestMigrationsRoundTrip(t *testing.T) {
 	if err := setup(); err != nil {
 		t.Fatal(err)
 	}
-	if err := goose.Up(database, "sql"); err != nil {
-		t.Fatalf("apply migrations: %v", err)
+	if err := goose.UpTo(database, "sql", 2); err != nil {
+		t.Fatalf("apply pre-0.3 migrations: %v", err)
 	}
 	var userID int64
 	if err := database.QueryRow(`INSERT INTO users (full_name) VALUES ('Migration user') RETURNING id`).Scan(&userID); err != nil {
 		t.Fatalf("create migration fixture user: %v", err)
+	}
+	fixtureTx, err := database.Begin()
+	if err != nil {
+		t.Fatalf("begin 0.2 proposal fixtures: %v", err)
+	}
+	var acceptedID, rejectedID int64
+	if err := fixtureTx.QueryRow(`
+		INSERT INTO curriculum_proposals (title, rationale, status, created_at)
+		VALUES ('Accepted proposal', 'Existing accepted work', 'draft', '2026-08-01T10:00:00Z')
+		RETURNING id
+	`).Scan(&acceptedID); err != nil {
+		_ = fixtureTx.Rollback()
+		t.Fatalf("create accepted 0.2 proposal: %v", err)
+	}
+	if err := fixtureTx.QueryRow(`
+		INSERT INTO curriculum_proposals (title, rationale, status, created_at)
+		VALUES ('Rejected proposal', 'Existing rejected work', 'draft', '2026-08-03T12:00:00Z')
+		RETURNING id
+	`).Scan(&rejectedID); err != nil {
+		_ = fixtureTx.Rollback()
+		t.Fatalf("create rejected 0.2 proposal: %v", err)
+	}
+	if _, err := fixtureTx.Exec(`
+		INSERT INTO curriculum_proposal_authors (proposal_id, user_id)
+		VALUES ($1, $3), ($2, $3)
+	`, acceptedID, rejectedID, userID); err != nil {
+		_ = fixtureTx.Rollback()
+		t.Fatalf("create 0.2 proposal authors: %v", err)
+	}
+	if _, err := fixtureTx.Exec(`
+		UPDATE curriculum_proposals
+		SET status = 'accepted', accepted_at = '2026-08-02T11:00:00Z'
+		WHERE id = $1
+	`, acceptedID); err != nil {
+		_ = fixtureTx.Rollback()
+		t.Fatalf("accept 0.2 proposal: %v", err)
+	}
+	if _, err := fixtureTx.Exec(`UPDATE curriculum_projection_state SET proposal_id = $1 WHERE singleton = TRUE`, acceptedID); err != nil {
+		_ = fixtureTx.Rollback()
+		t.Fatalf("project accepted 0.2 proposal: %v", err)
+	}
+	if _, err := fixtureTx.Exec(`UPDATE curriculum_proposals SET status = 'rejected' WHERE id = $1`, rejectedID); err != nil {
+		_ = fixtureTx.Rollback()
+		t.Fatalf("reject 0.2 proposal: %v", err)
+	}
+	if err := fixtureTx.Commit(); err != nil {
+		t.Fatalf("commit 0.2 proposal fixtures: %v", err)
+	}
+	if err := goose.Up(database, "sql"); err != nil {
+		t.Fatalf("upgrade populated 0.2 schema: %v", err)
+	}
+	for _, test := range []struct {
+		id     int64
+		status string
+	}{
+		{id: acceptedID, status: "accepted"},
+		{id: rejectedID, status: "rejected"},
+	} {
+		var timestampsMatch bool
+		if err := database.QueryRow(`
+			SELECT submitted_at = COALESCE(accepted_at, created_at)
+			   AND decided_at = COALESCE(accepted_at, created_at)
+			FROM curriculum_proposals
+			WHERE id = $1 AND status = $2
+		`, test.id, test.status).Scan(&timestampsMatch); err != nil {
+			t.Fatalf("read upgraded %s proposal: %v", test.status, err)
+		}
+		if !timestampsMatch {
+			t.Fatalf("%s proposal timestamps were not backfilled", test.status)
+		}
 	}
 	clientID := "https://client.example/metadata.json"
 	var connectionID int64

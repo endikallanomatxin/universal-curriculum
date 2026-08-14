@@ -17,6 +17,8 @@ type apiProposal struct {
 	ChangeCount    int                  `json:"change_count"`
 	CreatedAt      time.Time            `json:"created_at"`
 	AcceptedAt     *time.Time           `json:"accepted_at"`
+	SubmittedAt    *time.Time           `json:"submitted_at"`
+	DecidedAt      *time.Time           `json:"decided_at"`
 	Changes        *[]apiProposalChange `json:"changes,omitempty"`
 }
 
@@ -41,6 +43,7 @@ func newAPIProposal(proposal models.CurriculumProposal, includeChanges bool) api
 		Status: proposal.Status, BaseProposalID: proposal.BaseProposalID,
 		AuthorIDs: append([]int64{}, proposal.AuthorIDs...), AuthorName: proposal.AuthorName,
 		ChangeCount: proposal.ChangeCount, CreatedAt: proposal.CreatedAt, AcceptedAt: proposal.AcceptedAt,
+		SubmittedAt: proposal.SubmittedAt, DecidedAt: proposal.DecidedAt,
 	}
 	if !includeChanges {
 		return resource

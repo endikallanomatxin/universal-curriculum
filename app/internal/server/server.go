@@ -104,28 +104,30 @@ func (server *Server) routes() http.Handler {
 	registerAPIRoute(mux, "/api/progress", map[string]http.Handler{http.MethodGet: server.requireAPIToken(http.HandlerFunc(server.apiGetProgress))})
 	registerAPIRoute(mux, "/api/progress/{unitId}", map[string]http.Handler{http.MethodPut: server.requireAPIToken(http.HandlerFunc(server.apiSetProgress))})
 	registerAPIRoute(mux, "/api/proposals", map[string]http.Handler{
-		http.MethodGet:  server.requireAPIAdmin(http.HandlerFunc(server.apiListProposals)),
-		http.MethodPost: server.requireAPIAdmin(http.HandlerFunc(server.apiCreateProposal)),
+		http.MethodGet:  server.requireAPIContributor(http.HandlerFunc(server.apiListProposals)),
+		http.MethodPost: server.requireAPIContributor(http.HandlerFunc(server.apiCreateProposal)),
 	})
 	registerAPIRoute(mux, "/api/proposals/{proposalId}", map[string]http.Handler{
-		http.MethodGet:    server.requireAPIAdmin(http.HandlerFunc(server.apiGetProposal)),
-		http.MethodPut:    server.requireAPIAdmin(http.HandlerFunc(server.apiUpdateProposal)),
-		http.MethodDelete: server.requireAPIAdmin(http.HandlerFunc(server.apiDeleteProposal)),
+		http.MethodGet:    server.requireAPIContributor(http.HandlerFunc(server.apiGetProposal)),
+		http.MethodPut:    server.requireAPIContributor(http.HandlerFunc(server.apiUpdateProposal)),
+		http.MethodDelete: server.requireAPIContributor(http.HandlerFunc(server.apiDeleteProposal)),
 	})
-	registerAPIRoute(mux, "/api/proposals/{proposalId}/units", map[string]http.Handler{http.MethodPost: server.requireAPIAdmin(http.HandlerFunc(server.apiCreateProposalUnit))})
+	registerAPIRoute(mux, "/api/proposals/{proposalId}/units", map[string]http.Handler{http.MethodPost: server.requireAPIContributor(http.HandlerFunc(server.apiCreateProposalUnit))})
 	registerAPIRoute(mux, "/api/proposals/{proposalId}/units/{unitId}", map[string]http.Handler{
-		http.MethodPut:    server.requireAPIAdmin(http.HandlerFunc(server.apiUpdateProposalUnit)),
-		http.MethodDelete: server.requireAPIAdmin(http.HandlerFunc(server.apiDeleteProposalUnit)),
+		http.MethodPut:    server.requireAPIContributor(http.HandlerFunc(server.apiUpdateProposalUnit)),
+		http.MethodDelete: server.requireAPIContributor(http.HandlerFunc(server.apiDeleteProposalUnit)),
 	})
-	registerAPIRoute(mux, "/api/proposals/{proposalId}/dependencies", map[string]http.Handler{http.MethodPost: server.requireAPIAdmin(http.HandlerFunc(server.apiAddProposalDependency))})
-	registerAPIRoute(mux, "/api/proposals/{proposalId}/dependencies/{unitId}/{prerequisiteId}", map[string]http.Handler{http.MethodDelete: server.requireAPIAdmin(http.HandlerFunc(server.apiRemoveProposalDependency))})
-	registerAPIRoute(mux, "/api/proposals/{proposalId}/recognitions", map[string]http.Handler{http.MethodPost: server.requireAPIAdmin(http.HandlerFunc(server.apiAddProposalRecognition))})
-	registerAPIRoute(mux, "/api/proposals/{proposalId}/changes/{changeId}", map[string]http.Handler{http.MethodDelete: server.requireAPIAdmin(http.HandlerFunc(server.apiDeleteProposalChange))})
+	registerAPIRoute(mux, "/api/proposals/{proposalId}/dependencies", map[string]http.Handler{http.MethodPost: server.requireAPIContributor(http.HandlerFunc(server.apiAddProposalDependency))})
+	registerAPIRoute(mux, "/api/proposals/{proposalId}/dependencies/{unitId}/{prerequisiteId}", map[string]http.Handler{http.MethodDelete: server.requireAPIContributor(http.HandlerFunc(server.apiRemoveProposalDependency))})
+	registerAPIRoute(mux, "/api/proposals/{proposalId}/recognitions", map[string]http.Handler{http.MethodPost: server.requireAPIContributor(http.HandlerFunc(server.apiAddProposalRecognition))})
+	registerAPIRoute(mux, "/api/proposals/{proposalId}/changes/{changeId}", map[string]http.Handler{http.MethodDelete: server.requireAPIContributor(http.HandlerFunc(server.apiDeleteProposalChange))})
 	registerAPIRoute(mux, "/api/proposals/{proposalId}/rebase", map[string]http.Handler{
-		http.MethodGet:  server.requireAPIAdmin(http.HandlerFunc(server.apiGetProposalRebase)),
-		http.MethodPost: server.requireAPIAdmin(http.HandlerFunc(server.apiResolveProposalRebase)),
+		http.MethodGet:  server.requireAPIContributor(http.HandlerFunc(server.apiGetProposalRebase)),
+		http.MethodPost: server.requireAPIContributor(http.HandlerFunc(server.apiResolveProposalRebase)),
 	})
-	registerAPIRoute(mux, "/api/proposals/{proposalId}/publish", map[string]http.Handler{http.MethodPost: server.requireAPIAdmin(http.HandlerFunc(server.apiPublishProposal))})
+	registerAPIRoute(mux, "/api/proposals/{proposalId}/submit", map[string]http.Handler{http.MethodPost: server.requireAPIContributor(http.HandlerFunc(server.apiSubmitProposal))})
+	registerAPIRoute(mux, "/api/proposals/{proposalId}/accept", map[string]http.Handler{http.MethodPost: server.requireAPIAdmin(http.HandlerFunc(server.apiAcceptProposal))})
+	registerAPIRoute(mux, "/api/proposals/{proposalId}/reject", map[string]http.Handler{http.MethodPost: server.requireAPIAdmin(http.HandlerFunc(server.apiRejectProposal))})
 	for _, method := range apiRequestMethods {
 		if method == http.MethodHead {
 			continue
@@ -154,6 +156,8 @@ func (server *Server) routes() http.Handler {
 	mux.HandleFunc("POST /auth/login", server.login)
 	mux.HandleFunc("GET /auth/register", server.register)
 	mux.HandleFunc("POST /auth/register", server.register)
+	mux.HandleFunc("GET /auth/contributor-invitation", server.contributorInvitation)
+	mux.HandleFunc("POST /auth/contributor-invitation", server.contributorInvitation)
 	mux.HandleFunc("GET /auth/forgot-password", server.forgotPassword)
 	mux.HandleFunc("POST /auth/forgot-password", server.forgotPassword)
 	resetPasswordHandler := sensitiveAuthResponse(http.HandlerFunc(server.resetPassword))
@@ -164,20 +168,27 @@ func (server *Server) routes() http.Handler {
 	mux.Handle("POST /account/api-tokens", requireUser(sensitiveAuthResponse(http.HandlerFunc(server.createAPIToken))))
 	mux.Handle("POST /account/api-tokens/{id}/revoke", requireUser(http.HandlerFunc(server.revokeAPIToken)))
 	mux.Handle("POST /account/oauth-connections/{id}/revoke", requireUser(http.HandlerFunc(server.revokeOAuthConnection)))
-	mux.Handle("GET /curriculum-modification", server.requireAdmin(http.HandlerFunc(server.curriculumModification)))
-	mux.Handle("POST /curriculum-modification/proposals", server.requireAdmin(http.HandlerFunc(server.createCurriculumProposal)))
-	mux.Handle("POST /curriculum-modification/proposals/{id}", server.requireAdmin(http.HandlerFunc(server.updateCurriculumProposal)))
-	mux.Handle("POST /curriculum-modification/proposals/{id}/delete", server.requireAdmin(http.HandlerFunc(server.deleteCurriculumProposal)))
-	mux.Handle("POST /curriculum-modification/proposals/{id}/publish", server.requireAdmin(http.HandlerFunc(server.publishCurriculumProposal)))
-	mux.Handle("POST /curriculum-modification/proposals/{id}/rebase", server.requireAdmin(http.HandlerFunc(server.rebaseCurriculumProposal)))
-	mux.Handle("POST /curriculum-modification/proposals/{id}/changes/{changeID}/delete", server.requireAdmin(http.HandlerFunc(server.deleteCurriculumProposalChange)))
-	mux.Handle("POST /curriculum-modification/units", server.requireAdmin(http.HandlerFunc(server.createCurriculumUnit)))
-	mux.Handle("POST /curriculum-modification/units/{id}", server.requireAdmin(http.HandlerFunc(server.updateCurriculumUnit)))
-	mux.Handle("POST /curriculum-modification/units/{id}/content", server.requireAdmin(http.HandlerFunc(server.updateCurriculumUnitContent)))
-	mux.Handle("POST /curriculum-modification/units/{id}/delete", server.requireAdmin(http.HandlerFunc(server.deleteCurriculumUnit)))
-	mux.Handle("POST /curriculum-modification/dependencies", server.requireAdmin(http.HandlerFunc(server.createUnitDependency)))
-	mux.Handle("POST /curriculum-modification/dependencies/delete", server.requireAdmin(http.HandlerFunc(server.deleteUnitDependency)))
-	mux.Handle("POST /curriculum-modification/recognitions", server.requireAdmin(http.HandlerFunc(server.createCurriculumRecognition)))
+	mux.Handle("GET /admin", server.requireAdmin(http.HandlerFunc(server.administration)))
+	mux.Handle("GET /admin/users", server.requireAdmin(http.HandlerFunc(server.administration)))
+	mux.Handle("GET /admin/users/{id}", server.requireAdmin(http.HandlerFunc(server.administration)))
+	mux.Handle("POST /admin/invitations", server.requireAdmin(http.HandlerFunc(server.createContributorInvitation)))
+	mux.Handle("POST /admin/invitations/{id}/revoke", server.requireAdmin(http.HandlerFunc(server.revokeContributorInvitation)))
+	mux.Handle("POST /admin/proposals/{id}/accept", server.requireAdmin(http.HandlerFunc(server.acceptCurriculumProposal)))
+	mux.Handle("POST /admin/proposals/{id}/reject", server.requireAdmin(http.HandlerFunc(server.rejectCurriculumProposal)))
+	mux.Handle("GET /curriculum-modification", server.requireContributor(http.HandlerFunc(server.curriculumModification)))
+	mux.Handle("POST /curriculum-modification/proposals", server.requireContributor(http.HandlerFunc(server.createCurriculumProposal)))
+	mux.Handle("POST /curriculum-modification/proposals/{id}", server.requireContributor(http.HandlerFunc(server.updateCurriculumProposal)))
+	mux.Handle("POST /curriculum-modification/proposals/{id}/delete", server.requireContributor(http.HandlerFunc(server.deleteCurriculumProposal)))
+	mux.Handle("POST /curriculum-modification/proposals/{id}/submit", server.requireContributor(http.HandlerFunc(server.submitCurriculumProposal)))
+	mux.Handle("POST /curriculum-modification/proposals/{id}/rebase", server.requireContributor(http.HandlerFunc(server.rebaseCurriculumProposal)))
+	mux.Handle("POST /curriculum-modification/proposals/{id}/changes/{changeID}/delete", server.requireContributor(http.HandlerFunc(server.deleteCurriculumProposalChange)))
+	mux.Handle("POST /curriculum-modification/units", server.requireContributor(http.HandlerFunc(server.createCurriculumUnit)))
+	mux.Handle("POST /curriculum-modification/units/{id}", server.requireContributor(http.HandlerFunc(server.updateCurriculumUnit)))
+	mux.Handle("POST /curriculum-modification/units/{id}/content", server.requireContributor(http.HandlerFunc(server.updateCurriculumUnitContent)))
+	mux.Handle("POST /curriculum-modification/units/{id}/delete", server.requireContributor(http.HandlerFunc(server.deleteCurriculumUnit)))
+	mux.Handle("POST /curriculum-modification/dependencies", server.requireContributor(http.HandlerFunc(server.createUnitDependency)))
+	mux.Handle("POST /curriculum-modification/dependencies/delete", server.requireContributor(http.HandlerFunc(server.deleteUnitDependency)))
+	mux.Handle("POST /curriculum-modification/recognitions", server.requireContributor(http.HandlerFunc(server.createCurriculumRecognition)))
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
 	return configureClientIP(server, server.maintainSession(mux))
 }

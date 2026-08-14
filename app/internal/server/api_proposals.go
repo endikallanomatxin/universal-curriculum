@@ -54,8 +54,8 @@ func (server *Server) apiListProposals(writer http.ResponseWriter, request *http
 		return
 	}
 	status := request.URL.Query().Get("status")
-	if status != "" && status != "draft" && status != "accepted" && status != "rejected" {
-		writeAPIError(writer, http.StatusBadRequest, "invalid_query", "status must be draft, accepted or rejected", nil)
+	if status != "" && status != "draft" && status != "submitted" && status != "accepted" && status != "rejected" {
+		writeAPIError(writer, http.StatusBadRequest, "invalid_query", "status must be draft, submitted, accepted or rejected", nil)
 		return
 	}
 	limit, offset, err := apiPagination(request)
@@ -64,7 +64,7 @@ func (server *Server) apiListProposals(writer http.ResponseWriter, request *http
 		return
 	}
 	proposals, total, err := db.ListCurriculumProposalsForUser(
-		server.Database, apiUser(request).ID, status, limit, offset,
+		server.Database, apiUser(request).ID, apiUser(request).IsAdmin, status, limit, offset,
 	)
 	if err != nil {
 		log.Printf("API list proposals: %v", err)
@@ -381,7 +381,7 @@ func (server *Server) apiResolveProposalRebase(writer http.ResponseWriter, reque
 	server.writeReloadedAPIProposal(writer, proposalID, http.StatusOK)
 }
 
-func (server *Server) apiPublishProposal(writer http.ResponseWriter, request *http.Request) {
+func (server *Server) apiSubmitProposal(writer http.ResponseWriter, request *http.Request) {
 	if !apiNoQuery(writer, request) {
 		return
 	}
@@ -389,13 +389,39 @@ func (server *Server) apiPublishProposal(writer http.ResponseWriter, request *ht
 	if !ok {
 		return
 	}
-	summary, err := services.PublishCurriculumProposal(server.Database, apiUser(request).ID, proposalID)
-	if err != nil {
+	if err := services.SubmitCurriculumProposal(server.Database, apiUser(request).ID, proposalID); err != nil {
 		server.writeAPICurriculumError(writer, err)
 		return
 	}
-	if summary.Failures != nil {
-		log.Printf("API rebase drafts after publication: %v", summary.Failures)
+	server.writeReloadedAPIProposal(writer, proposalID, http.StatusOK)
+}
+
+func (server *Server) apiAcceptProposal(writer http.ResponseWriter, request *http.Request) {
+	if !apiNoQuery(writer, request) {
+		return
+	}
+	proposalID, ok := apiProposalID(writer, request)
+	if !ok {
+		return
+	}
+	if _, err := services.AcceptCurriculumProposal(server.Database, proposalID); err != nil {
+		server.writeAPICurriculumError(writer, err)
+		return
+	}
+	server.writeReloadedAPIProposal(writer, proposalID, http.StatusOK)
+}
+
+func (server *Server) apiRejectProposal(writer http.ResponseWriter, request *http.Request) {
+	if !apiNoQuery(writer, request) {
+		return
+	}
+	proposalID, ok := apiProposalID(writer, request)
+	if !ok {
+		return
+	}
+	if err := services.RejectCurriculumProposal(server.Database, proposalID); err != nil {
+		server.writeAPICurriculumError(writer, err)
+		return
 	}
 	server.writeReloadedAPIProposal(writer, proposalID, http.StatusOK)
 }
@@ -439,7 +465,7 @@ func (server *Server) apiVisibleProposal(writer http.ResponseWriter, request *ht
 	if !ok {
 		return nil, false
 	}
-	proposal, err := services.GetVisibleCurriculumProposal(server.Database, apiUser(request).ID, proposalID)
+	proposal, err := services.GetVisibleCurriculumProposal(server.Database, apiUser(request).ID, apiUser(request).IsAdmin, proposalID)
 	if err != nil {
 		if errors.Is(err, services.ErrProposalNotFound) {
 			writeAPIError(writer, http.StatusNotFound, "proposal_not_found", "The proposal was not found.", nil)

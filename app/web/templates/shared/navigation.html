@@ -77,7 +77,7 @@
             <span class="primary-menu__label">Learn</span>
           </a>
         </li>
-        {{ if and .User .User.IsAdmin }}
+        {{ if and .User .User.CanContribute }}
           <li class="primary-menu__curriculum-modification-item">
             <a class="primary-menu__link primary-menu__link--curriculum-modification primary-menu__link--session-action" href="/curriculum-modification" {{ if eq .CurrentSection "curriculum-modification" }}aria-current="page"{{ end }} {{ template "shell-link-attributes" "/curriculum-modification" }} data-panel-navigation="workspace">
               {{ template "icon-curriculum-modification" }}
@@ -91,7 +91,15 @@
             <span class="primary-menu__label">About</span>
           </a>
         </li>
-        <li class="{{ if .User }}primary-menu__account-item{{ else }}primary-menu__login-item{{ end }}">
+        {{ if and .User .User.IsAdmin }}
+          <li class="primary-menu__administration-item">
+            <a class="primary-menu__link primary-menu__link--administration primary-menu__link--session-action" href="/admin" {{ if eq .CurrentSection "administration" }}aria-current="page"{{ end }} {{ template "shell-link-attributes" "/admin" }} data-panel-navigation="workspace">
+              <span class="material-symbols-rounded primary-menu__icon" aria-hidden="true">admin_panel_settings</span>
+              <span class="primary-menu__label">Administration</span>
+            </a>
+          </li>
+        {{ end }}
+        <li class="{{ if .User }}primary-menu__account-item{{ if .User.IsAdmin }} primary-menu__account-item--with-administration{{ end }}{{ else }}primary-menu__login-item{{ end }}">
           {{ if .User }}
             <a class="primary-menu__link primary-menu__link--account primary-menu__link--session-action" href="/account" {{ if eq .CurrentSection "account" }}aria-current="page"{{ end }} {{ template "shell-link-attributes" "/account" }} data-panel-navigation="workspace">
               {{ template "icon-account" }}

@@ -22,14 +22,25 @@ func CreateLocalUser(database *sql.DB, fullName, email string, passwordHash []by
 	}
 	defer tx.Rollback()
 
+	user, err := CreateLocalUserInTransaction(tx, fullName, email, passwordHash)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit local user: %w", err)
+	}
+	return user, nil
+}
+
+func CreateLocalUserInTransaction(tx *sql.Tx, fullName, email string, passwordHash []byte) (*models.User, error) {
 	var user models.User
 	var alias sql.NullString
-	err = tx.QueryRow(`
+	err := tx.QueryRow(`
 		INSERT INTO users (full_name)
 		VALUES ($1)
-		RETURNING id, full_name, alias, is_admin, created_at, updated_at
+		RETURNING id, full_name, alias, is_admin, is_contributor, created_at, updated_at
 	`, strings.TrimSpace(fullName)).Scan(
-		&user.ID, &user.FullName, &alias, &user.IsAdmin, &user.CreatedAt, &user.UpdatedAt,
+		&user.ID, &user.FullName, &alias, &user.IsAdmin, &user.IsContributor, &user.CreatedAt, &user.UpdatedAt,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("create local user: %w", err)
@@ -48,10 +59,6 @@ func CreateLocalUser(database *sql.DB, fullName, email string, passwordHash []by
 		}
 		return nil, fmt.Errorf("create local user credentials: %w", err)
 	}
-	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("commit local user: %w", err)
-	}
-
 	user.Email = email
 	user.Alias = nullStringPointer(alias)
 	return &user, nil
@@ -91,8 +98,8 @@ func CreateBootstrapAdmin(database *sql.DB, fullName, alias, email string, passw
 	err = tx.QueryRow(`
 		INSERT INTO users (full_name, alias, is_admin)
 		VALUES ($1, NULLIF($2, ''), TRUE)
-		RETURNING id, full_name, alias, is_admin, created_at, updated_at
-	`, fullName, alias).Scan(&user.ID, &user.FullName, &storedAlias, &user.IsAdmin, &user.CreatedAt, &user.UpdatedAt)
+		RETURNING id, full_name, alias, is_admin, is_contributor, created_at, updated_at
+	`, fullName, alias).Scan(&user.ID, &user.FullName, &storedAlias, &user.IsAdmin, &user.IsContributor, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("create bootstrap administrator: %w", err)
 	}
@@ -118,12 +125,12 @@ func getUserByEmail(database rowQuerier, email string) (*models.User, error) {
 	var user models.User
 	var alias sql.NullString
 	err := database.QueryRow(`
-		SELECT u.id, u.full_name, u.alias, la.email, u.is_admin, u.created_at, u.updated_at
+		SELECT u.id, u.full_name, u.alias, la.email, u.is_admin, u.is_contributor, u.created_at, u.updated_at
 		FROM users u
 		JOIN local_authentications la ON la.user_id = u.id
 		WHERE la.email = $1
 	`, models.NormalizeEmail(email)).Scan(
-		&user.ID, &user.FullName, &alias, &user.Email, &user.IsAdmin, &user.CreatedAt, &user.UpdatedAt,
+		&user.ID, &user.FullName, &alias, &user.Email, &user.IsAdmin, &user.IsContributor, &user.CreatedAt, &user.UpdatedAt,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
@@ -139,12 +146,12 @@ func GetUserByID(database *sql.DB, userID int64) (*models.User, error) {
 	var user models.User
 	var alias sql.NullString
 	err := database.QueryRow(`
-		SELECT u.id, u.full_name, u.alias, la.email, u.is_admin, u.created_at, u.updated_at
+		SELECT u.id, u.full_name, u.alias, la.email, u.is_admin, u.is_contributor, u.created_at, u.updated_at
 		FROM users u
 		JOIN local_authentications la ON la.user_id = u.id
 		WHERE u.id = $1
 	`, userID).Scan(
-		&user.ID, &user.FullName, &alias, &user.Email, &user.IsAdmin, &user.CreatedAt, &user.UpdatedAt,
+		&user.ID, &user.FullName, &alias, &user.Email, &user.IsAdmin, &user.IsContributor, &user.CreatedAt, &user.UpdatedAt,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
@@ -154,6 +161,34 @@ func GetUserByID(database *sql.DB, userID int64) (*models.User, error) {
 	}
 	user.Alias = nullStringPointer(alias)
 	return &user, nil
+}
+
+func ListUsers(database *sql.DB) ([]models.User, error) {
+	rows, err := database.Query(`
+		SELECT u.id, u.full_name, u.alias, la.email, u.is_admin, u.is_contributor,
+		       u.created_at, u.updated_at
+		FROM users u
+		JOIN local_authentications la ON la.user_id = u.id
+		ORDER BY u.created_at DESC, u.id DESC
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("list users: %w", err)
+	}
+	defer rows.Close()
+	var users []models.User
+	for rows.Next() {
+		var user models.User
+		var alias sql.NullString
+		if err := rows.Scan(&user.ID, &user.FullName, &alias, &user.Email, &user.IsAdmin, &user.IsContributor, &user.CreatedAt, &user.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("scan user: %w", err)
+		}
+		user.Alias = nullStringPointer(alias)
+		users = append(users, user)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate users: %w", err)
+	}
+	return users, nil
 }
 
 func nullStringPointer(value sql.NullString) *string {

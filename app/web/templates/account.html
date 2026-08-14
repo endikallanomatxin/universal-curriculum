@@ -27,7 +27,7 @@
             </div>
             <div class="definition-list__item">
               <dt>Access</dt>
-              <dd>{{ if .User.IsAdmin }}Administrator{{ else }}Member{{ end }}</dd>
+              <dd>{{ if .User.IsAdmin }}Administrator{{ else if .User.IsContributor }}Contributor{{ else }}Member{{ end }}</dd>
             </div>
           </dl>
 

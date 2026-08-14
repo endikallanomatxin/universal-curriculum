@@ -1,0 +1,19 @@
+{{ define "administration.html" -}}
+<!doctype html>
+<html lang="en">
+<head>{{ template "document-head" "Administration · Universal Curriculum" }}</head>
+<body>
+  <div class="app-shell" id="app-shell" data-panel-group>
+    {{ template "primary-navigation" . }}
+    <main class="pane-stack" id="workspace" data-shell-view="detail" data-document-title="Administration · Universal Curriculum" data-layout-panel data-panel-modes="mobile:20 content:34 wide:46" data-panel-required-mode="content" data-panel-fill data-panel-group>
+      <nav class="mobile-panel-breadcrumbs" data-mobile-panel-breadcrumbs aria-label="Current location" hidden></nav>
+      {{ template "administration-index-pane" . }}
+      {{ if .ShowUsers }}{{ template "user-administration-pane" . }}{{ end }}
+      {{ if .SelectedUser }}{{ template "user-detail-pane" . }}{{ end }}
+      {{ if .ShowUsers }}{{ template "contributor-invitation-pane" . }}{{ end }}
+    </main>
+  </div>
+  {{ template "shell-scripts" }}
+</body>
+</html>
+{{- end }}

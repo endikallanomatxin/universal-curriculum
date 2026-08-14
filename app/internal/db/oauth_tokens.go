@@ -162,7 +162,7 @@ func AuthenticateOAuthAccessToken(
 	var alias sql.NullString
 	err := database.QueryRow(`
 		SELECT users.id, users.full_name, users.alias, authentication.email,
-		       users.is_admin, users.created_at, users.updated_at, connection.id
+		       users.is_admin, users.is_contributor, users.created_at, users.updated_at, connection.id
 		FROM oauth_access_tokens token
 		JOIN oauth_connections connection ON connection.id = token.connection_id
 		JOIN users ON users.id = connection.user_id
@@ -171,7 +171,7 @@ func AuthenticateOAuthAccessToken(
 		  AND token.expires_at > clock_timestamp()
 	`, hashTokenSecret(raw), resource).Scan(
 		&user.ID, &user.FullName, &alias, &user.Email,
-		&user.IsAdmin, &user.CreatedAt, &user.UpdatedAt, &connectionID,
+		&user.IsAdmin, &user.IsContributor, &user.CreatedAt, &user.UpdatedAt, &connectionID,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil

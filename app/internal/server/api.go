@@ -148,6 +148,17 @@ func (server *Server) requireAPIAdmin(next http.Handler) http.Handler {
 	}))
 }
 
+func (server *Server) requireAPIContributor(next http.Handler) http.Handler {
+	return server.requireAPIToken(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		user := apiUser(request)
+		if user == nil || !user.CanContribute() {
+			writeAPIError(writer, http.StatusForbidden, "forbidden", "Contributor access is required.", nil)
+			return
+		}
+		next.ServeHTTP(writer, request)
+	}))
+}
+
 func apiUser(request *http.Request) *models.User {
 	user, _ := request.Context().Value(apiUserContextKey{}).(*models.User)
 	return user
