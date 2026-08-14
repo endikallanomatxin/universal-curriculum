@@ -1,0 +1,39 @@
+{{ define "user-administration-pane" -}}
+<section class="ui-pane administration-users-pane" aria-labelledby="user-administration-title" data-nested-panel data-panel-motion="horizontal" data-layout-panel data-panel-modes="collapsed:0 breadcrumb:4 mobile:20 content:28 wide:34" data-panel-required-mode="content" data-panel-fill data-panel-breadcrumb="Users" data-panel-breadcrumb-url="/admin/users">
+  <div class="ui-pane__inner nested-panel pane-breadcrumb" data-pane-content-width="standard">
+    <header class="nested-panel__header pane-breadcrumb__header">
+      <div><h1 id="user-administration-title">User administration</h1><a class="pane-breadcrumb__title" href="/admin/users" hx-get="/admin/users" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML" hx-push-url="true">User administration</a></div>
+      <a class="icon-button ui-pane__close" href="/admin" hx-get="/admin" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML" hx-push-url="true" data-panel-navigation="close" aria-label="Close user administration"><span class="material-symbols-rounded" aria-hidden="true">close</span></a>
+    </header>
+    <div class="section-heading administration-users__heading"><div><p class="label">Accounts</p><h2>All users</h2></div><span>{{ len .Users }}</span></div>
+    {{ if .Users }}
+      <div class="administration-user-list">
+        {{ range .Users }}{{ $listedUser := . }}
+          <a class="administration-user-card selectable-surface {{ with $.SelectedUser }}{{ if eq .ID $listedUser.ID }}is-selected{{ end }}{{ end }}" href="/admin/users/{{ .ID }}" hx-get="/admin/users/{{ .ID }}" hx-target="#workspace" hx-select="#workspace" hx-swap="outerHTML transition:true" hx-push-url="true" data-panel-navigation="open-or-replace">
+            <span class="administration-user-card__avatar material-symbols-rounded" aria-hidden="true">person</span>
+            <span class="administration-user-card__identity"><strong>{{ .DisplayName }}</strong><small>{{ .Email }}</small></span>
+            <span class="administration-access-badge administration-access-badge--{{ if .IsAdmin }}admin{{ else if .IsContributor }}contributor{{ else }}member{{ end }}">{{ if .IsAdmin }}Administrator{{ else if .IsContributor }}Contributor{{ else }}Member{{ end }}</span>
+            <span class="material-symbols-rounded administration-user-card__arrow" aria-hidden="true">chevron_right</span>
+          </a>
+        {{ end }}
+      </div>
+    {{ else }}<p class="empty-message">No users have registered.</p>{{ end }}
+    <div class="pane-list-actions">
+      <button class="pane-list-action" type="button" data-open-panel="new-contributor-invitation-panel" aria-controls="new-contributor-invitation-panel" aria-expanded="false"><span class="material-symbols-rounded" aria-hidden="true">person_add</span>Invite contributor</button>
+    </div>
+    {{ if .Invitations }}
+      <details class="administration-invitations"><summary>Invitation history · {{ len .Invitations }}</summary><ul>{{ range .Invitations }}<li><span><strong>{{ .Email }}</strong><small>{{ if .AcceptedAt }}Accepted{{ else if .RevokedAt }}Revoked{{ else }}Expires {{ .ExpiresAt.Format "2006-01-02" }}{{ end }}</small></span>{{ if and (not .AcceptedAt) (not .RevokedAt) }}<form action="/admin/invitations/{{ .ID }}/revoke" method="post"><input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}"><button class="secondary-button secondary-button--compact" type="submit">Revoke</button></form>{{ end }}</li>{{ end }}</ul></details>
+    {{ end }}
+  </div>
+</section>
+{{- end }}
+
+{{ define "contributor-invitation-pane" -}}
+<section class="ui-pane ui-pane--form" id="new-contributor-invitation-panel" data-nested-panel data-layout-panel data-panel-modes="collapsed:0 compact:18 form:28" data-panel-required-mode="form" data-panel-fill data-panel-breadcrumb="Invite contributor" hidden aria-labelledby="invite-contributor-title">
+  <div class="ui-pane__inner nested-panel" data-pane-content-width="narrow">
+    <header class="nested-panel__header"><div><h1 id="invite-contributor-title">Invite contributor</h1></div><button class="icon-button ui-pane__close" type="button" data-close-panel aria-label="Close contributor invitation"><span class="material-symbols-rounded" aria-hidden="true">close</span></button></header>
+    <p class="nested-panel__introduction">Send a single-use invitation granting contributor access. It expires after seven days.</p>
+    <form class="editor-form editor-form--panel" action="/admin/invitations" method="post"><input type="hidden" name="csrf_token" value="{{ .CSRFToken }}"><label for="invitation-email">Email</label><input id="invitation-email" name="email" type="email" required maxlength="320" autocomplete="email" placeholder="contributor@example.com"><button class="primary-button" type="submit">Send invitation</button></form>
+  </div>
+</section>
+{{- end }}

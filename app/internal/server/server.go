@@ -169,6 +169,8 @@ func (server *Server) routes() http.Handler {
 	mux.Handle("POST /account/api-tokens/{id}/revoke", requireUser(http.HandlerFunc(server.revokeAPIToken)))
 	mux.Handle("POST /account/oauth-connections/{id}/revoke", requireUser(http.HandlerFunc(server.revokeOAuthConnection)))
 	mux.Handle("GET /admin", server.requireAdmin(http.HandlerFunc(server.administration)))
+	mux.Handle("GET /admin/users", server.requireAdmin(http.HandlerFunc(server.administration)))
+	mux.Handle("GET /admin/users/{id}", server.requireAdmin(http.HandlerFunc(server.administration)))
 	mux.Handle("POST /admin/invitations", server.requireAdmin(http.HandlerFunc(server.createContributorInvitation)))
 	mux.Handle("POST /admin/invitations/{id}/revoke", server.requireAdmin(http.HandlerFunc(server.revokeContributorInvitation)))
 	mux.Handle("POST /admin/proposals/{id}/accept", server.requireAdmin(http.HandlerFunc(server.acceptCurriculumProposal)))

@@ -14,16 +14,21 @@ import (
 
 type administrationPageData struct {
 	userPageData
-	Users          []models.User
-	Invitations    []models.ContributorInvitation
-	Proposals      []models.CurriculumProposal
-	SelectedUserID int64
-	Error          string
+	ShowUsers     bool
+	Users         []models.User
+	Invitations   []models.ContributorInvitation
+	SelectedUser  *models.User
+	UserProposals []models.CurriculumProposal
+	Error         string
 }
 
 func (server *Server) administration(writer http.ResponseWriter, request *http.Request) {
 	data, err := server.loadAdministrationPage(request)
 	if err != nil {
+		if errors.Is(err, services.ErrProposalNotFound) {
+			http.Error(writer, "User not found", http.StatusNotFound)
+			return
+		}
 		log.Printf("load administration: %v", err)
 		http.Error(writer, "Unable to load administration", http.StatusInternalServerError)
 		return
@@ -36,29 +41,45 @@ func (server *Server) loadAdministrationPage(request *http.Request) (administrat
 	if err != nil {
 		return administrationPageData{}, err
 	}
+	data := administrationPageData{userPageData: page}
+	if request.URL.Path == "/admin" {
+		return data, nil
+	}
+	data.ShowUsers = true
 	users, err := db.ListUsers(server.Database)
 	if err != nil {
 		return administrationPageData{}, err
 	}
-	invitations, err := db.ListContributorInvitations(server.Database)
+	data.Users = users
+	data.Invitations, err = db.ListContributorInvitations(server.Database)
 	if err != nil {
 		return administrationPageData{}, err
 	}
-	proposals, _, err := db.ListCurriculumProposalsForUser(server.Database, page.User.ID, true, "", 100, 0)
-	if err != nil {
-		return administrationPageData{}, err
-	}
-	selected, _ := strconv.ParseInt(request.URL.Query().Get("user"), 10, 64)
-	if selected > 0 {
-		filtered := proposals[:0]
-		for _, proposal := range proposals {
-			if proposal.HasAuthor(selected) {
-				filtered = append(filtered, proposal)
+	if value := request.PathValue("id"); value != "" {
+		selectedID, parseErr := strconv.ParseInt(value, 10, 64)
+		if parseErr != nil || selectedID <= 0 {
+			return administrationPageData{}, services.ErrProposalNotFound
+		}
+		for index := range users {
+			if users[index].ID == selectedID {
+				data.SelectedUser = &users[index]
+				break
 			}
 		}
-		proposals = filtered
+		if data.SelectedUser == nil {
+			return administrationPageData{}, services.ErrProposalNotFound
+		}
+		proposals, _, listErr := db.ListCurriculumProposalsForUser(server.Database, page.User.ID, true, "", 100, 0)
+		if listErr != nil {
+			return administrationPageData{}, listErr
+		}
+		for _, proposal := range proposals {
+			if proposal.HasAuthor(selectedID) {
+				data.UserProposals = append(data.UserProposals, proposal)
+			}
+		}
 	}
-	return administrationPageData{userPageData: page, Users: users, Invitations: invitations, Proposals: proposals, SelectedUserID: selected}, nil
+	return data, nil
 }
 
 func (server *Server) createContributorInvitation(writer http.ResponseWriter, request *http.Request) {
@@ -72,7 +93,7 @@ func (server *Server) createContributorInvitation(writer http.ResponseWriter, re
 		http.Error(writer, "Unable to send contributor invitation", http.StatusBadRequest)
 		return
 	}
-	http.Redirect(writer, request, "/admin", http.StatusSeeOther)
+	http.Redirect(writer, request, "/admin/users", http.StatusSeeOther)
 }
 
 func (server *Server) revokeContributorInvitation(writer http.ResponseWriter, request *http.Request) {
@@ -93,7 +114,7 @@ func (server *Server) revokeContributorInvitation(writer http.ResponseWriter, re
 		http.Error(writer, "Invitation not found", http.StatusNotFound)
 		return
 	}
-	http.Redirect(writer, request, "/admin", http.StatusSeeOther)
+	http.Redirect(writer, request, "/admin/users", http.StatusSeeOther)
 }
 
 func (server *Server) acceptCurriculumProposal(writer http.ResponseWriter, request *http.Request) {
@@ -110,7 +131,7 @@ func (server *Server) acceptCurriculumProposal(writer http.ResponseWriter, reque
 		server.renderCurriculumMutationError(writer, request, err)
 		return
 	}
-	http.Redirect(writer, request, "/admin", http.StatusSeeOther)
+	http.Redirect(writer, request, administrationUserURL(request), http.StatusSeeOther)
 }
 
 func (server *Server) rejectCurriculumProposal(writer http.ResponseWriter, request *http.Request) {
@@ -132,5 +153,12 @@ func (server *Server) rejectCurriculumProposal(writer http.ResponseWriter, reque
 		server.renderCurriculumMutationError(writer, request, err)
 		return
 	}
-	http.Redirect(writer, request, "/admin", http.StatusSeeOther)
+	http.Redirect(writer, request, administrationUserURL(request), http.StatusSeeOther)
+}
+
+func administrationUserURL(request *http.Request) string {
+	if userID, err := strconv.ParseInt(request.FormValue("user_id"), 10, 64); err == nil && userID > 0 {
+		return "/admin/users/" + strconv.FormatInt(userID, 10)
+	}
+	return "/admin/users"
 }

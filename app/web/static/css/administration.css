@@ -1,0 +1,208 @@
+.administration-users__heading {
+  margin: var(--space-4) 0 var(--space-3);
+}
+
+.administration-users-pane {
+  container: administration-users / inline-size;
+}
+
+.administration-user-list,
+.administration-proposal-list {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.administration-user-card {
+  align-items: center;
+  background: color-mix(in srgb, var(--color-ink) 2%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-ink) 7%, transparent);
+  border-radius: var(--radius-surface);
+  color: inherit;
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: 2.4rem minmax(0, 1fr) auto auto;
+  padding: var(--space-3);
+  text-decoration: none;
+}
+
+.administration-user-card__avatar,
+.administration-user-profile__avatar {
+  align-items: center;
+  background: color-mix(in srgb, var(--color-dependency) 12%, var(--color-surface));
+  border-radius: 50%;
+  color: var(--color-ink-strong);
+  display: flex;
+  justify-content: center;
+}
+
+.administration-user-card__avatar {
+  font-size: 1.2rem;
+  height: 2.4rem;
+  width: 2.4rem;
+}
+
+.administration-user-card__identity {
+  min-width: 0;
+}
+
+.administration-user-card__identity strong,
+.administration-user-card__identity small {
+  display: block;
+}
+
+.administration-user-card__identity strong {
+  color: var(--color-ink-strong);
+  font-size: 0.9rem;
+}
+
+.administration-user-card__identity small {
+  color: var(--color-muted);
+  font-size: 0.72rem;
+  margin-top: 0.2rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.administration-user-card__arrow {
+  color: var(--color-muted);
+  font-size: 1.15rem;
+}
+
+.administration-access-badge,
+.proposal-status {
+  background: color-mix(in srgb, var(--color-ink) 6%, transparent);
+  border-radius: 999px;
+  color: var(--color-muted);
+  display: inline-flex;
+  font-size: 0.66rem;
+  font-weight: 700;
+  padding: 0.3rem 0.55rem;
+  text-transform: capitalize;
+}
+
+.administration-access-badge--admin,
+.administration-access-badge--contributor {
+  background: color-mix(in srgb, var(--color-dependency) 14%, transparent);
+  color: var(--color-ink-strong);
+}
+
+.administration-invitations {
+  border-top: 1px solid var(--color-panel-end);
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+}
+
+.administration-invitations summary {
+  color: var(--color-muted);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.administration-invitations ul {
+  display: grid;
+  gap: var(--space-2);
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+}
+
+.administration-invitations li {
+  align-items: center;
+  display: flex;
+  gap: var(--space-2);
+  justify-content: space-between;
+}
+
+.administration-invitations li span,
+.administration-invitations li small {
+  display: block;
+}
+
+.administration-invitations li small {
+  color: var(--color-muted);
+  font-size: 0.7rem;
+  margin-top: 0.15rem;
+}
+
+.administration-user-profile {
+  align-items: center;
+  display: flex;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+}
+
+.administration-user-profile__avatar {
+  font-size: 1.7rem;
+  height: 3.5rem;
+  width: 3.5rem;
+}
+
+.administration-user-profile > div {
+  align-items: flex-start;
+  display: grid;
+  gap: var(--space-1);
+}
+
+.administration-user-profile strong {
+  color: var(--color-ink-strong);
+  font-size: 1.05rem;
+}
+
+.administration-user-proposals {
+  border-top: 1px solid var(--color-panel-end);
+  margin-top: var(--space-5);
+  padding-top: var(--space-5);
+}
+
+.administration-proposal-list {
+  margin-top: var(--space-3);
+}
+
+.administration-proposal-list article {
+  background: color-mix(in srgb, var(--color-ink) 2%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-ink) 7%, transparent);
+  border-radius: var(--radius-surface);
+  padding: var(--space-3);
+}
+
+.administration-proposal-list article > a {
+  color: inherit;
+  display: block;
+  text-decoration: none;
+}
+
+.administration-proposal-list article > a strong,
+.administration-proposal-list article > a small {
+  display: block;
+}
+
+.administration-proposal-list article > a small {
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  margin: var(--space-1) 0 var(--space-2);
+}
+
+.administration-proposal-actions {
+  border-top: 1px solid var(--color-panel-end);
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+}
+
+.administration-proposal-actions form:last-child {
+  display: grid;
+  gap: var(--space-2);
+}
+
+@container administration-users (max-width: 29rem) {
+  .administration-user-card {
+    grid-template-columns: 2.4rem minmax(0, 1fr) auto;
+  }
+
+  .administration-user-card__arrow {
+    display: none;
+  }
+}

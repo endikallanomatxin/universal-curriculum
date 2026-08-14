@@ -1,16 +1,19 @@
 {{ define "administration.html" -}}
-<!doctype html><html lang="en"><head>{{ template "document-head" "Administration · Universal Curriculum" }}</head><body>
-<div class="app-shell" id="app-shell" data-panel-group>{{ template "primary-navigation" . }}
-<main class="pane-stack" id="workspace" data-shell-view="detail" data-document-title="Administration · Universal Curriculum" data-layout-panel data-panel-modes="mobile:20 content:34 wide:46" data-panel-required-mode="content" data-panel-fill data-panel-group>
-<nav class="mobile-panel-breadcrumbs" data-mobile-panel-breadcrumbs aria-label="Current location" hidden></nav>
-<section class="ui-pane" aria-labelledby="administration-title" data-layout-panel data-panel-modes="collapsed:0 mobile:20 content:34 wide:46" data-panel-required-mode="content" data-panel-fill data-panel-breadcrumb="Administration" data-panel-breadcrumb-url="/admin"><div class="ui-pane__inner" data-pane-content-width="wide">
-<h1 id="administration-title">Administration</h1>
-<section><h2>Invite contributor</h2><form action="/admin/invitations" method="post">
-<input type="hidden" name="csrf_token" value="{{ .CSRFToken }}"><label for="invitation-email">Email</label>
-<input id="invitation-email" name="email" type="email" required maxlength="320"><button class="primary-button" type="submit">Send invitation</button></form></section>
-<section><h2>Invitations</h2>{{ if .Invitations }}<ul>{{ range .Invitations }}<li>{{ .Email }} — {{ if .AcceptedAt }}accepted{{ else if .RevokedAt }}revoked{{ else }}expires {{ .ExpiresAt.Format "2006-01-02" }} <form action="/admin/invitations/{{ .ID }}/revoke" method="post" style="display:inline"><input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}"><button type="submit">Revoke</button></form>{{ end }}</li>{{ end }}</ul>{{ else }}<p>No invitations.</p>{{ end }}</section>
-<section><h2>Users</h2><ul>{{ range .Users }}<li><a href="/admin?user={{ .ID }}">{{ .DisplayName }}</a> — {{ .Email }} — {{ if .IsAdmin }}administrator{{ else if .IsContributor }}contributor{{ else }}member{{ end }}</li>{{ end }}</ul></section>
-<section><h2>{{ if .SelectedUserID }}User proposals{{ else }}Proposals{{ end }}</h2>{{ if .Proposals }}<ul>{{ range .Proposals }}<li><a href="/curriculum-modification?proposal={{ .ID }}">{{ .Title }}</a> — {{ .Status }} by {{ .AuthorName }}
-{{ if eq .Status "submitted" }}<form action="/admin/proposals/{{ .ID }}/accept" method="post" style="display:inline"><input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}"><button type="submit">Accept</button></form>
-<form action="/admin/proposals/{{ .ID }}/reject" method="post"><input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}"><label>Reason <input name="reason" required maxlength="1000"></label><button type="submit">Reject</button></form>{{ end }}{{ if .RejectionReason }}<p>Reason: {{ .RejectionReason }}</p>{{ end }}</li>{{ end }}</ul>{{ else }}<p>No proposals.</p>{{ end }}</section>
-</div></section></main></div>{{ template "shell-scripts" }}</body></html>{{- end }}
+<!doctype html>
+<html lang="en">
+<head>{{ template "document-head" "Administration · Universal Curriculum" }}</head>
+<body>
+  <div class="app-shell" id="app-shell" data-panel-group>
+    {{ template "primary-navigation" . }}
+    <main class="pane-stack" id="workspace" data-shell-view="detail" data-document-title="Administration · Universal Curriculum" data-layout-panel data-panel-modes="mobile:20 content:34 wide:46" data-panel-required-mode="content" data-panel-fill data-panel-group>
+      <nav class="mobile-panel-breadcrumbs" data-mobile-panel-breadcrumbs aria-label="Current location" hidden></nav>
+      {{ template "administration-index-pane" . }}
+      {{ if .ShowUsers }}{{ template "user-administration-pane" . }}{{ end }}
+      {{ if .SelectedUser }}{{ template "user-detail-pane" . }}{{ end }}
+      {{ if .ShowUsers }}{{ template "contributor-invitation-pane" . }}{{ end }}
+    </main>
+  </div>
+  {{ template "shell-scripts" }}
+</body>
+</html>
+{{- end }}

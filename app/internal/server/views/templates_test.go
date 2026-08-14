@@ -66,10 +66,31 @@ func TestAdministrationRendersVisibleWorkspace(t *testing.T) {
 	})
 	for _, fragment := range []string{
 		`class="pane-stack" id="workspace"`, `data-panel-required-mode="content"`,
-		`class="ui-pane"`, `id="administration-title"`, "Invite contributor", "Users", "Proposals",
+		`id="administration-title"`, `href="/admin/users"`, "User administration",
 	} {
 		if !strings.Contains(output, fragment) {
 			t.Errorf("administration page does not contain %q", fragment)
+		}
+	}
+	if strings.Contains(output, "All users") || strings.Contains(output, "Proposals") {
+		t.Fatal("administration index exposes user details before opening user administration")
+	}
+}
+
+func TestUserAdministrationRendersNestedListAndDetailPanels(t *testing.T) {
+	selected := &models.User{ID: 7, FullName: "Contributor", Email: "person@example.com", IsContributor: true}
+	output := renderTemplate(t, loadTestTemplates(t), "administration.html", map[string]any{
+		"User": &models.User{FullName: "Admin", IsAdmin: true}, "CSRFToken": "csrf",
+		"ShowUsers": true, "Users": []models.User{*selected}, "SelectedUser": selected,
+		"UserProposals": []models.CurriculumProposal{{ID: 9, Title: "Proposal", Rationale: "Reason", Status: "rejected"}},
+	})
+	for _, fragment := range []string{
+		`id="user-administration-title"`, `href="/admin/users/7"`, ">Contributor<",
+		`id="new-contributor-invitation-panel"`, `hidden aria-labelledby="invite-contributor-title"`,
+		`id="user-detail-title"`, "person@example.com", "Proposals", `href="/curriculum-modification?proposal=9"`,
+	} {
+		if !strings.Contains(output, fragment) {
+			t.Errorf("user administration does not contain %q", fragment)
 		}
 	}
 }
