@@ -187,6 +187,13 @@ func (server *Server) register(writer http.ResponseWriter, request *http.Request
 		password := request.FormValue("password")
 		next := safeRedirectPath(request.FormValue("next"), "/account")
 		invitationToken := request.FormValue("invitation_token")
+		if invitationToken != "" {
+			invitedEmail, invitationErr := db.ValidContributorInvitationEmail(server.Database, invitationToken)
+			if invitationErr != nil || invitedEmail != email {
+				server.renderStatus(writer, http.StatusBadRequest, "register.html", registrationPageData{Error: "The contributor invitation is invalid, expired or belongs to another email address.", Next: next, InvitationToken: invitationToken})
+				return
+			}
+		}
 		blocked, err := server.registerAuthenticationRateEvent(
 			request,
 			(*services.AuthenticationRateLimiter).RegisterRegistration,

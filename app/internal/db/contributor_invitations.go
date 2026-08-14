@@ -62,6 +62,21 @@ func ListContributorInvitations(database *sql.DB) ([]models.ContributorInvitatio
 	return invitations, rows.Err()
 }
 
+func ValidContributorInvitationEmail(database *sql.DB, token string) (string, error) {
+	if token == "" {
+		return "", ErrInvalidContributorInvitation
+	}
+	var email string
+	err := database.QueryRow(`SELECT email FROM contributor_invitations WHERE token_hash = $1 AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > clock_timestamp()`, contributorInvitationTokenHash(token)).Scan(&email)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", ErrInvalidContributorInvitation
+	}
+	if err != nil {
+		return "", fmt.Errorf("validate contributor invitation: %w", err)
+	}
+	return email, nil
+}
+
 func AcceptContributorInvitation(database *sql.DB, token string, userID int64) error {
 	if token == "" {
 		return ErrInvalidContributorInvitation
