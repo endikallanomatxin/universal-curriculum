@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"universal-curriculum/internal/db"
 	"universal-curriculum/internal/models"
@@ -28,7 +29,10 @@ func (server *Server) aboutProposal(writer http.ResponseWriter, request *http.Re
 
 type aboutContentPage struct {
 	Slug     string
+	Anchor   string
 	Title    string
+	Date     string
+	DateText string
 	Summary  string
 	Content  string
 	Rendered template.HTML
@@ -41,15 +45,16 @@ type aboutContentSectionData struct {
 	SectionIntroduction string
 	Pages               []aboutContentPage
 	Page                *aboutContentPage
+	Continuous          bool
 	Title               string
 }
 
 func (server *Server) releases(writer http.ResponseWriter, request *http.Request) {
-	server.aboutContentSection(writer, request, "releases", "Releases", "Published changes, newest first.", releasePages(releaseinfo.Releases()))
+	server.aboutReleaseSection(writer, request, "releases", "Releases", "Published changes, newest first.", releasePages(releaseinfo.Releases()))
 }
 
 func (server *Server) roadmap(writer http.ResponseWriter, request *http.Request) {
-	server.aboutContentSection(writer, request, "roadmap", "Roadmap", "Planned direction, subject to change.", releasePages(releaseinfo.Roadmap()))
+	server.aboutReleaseSection(writer, request, "roadmap", "Roadmap", "Planned direction, subject to change.", releasePages(releaseinfo.Roadmap()))
 }
 
 func releasePages(documents []releaseinfo.Document) []aboutContentPage {
@@ -59,9 +64,53 @@ func releasePages(documents []releaseinfo.Document) []aboutContentPage {
 		if _, remainder, found := strings.Cut(content, "\n"); found && strings.HasPrefix(content, "# ") {
 			content = strings.TrimSpace(remainder)
 		}
-		pages = append(pages, aboutContentPage{Slug: document.Version, Title: "v" + document.Version, Summary: document.Summary, Content: content})
+		dateText := ""
+		if document.Date != "" {
+			date, err := time.Parse(time.DateOnly, document.Date)
+			if err != nil {
+				panic("invalid generated release date " + document.Date)
+			}
+			dateText = date.Format("2 January 2006")
+		}
+		pages = append(pages, aboutContentPage{
+			Slug: document.Version, Anchor: "release-" + strings.ReplaceAll(document.Version, ".", "-"),
+			Title: "v" + document.Version, Date: document.Date, DateText: dateText,
+			Summary: document.Summary, Content: content,
+		})
 	}
 	return pages
+}
+
+func (server *Server) aboutReleaseSection(writer http.ResponseWriter, request *http.Request, slug, title, introduction string, pages []aboutContentPage) {
+	data, err := server.loadUserPageData(request, "about", false)
+	if err != nil {
+		http.Error(writer, "Load user", http.StatusInternalServerError)
+		return
+	}
+	for index := range pages {
+		pages[index].Rendered = views.RenderUnitContent(demoteMarkdownHeadings(pages[index].Content))
+	}
+	server.render(writer, "about-content.html", aboutContentSectionData{
+		userPageData: data, SectionSlug: slug, SectionTitle: title,
+		SectionIntroduction: introduction, Pages: pages, Continuous: true,
+		Title: title + " · Universal Curriculum",
+	})
+}
+
+func demoteMarkdownHeadings(content string) string {
+	lines := strings.Split(content, "\n")
+	inFence := false
+	for index, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "```") || strings.HasPrefix(trimmed, "~~~") {
+			inFence = !inFence
+			continue
+		}
+		if !inFence && strings.HasPrefix(line, "#") {
+			lines[index] = "#" + line
+		}
+	}
+	return strings.Join(lines, "\n")
 }
 
 func (server *Server) aboutContentSection(writer http.ResponseWriter, request *http.Request, slug, title, introduction string, pages []aboutContentPage) {

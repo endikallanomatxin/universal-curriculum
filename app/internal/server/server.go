@@ -140,9 +140,7 @@ func (server *Server) routes() http.Handler {
 	mux.HandleFunc("GET /about/documentation", server.documentation)
 	mux.HandleFunc("GET /about/documentation/{slug}", server.documentation)
 	mux.HandleFunc("GET /about/releases", server.releases)
-	mux.HandleFunc("GET /about/releases/{slug}", server.releases)
 	mux.HandleFunc("GET /about/roadmap", server.roadmap)
-	mux.HandleFunc("GET /about/roadmap/{slug}", server.roadmap)
 	mux.HandleFunc("GET /about/manifest", func(writer http.ResponseWriter, request *http.Request) {
 		http.Redirect(writer, request, "/about/case", http.StatusPermanentRedirect)
 	})

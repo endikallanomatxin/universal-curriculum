@@ -41,13 +41,13 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 	var activeProposal *models.CurriculumProposal
 	if proposalValue := request.URL.Query().Get("proposal"); proposalValue != "" {
 		if proposalID, parseErr := parsePositiveID(proposalValue); parseErr == nil {
-			activeProposal, err = db.GetCurriculumProposal(server.Database, proposalID)
-			if err != nil {
+			activeProposal, err = services.GetEditableCurriculumProposal(server.Database, userID, proposalID)
+			if err != nil && !errors.Is(err, services.ErrProposalNotFound) {
 				log.Printf("load active curriculum proposal: %v", err)
 				http.Error(writer, "Unable to load curriculum proposal", http.StatusInternalServerError)
 				return
 			}
-			if activeProposal != nil && (activeProposal.Status != "draft" || !activeProposal.HasAuthor(userID)) {
+			if errors.Is(err, services.ErrProposalNotFound) {
 				activeProposal = nil
 			}
 		}
@@ -234,7 +234,7 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 			}
 		}
 		if data.ContentUnit == nil {
-			if historical := graphUnitByID(proposalBaseGraph, contentID); historical != nil {
+			if historical := proposalBaseGraph.Unit(contentID); historical != nil {
 				data.ContentUnit = &curriculumUnitView{Unit: *historical, Historical: true}
 			} else {
 				http.Error(writer, "Curriculum unit not found", http.StatusNotFound)

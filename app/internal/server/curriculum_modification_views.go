@@ -148,10 +148,7 @@ func curriculumGraphWithRemovedDependencies(working, published *models.Curriculu
 	if working == nil || proposal == nil {
 		return working
 	}
-	visual := &models.CurriculumGraph{
-		Units:        append([]models.Unit(nil), working.Units...),
-		Dependencies: append([]models.UnitDependency(nil), working.Dependencies...),
-	}
+	visual := working.Clone()
 	publishedDependencies := make(map[[2]int64]models.UnitDependency)
 	publishedUnits := make(map[int64]models.Unit)
 	if published != nil {
@@ -168,12 +165,12 @@ func curriculumGraphWithRemovedDependencies(working, published *models.Curriculu
 			continue
 		}
 		deletedIDs[change.UnitID] = true
-		if unit, exists := publishedUnits[change.UnitID]; exists && graphUnitByID(visual, change.UnitID) == nil {
+		if unit, exists := publishedUnits[change.UnitID]; exists && visual.Unit(change.UnitID) == nil {
 			visual.Units = append(visual.Units, unit)
 		}
 	}
 	for key, dependency := range publishedDependencies {
-		if (deletedIDs[key[0]] || deletedIDs[key[1]]) && !graphHasDependency(visual, key[1], key[0]) {
+		if (deletedIDs[key[0]] || deletedIDs[key[1]]) && !visual.HasDependency(key[1], key[0]) {
 			visual.Dependencies = append(visual.Dependencies, dependency)
 		}
 	}
@@ -186,32 +183,11 @@ func curriculumGraphWithRemovedDependencies(working, published *models.Curriculu
 		if !exists {
 			dependency = models.UnitDependency{PrerequisiteID: key[0], UnitID: key[1]}
 		}
-		if !graphHasDependency(visual, key[1], key[0]) {
+		if !visual.HasDependency(key[1], key[0]) {
 			visual.Dependencies = append(visual.Dependencies, dependency)
 		}
 	}
 	return visual
-}
-
-func graphHasDependency(graph *models.CurriculumGraph, unitID, prerequisiteID int64) bool {
-	for _, dependency := range graph.Dependencies {
-		if dependency.UnitID == unitID && dependency.PrerequisiteID == prerequisiteID {
-			return true
-		}
-	}
-	return false
-}
-
-func graphUnitByID(graph *models.CurriculumGraph, unitID int64) *models.Unit {
-	if graph == nil {
-		return nil
-	}
-	for index := range graph.Units {
-		if graph.Units[index].ID == unitID {
-			return &graph.Units[index]
-		}
-	}
-	return nil
 }
 
 func positionIsolatedCreatedUnits(layout *models.CurriculumGraphLayout, proposal *models.CurriculumProposal) {

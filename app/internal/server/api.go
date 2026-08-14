@@ -36,6 +36,8 @@ var apiRequestMethods = []string{
 	http.MethodTrace,
 }
 
+//go:generate go run ./openapigen
+
 // openAPIContract is a generated delivery copy of docs/openapi.yaml.
 //
 //go:embed openapi.yaml

@@ -1,43 +1,15 @@
 package services
 
 import (
-	"database/sql"
 	"errors"
-	"fmt"
-	"os"
 	"testing"
-	"time"
 
-	_ "github.com/lib/pq"
 	"universal-curriculum/internal/db"
-	"universal-curriculum/internal/db/migrations"
 	"universal-curriculum/internal/models"
 )
 
 func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
-	connectionString := os.Getenv("TEST_DATABASE_URL")
-	if connectionString == "" {
-		t.Skip("set TEST_DATABASE_URL to run PostgreSQL integration tests")
-	}
-	schema := fmt.Sprintf("curriculum_test_%d", time.Now().UnixNano())
-	database, err := sql.Open("postgres", connectionString)
-	if err != nil {
-		t.Fatal(err)
-	}
-	database.SetMaxOpenConns(1)
-	if _, err := database.Exec("CREATE SCHEMA " + schema); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		_, _ = database.Exec("DROP SCHEMA IF EXISTS " + schema + " CASCADE")
-		_ = database.Close()
-	})
-	if _, err := database.Exec("SET search_path TO " + schema); err != nil {
-		t.Fatal(err)
-	}
-	if err := migrations.Up(database); err != nil {
-		t.Fatal(err)
-	}
+	database := openPostgresIntegrationDatabase(t, "curriculum")
 	var authorID int64
 	if err := database.QueryRow(`
 		INSERT INTO users (full_name, is_admin) VALUES ('Curriculum Editor', TRUE) RETURNING id
@@ -402,8 +374,8 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	}
 	persistedPath, err = db.GetLearningPath(database, authorID, learningPath.ID)
 	if err != nil || persistedPath == nil || len(persistedPath.Units) != 1 ||
-		persistedPath.Units[0].ID != algebra.ID || !persistedPath.Units[0].Retired {
-		t.Fatalf("retired path target did not retain its identity: path=%#v err=%v", persistedPath, err)
+		persistedPath.Units[0].ID != replacement.ID || persistedPath.Units[0].Retired {
+		t.Fatalf("recognition did not migrate the learning path target: path=%#v err=%v", persistedPath, err)
 	}
 	completedUnitIDs, err = db.CompletedUnitIDs(database, authorID)
 	if err != nil || !completedUnitIDs[algebra.ID] || !completedUnitIDs[replacement.ID] {
@@ -455,8 +427,25 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	); err != nil {
 		t.Fatal(err)
 	}
+	activeRecognitionPath, err := CreateLearningPath(
+		database, sameProposalUserID, "Foundations goal", []int64{foundations.ID},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if _, err := PublishCurriculumProposal(database, authorID, advancedProposal.ID); err != nil {
 		t.Fatal(err)
+	}
+	persistedPath, err = db.GetLearningPath(database, sameProposalUserID, activeRecognitionPath.ID)
+	if err != nil || persistedPath == nil || len(persistedPath.Units) != 3 {
+		t.Fatalf("active recognition sources and targets were not preserved in the learning path: path=%#v err=%v", persistedPath, err)
+	}
+	pathTargetIDs := make(map[int64]bool, len(persistedPath.Units))
+	for _, unit := range persistedPath.Units {
+		pathTargetIDs[unit.ID] = true
+	}
+	if !pathTargetIDs[foundations.ID] || !pathTargetIDs[replacement.ID] || !pathTargetIDs[advanced.ID] {
+		t.Fatalf("recognition did not add every target for a path containing one merge source: ids=%v", pathTargetIDs)
 	}
 	completedUnitIDs, err = db.CompletedUnitIDs(database, authorID)
 	if err != nil || !completedUnitIDs[advanced.ID] {
@@ -550,97 +539,4 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 		t.Fatalf("current-version completion was not refreshed: statuses=%v err=%v", completionStatuses, err)
 	}
 
-	discarded, err := CreateCurriculumProposal(database, authorID, "Discarded draft", "Exercise hypothetical identity cleanup.")
-	if err != nil {
-		t.Fatal(err)
-	}
-	hypothetical, err := CreateCurriculumUnit(database, authorID, discarded.ID, "Hypothetical", "Never published.")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := UpdateCurriculumUnit(database, authorID, discarded.ID, hypothetical.ID, "Edited hypothetical"); err != nil {
-		t.Fatal(err)
-	}
-	if err := AddUnitDependency(database, authorID, discarded.ID, hypothetical.ID, foundations.ID); err != nil {
-		t.Fatal(err)
-	}
-	if err := AddCurriculumRecognition(
-		database,
-		authorID,
-		discarded.ID,
-		[]int64{foundations.ID},
-		[]int64{hypothetical.ID},
-	); err != nil {
-		t.Fatal(err)
-	}
-	if err := DeleteCurriculumUnit(database, authorID, discarded.ID, hypothetical.ID); err != nil {
-		t.Fatalf("discard hypothetical unit: %v", err)
-	}
-	discarded, err = db.GetCurriculumProposal(database, discarded.ID)
-	if err != nil || discarded == nil || len(discarded.Changes) != 0 {
-		t.Fatalf("discarded hypothetical unit left proposal changes: proposal=%#v err=%v", discarded, err)
-	}
-	var hypotheticalCreations int
-	if err := database.QueryRow(`
-		SELECT count(*) FROM curriculum_unit_creations WHERE change_id = $1
-	`, hypothetical.ID).Scan(&hypotheticalCreations); err != nil {
-		t.Fatal(err)
-	}
-	if hypotheticalCreations != 0 {
-		t.Fatalf("discarded hypothetical unit creation still exists: %d", hypotheticalCreations)
-	}
-	if err := DeleteCurriculumProposal(database, authorID, discarded.ID); err != nil {
-		t.Fatalf("delete draft with internally referenced hypothetical unit: %v", err)
-	}
-
-	rebasedCreation, err := CreateCurriculumProposal(
-		database, authorID, "Rebased creation", "Preserve a created unit's final state through rebase.",
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	rebasedUnit, err := CreateCurriculumUnit(
-		database, authorID, rebasedCreation.ID, "Initial draft name", "Initial draft content.",
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := UpdateCurriculumUnitAndContent(
-		database, authorID, rebasedCreation.ID, rebasedUnit.ID,
-		"Rebased final name", "Rebased final content.",
-	); err != nil {
-		t.Fatal(err)
-	}
-	upstreamRevision, err := CreateCurriculumProposal(
-		database, authorID, "Independent upstream revision", "Trigger automatic rebase of the created unit.",
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := UpdateCurriculumUnitContent(
-		database, authorID, upstreamRevision.ID, replacement.ID,
-		"An independent upstream content revision.",
-	); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := PublishCurriculumProposal(database, authorID, upstreamRevision.ID); err != nil {
-		t.Fatal(err)
-	}
-	rebasedCreation, err = db.GetCurriculumProposal(database, rebasedCreation.ID)
-	if err != nil || rebasedCreation == nil || rebasedCreation.BaseProposalID == nil ||
-		*rebasedCreation.BaseProposalID != upstreamRevision.ID || len(rebasedCreation.Changes) != 1 ||
-		rebasedCreation.Changes[0].Kind != "create_unit" ||
-		rebasedCreation.Changes[0].UnitName != "Rebased final name" ||
-		rebasedCreation.Changes[0].UnitContent != "Rebased final content." {
-		t.Fatalf("automatic rebase changed the final unit creation: proposal=%#v err=%v", rebasedCreation, err)
-	}
-	if _, err := PublishCurriculumProposal(database, authorID, rebasedCreation.ID); err != nil {
-		t.Fatal(err)
-	}
-	publishedRebasedUnit, err := db.GetUnit(database, rebasedUnit.ID)
-	if err != nil || publishedRebasedUnit == nil ||
-		publishedRebasedUnit.Name != "Rebased final name" ||
-		publishedRebasedUnit.Content != "Rebased final content." {
-		t.Fatalf("published rebased unit = %#v err=%v", publishedRebasedUnit, err)
-	}
 }

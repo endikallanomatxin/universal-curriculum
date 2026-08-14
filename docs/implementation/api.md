@@ -10,8 +10,9 @@ will be chosen before 1.0 when the resource model has enough operational use.
 `docs/openapi.yaml` is the canonical API contract. An implementation change is
 not complete until that document describes the resulting HTTP behaviour. The
 server embeds a delivery copy at `app/internal/server/openapi.yaml` so the
-contract remains available in the minimal production image; release validation
-checks that the two files are identical.
+contract remains available in the minimal production image. After changing the
+canonical document, run `go generate ./internal/server` from `app`; validation
+checks that the generated copy is identical.
 
 ## HTTP conventions
 
@@ -39,7 +40,7 @@ other implementation details.
 ## Authentication and authorization
 
 Private endpoints accept `Authorization: Bearer <token>`. API tokens represent
-one user and use that user's current permissions; 0.2.7 does not define scopes.
+one user and use that user's current permissions; 0.2.8 does not define scopes.
 The raw token is returned only by its creation request. Persistence stores its
 SHA-256 hash, a short non-secret prefix for identification, and management
 metadata.

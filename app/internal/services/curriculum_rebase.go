@@ -381,7 +381,7 @@ func planCurriculumProposalRebase(
 		sort.Slice(units, func(i, j int) bool { return units[i].ID < units[j].ID })
 		conflict := CurriculumProposalRebaseConflict{Change: change, Units: units}
 		if change.Kind == "update_content" || change.Kind == "rename_unit" {
-			if unit := curriculumUnitByID(currentGraph, change.UnitID); unit != nil {
+			if unit := currentGraph.Unit(change.UnitID); unit != nil {
 				acceptedUnit := *unit
 				conflict.AcceptedUnit = &acceptedUnit
 			}
@@ -417,7 +417,7 @@ func planCurriculumProposalRebase(
 			for _, change := range proposal.Changes {
 				conflict := CurriculumProposalRebaseConflict{Change: change}
 				if change.Kind == "update_content" || change.Kind == "rename_unit" {
-					if unit := curriculumUnitByID(currentGraph, change.UnitID); unit != nil {
+					if unit := currentGraph.Unit(change.UnitID); unit != nil {
 						acceptedUnit := *unit
 						conflict.AcceptedUnit = &acceptedUnit
 					}
@@ -507,7 +507,7 @@ func normalizeProposalForRebase(proposal *models.CurriculumProposal, current *mo
 	}
 	retained := proposal.Changes[:0]
 	for _, change := range proposal.Changes {
-		unit := curriculumUnitByID(current, change.UnitID)
+		unit := current.Unit(change.UnitID)
 		switch change.Kind {
 		case "rename_unit":
 			if !created[change.UnitID] && unit != nil {
@@ -522,11 +522,11 @@ func normalizeProposalForRebase(proposal *models.CurriculumProposal, current *mo
 				}
 			}
 		case "add_dependency":
-			if change.PrerequisiteID != nil && curriculumDependencyExists(current, change.UnitID, *change.PrerequisiteID) {
+			if change.PrerequisiteID != nil && current.HasDependency(change.UnitID, *change.PrerequisiteID) {
 				continue
 			}
 		case "remove_dependency":
-			if change.PrerequisiteID != nil && !curriculumDependencyExists(current, change.UnitID, *change.PrerequisiteID) {
+			if change.PrerequisiteID != nil && !current.HasDependency(change.UnitID, *change.PrerequisiteID) {
 				continue
 			}
 		}

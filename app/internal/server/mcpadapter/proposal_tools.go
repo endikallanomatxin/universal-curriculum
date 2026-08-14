@@ -10,7 +10,6 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"universal-curriculum/internal/db"
-	"universal-curriculum/internal/models"
 	"universal-curriculum/internal/services"
 )
 
@@ -145,7 +144,7 @@ func (application *adapter) getProposal(_ context.Context, request *mcp.CallTool
 	if result, output, err, user := requireAdmin[proposal](request); user == nil {
 		return result, output, err
 	} else {
-		model, err := application.visibleProposal(user.ID, input.ProposalID)
+		model, err := services.GetVisibleCurriculumProposal(application.database, user.ID, input.ProposalID)
 		if err != nil {
 			return curriculumFailure[proposal]("get proposal", err)
 		}
@@ -266,7 +265,7 @@ func (application *adapter) getProposalRebase(_ context.Context, request *mcp.Ca
 	if user == nil {
 		return result, output, authErr
 	}
-	model, err := application.editableProposal(user.ID, input.ProposalID)
+	model, err := services.GetEditableCurriculumProposal(application.database, user.ID, input.ProposalID)
 	if err != nil {
 		return curriculumFailure[rebasePlan]("get proposal rebase", err)
 	}
@@ -282,7 +281,7 @@ func (application *adapter) resolveProposalRebase(_ context.Context, request *mc
 	if user == nil {
 		return result, output, authErr
 	}
-	model, err := application.editableProposal(user.ID, input.ProposalID)
+	model, err := services.GetEditableCurriculumProposal(application.database, user.ID, input.ProposalID)
 	if err != nil {
 		return curriculumFailure[proposal]("inspect proposal rebase", err)
 	}
@@ -315,7 +314,7 @@ func (application *adapter) publishProposal(_ context.Context, request *mcp.Call
 	if !input.Confirmed {
 		return failed[proposal]("confirmation_required", "Publication requires confirmed=true after an explicit user request.", map[string]string{"confirmed": "must be true"})
 	}
-	model, err := application.editableProposal(user.ID, input.ProposalID)
+	model, err := services.GetEditableCurriculumProposal(application.database, user.ID, input.ProposalID)
 	if err != nil {
 		return curriculumFailure[proposal]("inspect proposal before publication", err)
 	}
@@ -330,28 +329,6 @@ func (application *adapter) publishProposal(_ context.Context, request *mcp.Call
 		logRebaseFailures(input.ProposalID, summary.Failures)
 	}
 	return application.reloadProposal(input.ProposalID)
-}
-
-func (application *adapter) visibleProposal(userID, id int64) (*models.CurriculumProposal, error) {
-	model, err := db.GetCurriculumProposal(application.database, id)
-	if err != nil {
-		return nil, err
-	}
-	if model == nil || model.Status == "draft" && !model.HasAuthor(userID) {
-		return nil, services.ErrProposalNotFound
-	}
-	return model, nil
-}
-
-func (application *adapter) editableProposal(userID, id int64) (*models.CurriculumProposal, error) {
-	model, err := application.visibleProposal(userID, id)
-	if err != nil {
-		return nil, err
-	}
-	if model.Status != "draft" || !model.HasAuthor(userID) {
-		return nil, services.ErrProposalNotFound
-	}
-	return model, nil
 }
 
 func (application *adapter) reloadProposal(id int64) (*mcp.CallToolResult, toolOutput[proposal], error) {
@@ -409,38 +386,39 @@ func newRebasePlan(model *services.CurriculumProposalRebasePlan) rebasePlan {
 
 func curriculumFailure[T any](operation string, err error) (*mcp.CallToolResult, toolOutput[T], error) {
 	var prerequisite *services.UnitIsPrerequisiteError
-	switch {
-	case errors.Is(err, services.ErrProposalNotFound):
+	switch services.ClassifyDomainError(err) {
+	case services.DomainErrorProposalNotFound:
 		return failed[T]("proposal_not_found", "The editable proposal was not found.", nil)
-	case errors.Is(err, services.ErrUnitNotFound):
+	case services.DomainErrorUnitNotFound:
 		return failed[T]("unit_not_found", "A curriculum unit was not found.", nil)
-	case errors.Is(err, services.ErrProposalTitleRequired):
+	case services.DomainErrorProposalTitleRequired:
 		return failed[T]("validation_failed", "The proposal title is required.", map[string]string{"title": "is required"})
-	case errors.Is(err, services.ErrProposalTitleTooLong):
+	case services.DomainErrorProposalTitleTooLong:
 		return failed[T]("validation_failed", "The proposal title is too long.", map[string]string{"title": "must not exceed 200 characters"})
-	case errors.Is(err, services.ErrProposalRationaleRequired):
+	case services.DomainErrorProposalRationaleRequired:
 		return failed[T]("validation_failed", "The proposal rationale is required.", map[string]string{"rationale": "is required"})
-	case errors.Is(err, services.ErrProposalRationaleTooLong):
+	case services.DomainErrorProposalRationaleTooLong:
 		return failed[T]("validation_failed", "The proposal rationale is too long.", map[string]string{"rationale": "must not exceed 1000 characters"})
-	case errors.Is(err, services.ErrUnitNameRequired):
+	case services.DomainErrorUnitNameRequired:
 		return failed[T]("validation_failed", "The unit name is required.", map[string]string{"name": "is required"})
-	case errors.Is(err, services.ErrUnitNameTooLong):
+	case services.DomainErrorUnitNameTooLong:
 		return failed[T]("validation_failed", "The unit name is too long.", map[string]string{"name": "must not exceed 200 characters"})
-	case errors.Is(err, services.ErrUnitContentRequired):
+	case services.DomainErrorUnitContentRequired:
 		return failed[T]("validation_failed", "Unit content is required.", map[string]string{"content": "is required"})
-	case errors.Is(err, services.ErrRecognitionSourcesRequired):
+	case services.DomainErrorRecognitionSourcesRequired:
 		return failed[T]("validation_failed", "Recognition sources are required.", map[string]string{"source_unit_ids": "must not be empty"})
-	case errors.Is(err, services.ErrRecognitionTargetsRequired):
+	case services.DomainErrorRecognitionTargetsRequired:
 		return failed[T]("validation_failed", "Recognition targets are required.", map[string]string{"target_unit_ids": "must not be empty"})
-	case errors.Is(err, services.ErrDependencyCycle):
+	case services.DomainErrorDependencyCycle:
 		return failed[T]("conflict", "The dependency would create a cycle.", nil)
-	case errors.Is(err, services.ErrProposalEmpty):
+	case services.DomainErrorProposalEmpty:
 		return failed[T]("conflict", "The proposal has no changes to publish.", nil)
-	case errors.Is(err, services.ErrProposalOutdated), errors.Is(err, services.ErrProposalRebaseRequired):
+	case services.DomainErrorProposalOutdated, services.DomainErrorProposalRebaseRequired:
 		return failed[T]("rebase_required", "The proposal must be inspected and rebased before this operation.", nil)
-	case errors.Is(err, services.ErrRebaseResolutionRequired):
+	case services.DomainErrorRebaseResolutionRequired:
 		return failed[T]("conflict", "Every rebase conflict requires a valid resolution.", nil)
-	case errors.As(err, &prerequisite):
+	case services.DomainErrorUnitIsPrerequisite:
+		errors.As(err, &prerequisite)
 		return failed[T]("conflict", fmt.Sprintf("The unit is still required by: %s.", strings.Join(prerequisite.DependentNames, ", ")), nil)
 	default:
 		return internalFailure[T](operation, err)

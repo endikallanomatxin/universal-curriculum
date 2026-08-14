@@ -310,16 +310,16 @@ func sortAPIProgress(progress []apiProgress) {
 }
 
 func (server *Server) writeAPILearningPathError(writer http.ResponseWriter, err error) {
-	switch {
-	case errors.Is(err, services.ErrLearningPathNotFound):
+	switch services.ClassifyDomainError(err) {
+	case services.DomainErrorLearningPathNotFound:
 		writeAPIError(writer, http.StatusNotFound, "learning_path_not_found", "The learning path was not found.", nil)
-	case errors.Is(err, services.ErrLearningPathNameRequired):
+	case services.DomainErrorLearningPathNameRequired:
 		writeAPIError(writer, http.StatusBadRequest, "validation_failed", "The request is invalid.", map[string]string{"name": "is required"})
-	case errors.Is(err, services.ErrLearningPathNameTooLong):
+	case services.DomainErrorLearningPathNameTooLong:
 		writeAPIError(writer, http.StatusBadRequest, "validation_failed", "The request is invalid.", map[string]string{"name": "must not exceed 200 characters"})
-	case errors.Is(err, services.ErrLearningPathUnitsRequired):
+	case services.DomainErrorLearningPathUnitsRequired:
 		writeAPIError(writer, http.StatusBadRequest, "validation_failed", "The request is invalid.", map[string]string{"target_unit_ids": "must contain at least one current unit"})
-	case errors.Is(err, services.ErrUnitNotFound):
+	case services.DomainErrorUnitNotFound:
 		writeAPIError(writer, http.StatusBadRequest, "validation_failed", "The request is invalid.", map[string]string{"target_unit_ids": "contains a unit that does not exist"})
 	default:
 		log.Printf("API save learning path: %v", err)

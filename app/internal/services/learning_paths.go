@@ -107,14 +107,7 @@ func CurriculumPathSubgraph(graph *models.CurriculumGraph, targetIDs []int64) *m
 	if graph == nil {
 		return subgraph
 	}
-	units := make(map[int64]models.Unit, len(graph.Units))
-	prerequisites := make(map[int64][]int64)
-	for _, unit := range graph.Units {
-		units[unit.ID] = unit
-	}
-	for _, dependency := range graph.Dependencies {
-		prerequisites[dependency.UnitID] = append(prerequisites[dependency.UnitID], dependency.PrerequisiteID)
-	}
+	index := models.IndexCurriculumGraph(graph)
 	included := make(map[int64]bool)
 	pending := append([]int64(nil), targetIDs...)
 	for len(pending) > 0 {
@@ -123,11 +116,11 @@ func CurriculumPathSubgraph(graph *models.CurriculumGraph, targetIDs []int64) *m
 		if included[unitID] {
 			continue
 		}
-		if _, exists := units[unitID]; !exists {
+		if !index.HasUnit(unitID) {
 			continue
 		}
 		included[unitID] = true
-		pending = append(pending, prerequisites[unitID]...)
+		pending = append(pending, index.Prerequisites(unitID)...)
 	}
 	for _, unit := range graph.Units {
 		if included[unit.ID] {

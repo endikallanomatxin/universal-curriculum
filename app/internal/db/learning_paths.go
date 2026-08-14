@@ -143,6 +143,85 @@ func ReplaceLearningPathUnits(q curriculumExecutor, pathID int64, unitIDs []int6
 	return nil
 }
 
+// MigrateLearningPathTargets applies the recognitions in one accepted proposal
+// to every learning path that targets one of their sources. The complete
+// mapping is read before any path is changed, so recognitions accepted together
+// cannot feed one another.
+func MigrateLearningPathTargets(q curriculumExecutor, proposalID int64) error {
+	rows, err := q.Query(`
+		SELECT DISTINCT path_unit.path_id, source.unit_id, target.unit_id,
+		       EXISTS (
+			SELECT 1
+			FROM curriculum_proposal_changes deletion_change
+			JOIN curriculum_unit_deletions deletion ON deletion.change_id = deletion_change.id
+			WHERE deletion_change.proposal_id = change.proposal_id
+			  AND deletion.unit_id = source.unit_id
+		       ) AS source_deleted
+		FROM curriculum_proposal_changes change
+		JOIN curriculum_recognition_sources source
+		  ON source.recognition_change_id = change.id
+		JOIN curriculum_recognition_targets target
+		  ON target.recognition_change_id = change.id
+		JOIN learning_path_units path_unit ON path_unit.unit_id = source.unit_id
+		WHERE change.proposal_id = $1 AND change.kind = 'recognition'
+		ORDER BY path_unit.path_id, source.unit_id, target.unit_id
+	`, proposalID)
+	if err != nil {
+		return fmt.Errorf("list learning path target migrations: %w", err)
+	}
+	type targetMigration struct {
+		deletedSources map[int64]bool
+		targets        map[int64]bool
+	}
+	migrations := make(map[int64]*targetMigration)
+	for rows.Next() {
+		var pathID, sourceID, targetID int64
+		var sourceDeleted bool
+		if err := rows.Scan(&pathID, &sourceID, &targetID, &sourceDeleted); err != nil {
+			rows.Close()
+			return fmt.Errorf("scan learning path target migration: %w", err)
+		}
+		migration := migrations[pathID]
+		if migration == nil {
+			migration = &targetMigration{deletedSources: make(map[int64]bool), targets: make(map[int64]bool)}
+			migrations[pathID] = migration
+		}
+		if sourceDeleted {
+			migration.deletedSources[sourceID] = true
+		}
+		migration.targets[targetID] = true
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return fmt.Errorf("iterate learning path target migrations: %w", err)
+	}
+	if err := rows.Close(); err != nil {
+		return fmt.Errorf("close learning path target migrations: %w", err)
+	}
+	for pathID, migration := range migrations {
+		for sourceID := range migration.deletedSources {
+			if _, err := q.Exec(`
+				DELETE FROM learning_path_units WHERE path_id = $1 AND unit_id = $2
+			`, pathID, sourceID); err != nil {
+				return fmt.Errorf("remove recognized learning path target: %w", err)
+			}
+		}
+		for targetID := range migration.targets {
+			if _, err := q.Exec(`
+				INSERT INTO learning_path_units (path_id, unit_id)
+				VALUES ($1, $2)
+				ON CONFLICT DO NOTHING
+			`, pathID, targetID); err != nil {
+				return fmt.Errorf("add recognized learning path target: %w", err)
+			}
+		}
+		if _, err := q.Exec(`UPDATE learning_paths SET updated_at = NOW() WHERE id = $1`, pathID); err != nil {
+			return fmt.Errorf("touch migrated learning path: %w", err)
+		}
+	}
+	return nil
+}
+
 func DeleteLearningPath(database *sql.DB, userID, pathID int64) (bool, error) {
 	result, err := database.Exec(`DELETE FROM learning_paths WHERE id = $1 AND user_id = $2`, pathID, userID)
 	if err != nil {

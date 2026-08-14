@@ -256,6 +256,16 @@ a unit without outgoing recognition means that it has no recognized successor.
 These choices are valid, but the publishing interface warns the author before
 continuing so they are not made accidentally.
 
+Recognitions also keep personal learning goals aligned with the evolving
+curriculum. When a proposal is accepted, every learning-path target matching a
+recognition source adds all targets of that recognition. The source remains a
+target while it remains in the resulting curriculum, and is removed from the
+path only when the proposal also removes that unit. A path need only contain
+one source of a many-source recognition for its targets to be added; unlike
+completion evidence, personal goals do not require every source. As with
+progress, recognitions accepted together use the state before the proposal and
+do not feed one another.
+
 ### 7.2 Isolated work and conflicts
 
 Starting a proposal freezes its base curriculum. Its changes remain isolated
