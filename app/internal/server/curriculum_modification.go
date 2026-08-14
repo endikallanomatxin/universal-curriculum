@@ -188,8 +188,12 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 		return
 	}
 	var reviewedProposals []models.CurriculumProposal
+	var activeProposals []models.CurriculumProposal
 	for _, proposal := range visibleProposals {
-		if proposal.HasAuthor(userID) && (proposal.Status == "submitted" || proposal.Status == "rejected") {
+		if proposal.Status == "submitted" {
+			activeProposals = append(activeProposals, proposal)
+		}
+		if proposal.HasAuthor(userID) && proposal.Status == "rejected" {
 			reviewedProposals = append(reviewedProposals, proposal)
 		}
 	}
@@ -224,6 +228,7 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 		FocusedUnit:             focusedUnit,
 		DraftProposals:          draftViews,
 		ReviewedProposals:       reviewedProposals,
+		ActiveProposals:         activeProposals,
 		ActiveProposal:          activeProposal,
 		ProposalRebase:          rebasePlan,
 		RebaseTimeline:          curriculumRebaseTimeline(rebasePlan, activeProposal),

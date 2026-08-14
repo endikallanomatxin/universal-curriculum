@@ -479,7 +479,7 @@ func ListCurriculumProposalsForUser(
 		FROM curriculum_proposals proposal
 		WHERE ($2::TEXT IS NULL OR proposal.status = $2)
 		  AND (
-			proposal.status = 'accepted' OR $3
+			proposal.status IN ('submitted', 'accepted') OR $3
 			OR EXISTS (
 				SELECT 1 FROM curriculum_proposal_authors
 				WHERE proposal_id = proposal.id AND user_id = $1
@@ -506,7 +506,7 @@ func ListCurriculumProposalsForUser(
 		LEFT JOIN curriculum_proposal_changes change ON change.proposal_id = proposal.id
 		WHERE ($2::TEXT IS NULL OR proposal.status = $2)
 		  AND (
-			proposal.status = 'accepted' OR $3
+			proposal.status IN ('submitted', 'accepted') OR $3
 			OR EXISTS (
 				SELECT 1 FROM curriculum_proposal_authors
 				WHERE proposal_id = proposal.id AND user_id = $1

@@ -22,6 +22,10 @@ func TestRejectedProposalIsPreservedAndReadableByItsAuthor(t *testing.T) {
 	if _, err := database.Exec(`UPDATE users SET is_admin = TRUE WHERE id = $1`, administrator.ID); err != nil {
 		t.Fatal(err)
 	}
+	other, err := db.CreateLocalUser(database, "Other contributor", "other@example.com", []byte("hash"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	proposal, err := CreateCurriculumProposal(database, author.ID, "Preserved work", "Keep useful rejected work available.")
 	if err != nil {
 		t.Fatal(err)
@@ -31,6 +35,9 @@ func TestRejectedProposalIsPreservedAndReadableByItsAuthor(t *testing.T) {
 	}
 	if err := SubmitCurriculumProposal(database, author.ID, proposal.ID); err != nil {
 		t.Fatal(err)
+	}
+	if visible, err := GetVisibleCurriculumProposal(database, other.ID, false, proposal.ID); err != nil || visible.Status != "submitted" {
+		t.Fatalf("active proposal visibility = %#v, %v", visible, err)
 	}
 	if err := RejectCurriculumProposal(database, administrator.ID, proposal.ID, "Needs a narrower scope."); err != nil {
 		t.Fatal(err)

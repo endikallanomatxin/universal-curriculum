@@ -244,7 +244,8 @@ A proposal contains its authors, rationale, the accepted proposal on which it
 is based and a readable diff of both content and graph changes.
 
 A draft is private to its authors and administrators. Submitting a proposal
-makes it available for review and ends draft editing. A rejected proposal is
+makes it an active proposal visible in the collaborative workspace and ends
+draft editing. A rejected proposal is
 retained with its decision and remains readable by its authors and
 administrators, so it can be consulted when preparing later work.
 

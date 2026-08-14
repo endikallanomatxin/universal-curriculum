@@ -390,6 +390,40 @@ func TestCurriculumProposalRendersRecognitionWorkflowAndPublishWarning(t *testin
 	}
 }
 
+func TestAdministratorCanOpenAndDecideSubmittedProposal(t *testing.T) {
+	output := renderTemplate(t, loadTestTemplates(t), "curriculum-modification.html", map[string]any{
+		"User": &models.User{FullName: "Admin", IsAdmin: true}, "CSRFToken": "csrf",
+		"ActiveProposals": []models.CurriculumProposal{{ID: 21, Title: "Review me", Rationale: "Useful change", Status: "submitted", AuthorName: "Contributor", ChangeCount: 2}},
+		"ActiveProposal":  &models.CurriculumProposal{ID: 21, Title: "Review me", Rationale: "Useful change", Status: "submitted", AuthorName: "Contributor"},
+	})
+	for _, fragment := range []string{
+		`id="active-proposal-queue-title"`, `href="/curriculum-modification?proposal=21"`, "Contributor · 2 changes",
+		`action="/admin/proposals/21/accept"`, `action="/admin/proposals/21/reject"`,
+		`name="return_to" value="/curriculum-modification?proposal=21"`, `name="reason" required`,
+	} {
+		if !strings.Contains(output, fragment) {
+			t.Errorf("submitted proposal review does not contain %q", fragment)
+		}
+	}
+	if strings.Contains(output, `action="/curriculum-modification/proposals/21/delete"`) || strings.Contains(output, ">Submit proposal<") {
+		t.Fatal("submitted proposal still exposes draft actions")
+	}
+}
+
+func TestContributorCanReadActiveProposalWithoutDecisionActions(t *testing.T) {
+	output := renderTemplate(t, loadTestTemplates(t), "curriculum-modification.html", map[string]any{
+		"User": &models.User{FullName: "Contributor", IsContributor: true}, "CSRFToken": "csrf",
+		"ActiveProposals": []models.CurriculumProposal{{ID: 22, Title: "Shared proposal", Rationale: "Open for review", Status: "submitted", AuthorName: "Another contributor"}},
+		"ActiveProposal":  &models.CurriculumProposal{ID: 22, Title: "Shared proposal", Rationale: "Open for review", Status: "submitted", AuthorName: "Another contributor"},
+	})
+	if !strings.Contains(output, "Active proposals") || !strings.Contains(output, "Shared proposal") {
+		t.Fatal("contributor cannot see active proposal")
+	}
+	if strings.Contains(output, `action="/admin/proposals/22/accept"`) || strings.Contains(output, `action="/admin/proposals/22/reject"`) {
+		t.Fatal("contributor sees administrator decision actions")
+	}
+}
+
 func TestProposalDependencyChangeLinksBothUnitsIndependently(t *testing.T) {
 	templates := loadTestTemplates(t)
 	prerequisiteID := int64(1)

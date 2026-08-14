@@ -164,6 +164,9 @@ func (server *Server) rejectCurriculumProposal(writer http.ResponseWriter, reque
 }
 
 func administrationUserURL(request *http.Request) string {
+	if returnTo := request.FormValue("return_to"); strings.HasPrefix(returnTo, "/curriculum-modification?proposal=") {
+		return returnTo
+	}
 	if userID, err := strconv.ParseInt(request.FormValue("user_id"), 10, 64); err == nil && userID > 0 {
 		return "/admin/users/" + strconv.FormatInt(userID, 10)
 	}

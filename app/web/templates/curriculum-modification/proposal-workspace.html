@@ -134,7 +134,7 @@
               {{ end }}
             </section>
 
-            <footer class="proposal-workspace__terminal-actions" aria-label="Proposal actions">
+            {{ if eq .ActiveProposal.Status "draft" }}<footer class="proposal-workspace__terminal-actions" aria-label="Proposal actions">
               <form action="/curriculum-modification/proposals/{{ .ActiveProposal.ID }}/delete" method="post" onsubmit="return confirm('Delete this draft proposal?')">
                 <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
                 <button class="secondary-button destructive-action" type="submit"><span class="material-symbols-rounded" aria-hidden="true">delete</span>Delete proposal</button>
@@ -143,7 +143,10 @@
                 <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
                 <button class="primary-button" type="submit" {{ if not .CanEditProposal }}disabled{{ if and .ProposalRebase (eq .ProposalRebase.Status "needs_review") }} title="Resolve the rebase before submitting"{{ end }}{{ end }}>Submit proposal</button>
               </form>
-            </footer>
+            </footer>{{ else if and .User.IsAdmin (eq .ActiveProposal.Status "submitted") }}<footer class="proposal-workspace__terminal-actions proposal-workspace__review-actions" aria-label="Proposal review decision">
+              <form action="/admin/proposals/{{ .ActiveProposal.ID }}/accept" method="post"><input type="hidden" name="csrf_token" value="{{ .CSRFToken }}"><input type="hidden" name="return_to" value="/curriculum-modification?proposal={{ .ActiveProposal.ID }}"><button class="primary-button" type="submit"><span class="material-symbols-rounded" aria-hidden="true">check</span>Accept proposal</button></form>
+              <form class="proposal-workspace__rejection-form" action="/admin/proposals/{{ .ActiveProposal.ID }}/reject" method="post"><input type="hidden" name="csrf_token" value="{{ .CSRFToken }}"><input type="hidden" name="return_to" value="/curriculum-modification?proposal={{ .ActiveProposal.ID }}"><label for="proposal-rejection-reason">Rejection reason</label><input id="proposal-rejection-reason" name="reason" required maxlength="1000" placeholder="Explain what should change"><button class="secondary-button destructive-action" type="submit">Reject proposal</button></form>
+            </footer>{{ end }}
           </div>
         </section>
       {{ end }}

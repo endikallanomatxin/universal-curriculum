@@ -31,6 +31,7 @@ type curriculumModificationPageData struct {
 	ContentUnit             *curriculumUnitView
 	DraftProposals          []curriculumDraftProposalView
 	ReviewedProposals       []models.CurriculumProposal
+	ActiveProposals         []models.CurriculumProposal
 	ActiveProposal          *models.CurriculumProposal
 	ProposalRebase          *services.CurriculumProposalRebasePlan
 	RebaseTimeline          *curriculumRebaseTimelineView

@@ -15,7 +15,7 @@ func GetVisibleCurriculumProposal(database *sql.DB, userID int64, isAdmin bool, 
 	if err != nil {
 		return nil, err
 	}
-	if proposal == nil || proposal.Status != "accepted" && !isAdmin && !proposal.HasAuthor(userID) {
+	if proposal == nil || proposal.Status != "accepted" && proposal.Status != "submitted" && !isAdmin && !proposal.HasAuthor(userID) {
 		return nil, ErrProposalNotFound
 	}
 	return proposal, nil
