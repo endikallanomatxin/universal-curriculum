@@ -6,7 +6,7 @@ curriculum.
 The application is written in Go, uses PostgreSQL and is deployed to Render as
 a Docker web service. File access is prepared behind an object-store
 abstraction, but the 0.2.7 release does not store assets. Local storage is
-ephemeral in production until asset support is introduced in 0.3.0.
+ephemeral in production until asset support is introduced in 0.5.0.
 
 ## Repository structure
 
