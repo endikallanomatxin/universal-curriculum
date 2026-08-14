@@ -395,6 +395,7 @@ func TestAdministratorCanOpenAndDecideSubmittedProposal(t *testing.T) {
 		"User": &models.User{FullName: "Admin", IsAdmin: true}, "CSRFToken": "csrf",
 		"ActiveProposals": []models.CurriculumProposal{{ID: 21, Title: "Review me", Rationale: "Useful change", Status: "submitted", AuthorName: "Contributor", ChangeCount: 2}},
 		"ActiveProposal":  &models.CurriculumProposal{ID: 21, Title: "Review me", Rationale: "Useful change", Status: "submitted", AuthorName: "Contributor"},
+		"ContentUnit":     map[string]any{"ID": 7, "Name": "Energy", "Content": "Energy can be stored."},
 	})
 	for _, fragment := range []string{
 		`id="active-proposal-queue-title"`, `href="/curriculum-modification?proposal=21"`, "Contributor · 2 changes",
@@ -407,6 +408,16 @@ func TestAdministratorCanOpenAndDecideSubmittedProposal(t *testing.T) {
 	}
 	if strings.Contains(output, `action="/curriculum-modification/proposals/21/delete"`) || strings.Contains(output, ">Submit proposal<") {
 		t.Fatal("submitted proposal still exposes draft actions")
+	}
+	for _, fragment := range []string{`action="/curriculum-modification/proposals/21"`, `id="working-proposal-title"`, `id="working-proposal-rationale"`, `id="inline-unit-name"`, `id="inline-unit-content"`} {
+		if strings.Contains(output, fragment) {
+			t.Errorf("submitted proposal still exposes editable metadata %q", fragment)
+		}
+	}
+	for _, fragment := range []string{`class="proposal-workspace__title">Review me</h1>`, `class="proposal-workspace__rationale">Useful change</p>`, "Pending review", "Energy can be stored."} {
+		if !strings.Contains(output, fragment) {
+			t.Errorf("submitted proposal read-only metadata does not contain %q", fragment)
+		}
 	}
 }
 

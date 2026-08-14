@@ -256,7 +256,8 @@
   width: calc(100% + 0.9rem);
 }
 
-.proposal-workspace__title-input {
+.proposal-workspace__title-input,
+.proposal-workspace__title {
   color: var(--color-ink-strong);
   font-size: var(--font-size-pane-title);
   font-weight: 700;
@@ -264,9 +265,20 @@
   line-height: 1;
 }
 
-.proposal-workspace__rationale-input {
+.proposal-workspace__title {
+  margin: 0.35rem 0;
+  overflow-wrap: anywhere;
+}
+
+.proposal-workspace__rationale-input,
+.proposal-workspace__rationale {
   font-size: 1rem;
   line-height: 1.65;
+}
+
+.proposal-workspace__rationale {
+  margin: 0.35rem 0;
+  white-space: pre-wrap;
 }
 
 .proposal-workspace__title-input:focus,
