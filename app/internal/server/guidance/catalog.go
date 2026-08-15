@@ -26,6 +26,8 @@ var catalog = []Page{
 	{Slug: "mcp-api", Title: "MCP and API", Summary: "Inspect and modify the curriculum programmatically"},
 }
 
+var authoringSlugs = []string{"curriculum-units", "dependencies", "writing-content"}
+
 func Pages() []Page {
 	pages := make([]Page, len(catalog))
 	for index, entry := range catalog {
@@ -46,6 +48,18 @@ func Find(slug string) (Page, bool) {
 		}
 	}
 	return Page{}, false
+}
+
+func AuthoringPages() []Page {
+	pages := make([]Page, 0, len(authoringSlugs))
+	for _, slug := range authoringSlugs {
+		page, ok := Find(slug)
+		if !ok {
+			panic(fmt.Sprintf("authoring documentation %q is not in the catalog", slug))
+		}
+		pages = append(pages, page)
+	}
+	return pages
 }
 
 func Index() string {

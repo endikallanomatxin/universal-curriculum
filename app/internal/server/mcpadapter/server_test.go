@@ -11,6 +11,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/auth"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"universal-curriculum/internal/models"
+	guidancepkg "universal-curriculum/internal/server/guidance"
 )
 
 func TestDiscoveryAdvertisesAgentGuidanceResourcesAndTools(t *testing.T) {
@@ -24,16 +25,14 @@ func TestDiscoveryAdvertisesAgentGuidanceResourcesAndTools(t *testing.T) {
 	if discovery.ServerInfo.Name != "universal-curriculum" {
 		t.Fatalf("server name = %q", discovery.ServerInfo.Name)
 	}
-	for _, guidance := range []string{
-		"curriculum://documentation/curriculum-units",
-		"curriculum://documentation/dependencies",
-		"curriculum://documentation/writing-content",
-		"Search the published curriculum", "finished microlesson",
-		"Review every changed unit", "get_recommendations", "recorded progress",
+	for _, fragment := range []string{
+		"call get_authoring_guidance", "returned canonical guidance",
+		"Search the published curriculum", "final learner-facing content",
+		"review every changed unit", "get_recommendations", "recorded progress",
 		"Never submit", "explicit request and confirmation",
 	} {
-		if !strings.Contains(discovery.Instructions, guidance) {
-			t.Errorf("instructions do not contain %q: %s", guidance, discovery.Instructions)
+		if !strings.Contains(discovery.Instructions, fragment) {
+			t.Errorf("instructions do not contain %q: %s", fragment, discovery.Instructions)
 		}
 	}
 	if discovery.Capabilities == nil || discovery.Capabilities.Tools == nil || discovery.Capabilities.Resources == nil {
@@ -68,24 +67,24 @@ func TestDiscoveryAdvertisesAgentGuidanceResourcesAndTools(t *testing.T) {
 	if len(about.Contents) != 1 || !strings.Contains(about.Contents[0].Text, "curriculum://documentation/dependencies") || about.TTLMs == 0 || about.CacheScope != "public" {
 		t.Fatalf("about resource = %#v", about)
 	}
-	writing, err := session.ReadResource(context.Background(), &mcp.ReadResourceParams{URI: "curriculum://documentation/writing-content"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(writing.Contents) != 1 ||
-		!strings.Contains(writing.Contents[0].Text, "worked example") ||
-		!strings.Contains(writing.Contents[0].Text, "overlapping") ||
-		!strings.Contains(writing.Contents[0].Text, "Content supports Markdown") ||
-		!strings.Contains(writing.Contents[0].Text, "$$...$$") {
-		t.Fatalf("writing documentation resource = %#v", writing)
+	canonicalPages := guidancepkg.AuthoringPages()
+	for _, page := range canonicalPages {
+		uri := "curriculum://documentation/" + page.Slug
+		resource, err := session.ReadResource(context.Background(), &mcp.ReadResourceParams{URI: uri})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(resource.Contents) != 1 || resource.Contents[0].URI != uri || resource.Contents[0].Text != page.Content {
+			t.Errorf("documentation resource %s does not match canonical page: %#v", uri, resource)
+		}
 	}
 
 	tools, err := session.ListTools(context.Background(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(tools.Tools) != 26 {
-		t.Fatalf("tool count = %d, want 26", len(tools.Tools))
+	if len(tools.Tools) != 27 {
+		t.Fatalf("tool count = %d, want 27", len(tools.Tools))
 	}
 	byName := make(map[string]*mcp.Tool, len(tools.Tools))
 	for _, tool := range tools.Tools {
@@ -99,6 +98,21 @@ func TestDiscoveryAdvertisesAgentGuidanceResourcesAndTools(t *testing.T) {
 	}
 	if !byName["search_units"].Annotations.ReadOnlyHint || !byName["search_units"].Annotations.IdempotentHint {
 		t.Fatalf("search annotations = %#v", byName["search_units"].Annotations)
+	}
+	guidanceTool := byName["get_authoring_guidance"]
+	if guidanceTool == nil || !guidanceTool.Annotations.ReadOnlyHint || !guidanceTool.Annotations.IdempotentHint {
+		t.Fatalf("authoring guidance tool = %#v", guidanceTool)
+	}
+	assertSchemaHasNoArguments(t, guidanceTool.InputSchema)
+	guidanceResult := callIntegrationTool[authoringGuidance](t, session, "get_authoring_guidance", map[string]any{})
+	if !guidanceResult.OK || guidanceResult.Data == nil || len(guidanceResult.Data.Documents) != len(canonicalPages) {
+		t.Fatalf("authoring guidance result = %#v", guidanceResult)
+	}
+	for index, page := range canonicalPages {
+		document := guidanceResult.Data.Documents[index]
+		if document.URI != "curriculum://documentation/"+page.Slug || document.Content != page.Content {
+			t.Errorf("authoring guidance document %d = %#v, want canonical page %#v", index, document, page)
+		}
 	}
 	if byName["submit_proposal"].Annotations.ReadOnlyHint ||
 		byName["submit_proposal"].Annotations.DestructiveHint == nil ||
@@ -115,10 +129,15 @@ func TestDiscoveryAdvertisesAgentGuidanceResourcesAndTools(t *testing.T) {
 	assertSchemaContains(t, byName["update_proposal_unit"].InputSchema,
 		`final learner-facing content`, `not an outline`,
 		`Supports Markdown and LaTeX`, `$...$`, `$$...$$`)
-	if !strings.Contains(byName["create_proposal_unit"].Description, "curriculum-units, dependencies, and writing-content") {
-		t.Fatalf("create_proposal_unit description = %q", byName["create_proposal_unit"].Description)
+	for _, name := range []string{"create_proposal_unit", "update_proposal_unit"} {
+		description := byName[name].Description
+		for _, fragment := range []string{"get_authoring_guidance", "final learner-facing", "genuine prerequisites", "outline or teaching plan"} {
+			if !strings.Contains(description, fragment) {
+				t.Errorf("%s description does not contain %q: %q", name, fragment, description)
+			}
+		}
 	}
-	if !strings.Contains(byName["update_proposal_unit"].Description, "rather than adding edit history") {
+	if !strings.Contains(byName["update_proposal_unit"].Description, "rather than gaining edit history") {
 		t.Fatalf("update_proposal_unit description = %q", byName["update_proposal_unit"].Description)
 	}
 	assertSchemaContains(t, byName["add_proposal_recognition"].InputSchema,
@@ -134,8 +153,8 @@ func TestNonAdministratorDiscoversOnlyAvailableTools(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Tools) != 10 {
-		t.Fatalf("tool count = %d, want 10", len(result.Tools))
+	if len(result.Tools) != 11 {
+		t.Fatalf("tool count = %d, want 11", len(result.Tools))
 	}
 	for _, tool := range result.Tools {
 		if strings.Contains(tool.Name, "proposal") {
@@ -221,5 +240,23 @@ func assertSchemaContains(t *testing.T, schema any, values ...string) {
 		if !strings.Contains(string(encoded), value) {
 			t.Errorf("schema does not contain %s: %s", value, encoded)
 		}
+	}
+}
+
+func assertSchemaHasNoArguments(t *testing.T, schema any) {
+	t.Helper()
+	encoded, err := json.Marshal(schema)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var document struct {
+		Properties map[string]any `json:"properties"`
+		Required   []string       `json:"required"`
+	}
+	if err := json.Unmarshal(encoded, &document); err != nil {
+		t.Fatal(err)
+	}
+	if len(document.Properties) != 0 || len(document.Required) != 0 {
+		t.Fatalf("schema accepts arguments: %s", encoded)
 	}
 }

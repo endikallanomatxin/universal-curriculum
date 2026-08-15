@@ -32,8 +32,8 @@ SDK `TokenInfo`; no server instance contains request-specific identity.
 Server discovery advertises concise instructions that establish the important
 workflow:
 
-- before designing or modifying curriculum, consult the canonical
-  `curriculum-units`, `dependencies` and `writing-content` resources;
+- before designing or modifying curriculum, call `get_authoring_guidance` and
+  apply the canonical documents it returns;
 - search existing units and factor shared knowledge before creating or
   substantially explaining a concept;
 - produce focused, reusable units whose learner-facing content is nevertheless
@@ -46,12 +46,20 @@ workflow:
 - submit only after an explicit user request, never as an implied part of
   editing or preparing a proposal.
 
-The three documentation resources, especially `writing-content`, are the
-canonical editorial contract. Discovery instructions keep only the invariants
-an agent must encounter before acting. The `create_proposal_unit` and
-`update_proposal_unit` descriptions reinforce that `content` is final learning
-material rather than an outline, while referring agents back to the canonical
-guidance instead of duplicating it.
+The canonical documentation lives as embedded Markdown in
+`internal/server/guidance`. The `curriculum-units`, `dependencies` and
+`writing-content` pages, especially the latter, form the editorial contract.
+They are exposed individually as MCP documentation resources for clients that
+support resource reads. The read-only, argument-free
+`get_authoring_guidance` tool returns those same canonical bodies together so
+agents can load them through a model-callable operation when their host does
+not expose resources.
+
+Discovery instructions tell agents when to load the contract. The
+`create_proposal_unit` and `update_proposal_unit` descriptions retain short
+local reminders that `content` is final learning material rather than an
+outline and direct agents to the canonical tool; they are not another copy of
+the guidance.
 
 These instructions guide a model; permissions and invariants are still enforced
 in code.
@@ -65,7 +73,8 @@ The read-only resources are:
 
 Parameterized reads and actions are tools. The current conceptual groups are:
 
-- curriculum discovery: `get_curriculum`, `search_units`, `get_unit`;
+- curriculum discovery and authoring guidance: `get_authoring_guidance`,
+  `get_curriculum`, `search_units`, `get_unit`;
 - learning: `get_learning_paths`, `create_learning_path`,
   `update_learning_path`, `delete_learning_path`, `get_progress`,
   `set_progress`, `get_recommendations`;

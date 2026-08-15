@@ -31,6 +31,20 @@ func TestCatalogLoadsCanonicalDocumentation(t *testing.T) {
 	}
 }
 
+func TestAuthoringPagesSelectCanonicalDocumentation(t *testing.T) {
+	pages := AuthoringPages()
+	wantSlugs := []string{"curriculum-units", "dependencies", "writing-content"}
+	if len(pages) != len(wantSlugs) {
+		t.Fatalf("authoring page count = %d, want %d", len(pages), len(wantSlugs))
+	}
+	for index, slug := range wantSlugs {
+		canonical, ok := Find(slug)
+		if !ok || pages[index] != canonical {
+			t.Errorf("authoring page %d = %#v, want canonical %q", index, pages[index], slug)
+		}
+	}
+}
+
 func containsAll(value string, fragments ...string) bool {
 	value = strings.Join(strings.Fields(value), " ")
 	for _, fragment := range fragments {
