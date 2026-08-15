@@ -99,7 +99,15 @@ A unit is the smallest independently learnable part of the curriculum. It has:
 - translations and supporting resources.
 
 Units should be small enough to combine into different learning paths and
-precise enough to be certified independently.
+precise enough to be certified independently. Each unit nevertheless teaches
+its concept as a complete microlesson for a learner who has mastered its
+prerequisites; it is not an outline or a description of material to be taught.
+
+Knowledge should be factored into clear, reusable concepts. Shared knowledge
+belongs in one unit used by every relevant branch, rather than being taught
+again inside overlapping units. Substantial knowledge required to understand a
+unit must either be taught by that unit or represented explicitly by its
+dependencies.
 
 ### 4.3 Groups
 

@@ -18,7 +18,9 @@ import (
 	"universal-curriculum/internal/server/appinfo"
 )
 
-const instructions = "Universal Curriculum is a shared, dependency-aware curriculum. Search existing units before proposing a new one. Curriculum changes happen only through proposals. Use get_recommendations instead of inferring what a learner should study next; recorded progress is authoritative. Inspect rebase state before changing a stale proposal. Never publish merely because a user asked to edit or prepare a proposal: publish only after an explicit request and confirmation. Server-side permissions always apply."
+const instructions = `Universal Curriculum is a shared, dependency-aware curriculum. Before designing or modifying curriculum, read curriculum://documentation/curriculum-units, curriculum://documentation/dependencies, and curriculum://documentation/writing-content and apply their criteria. Search the published curriculum before creating a unit or teaching substantial prerequisite knowledge: units are focused, reusable concepts, but their content must be a finished microlesson that stands alone given its genuine prerequisites. Review every changed unit from that learner perspective before submission.
+
+Curriculum changes happen only through proposals. Inspect rebase state before changing a stale proposal. Never submit merely because a user asked to edit or prepare a proposal: submit only after an explicit request and confirmation. For learning guidance, use get_recommendations rather than inferring what to study next; recorded progress is authoritative. Server-side permissions always apply.`
 
 var (
 	falseHint   = false

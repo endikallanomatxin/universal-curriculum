@@ -32,13 +32,26 @@ SDK `TokenInfo`; no server instance contains request-specific identity.
 Server discovery advertises concise instructions that establish the important
 workflow:
 
-- search existing units before creating one where appropriate;
+- before designing or modifying curriculum, consult the canonical
+  `curriculum-units`, `dependencies` and `writing-content` resources;
+- search existing units and factor shared knowledge before creating or
+  substantially explaining a concept;
+- produce focused, reusable units whose learner-facing content is nevertheless
+  a finished microlesson given its genuine prerequisites;
+- review every changed unit from that learner perspective before submission;
 - change curriculum only through proposals;
 - use `get_recommendations` rather than independently inferring the next unit;
 - treat recorded progress as authoritative;
 - inspect rebase state before changing a stale proposal; and
 - submit only after an explicit user request, never as an implied part of
   editing or preparing a proposal.
+
+The three documentation resources, especially `writing-content`, are the
+canonical editorial contract. Discovery instructions keep only the invariants
+an agent must encounter before acting. The `create_proposal_unit` and
+`update_proposal_unit` descriptions reinforce that `content` is final learning
+material rather than an outline, while referring agents back to the canonical
+guidance instead of duplicating it.
 
 These instructions guide a model; permissions and invariants are still enforced
 in code.

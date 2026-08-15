@@ -24,7 +24,14 @@ func TestDiscoveryAdvertisesAgentGuidanceResourcesAndTools(t *testing.T) {
 	if discovery.ServerInfo.Name != "universal-curriculum" {
 		t.Fatalf("server name = %q", discovery.ServerInfo.Name)
 	}
-	for _, guidance := range []string{"Search existing units", "get_recommendations", "recorded progress", "Never publish"} {
+	for _, guidance := range []string{
+		"curriculum://documentation/curriculum-units",
+		"curriculum://documentation/dependencies",
+		"curriculum://documentation/writing-content",
+		"Search the published curriculum", "finished microlesson",
+		"Review every changed unit", "get_recommendations", "recorded progress",
+		"Never submit", "explicit request and confirmation",
+	} {
 		if !strings.Contains(discovery.Instructions, guidance) {
 			t.Errorf("instructions do not contain %q: %s", guidance, discovery.Instructions)
 		}
@@ -65,7 +72,11 @@ func TestDiscoveryAdvertisesAgentGuidanceResourcesAndTools(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(writing.Contents) != 1 || !strings.Contains(writing.Contents[0].Text, "Content supports Markdown") || !strings.Contains(writing.Contents[0].Text, "$$...$$") {
+	if len(writing.Contents) != 1 ||
+		!strings.Contains(writing.Contents[0].Text, "worked example") ||
+		!strings.Contains(writing.Contents[0].Text, "overlapping") ||
+		!strings.Contains(writing.Contents[0].Text, "Content supports Markdown") ||
+		!strings.Contains(writing.Contents[0].Text, "$$...$$") {
 		t.Fatalf("writing documentation resource = %#v", writing)
 	}
 
@@ -99,9 +110,14 @@ func TestDiscoveryAdvertisesAgentGuidanceResourcesAndTools(t *testing.T) {
 	assertSchemaContains(t, byName["create_proposal"].InputSchema,
 		`"maxLength":200`, `"maxLength":1000`)
 	assertSchemaContains(t, byName["create_proposal_unit"].InputSchema,
+		`Final learner-facing microlesson`, `rather than an outline`,
 		`Supports Markdown and LaTeX`, `$...$`, `$$...$$`)
 	assertSchemaContains(t, byName["update_proposal_unit"].InputSchema,
+		`final learner-facing content`, `not an outline`,
 		`Supports Markdown and LaTeX`, `$...$`, `$$...$$`)
+	if !strings.Contains(byName["create_proposal_unit"].Description, "curriculum-units, dependencies, and writing-content") {
+		t.Fatalf("create_proposal_unit description = %q", byName["create_proposal_unit"].Description)
+	}
 	if !strings.Contains(byName["update_proposal_unit"].Description, "rather than adding edit history") {
 		t.Fatalf("update_proposal_unit description = %q", byName["update_proposal_unit"].Description)
 	}

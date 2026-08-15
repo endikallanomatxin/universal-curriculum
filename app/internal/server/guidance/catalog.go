@@ -17,9 +17,9 @@ type Page struct {
 }
 
 var catalog = []Page{
-	{Slug: "curriculum-units", Title: "Curriculum units", Summary: "Scope and granularity of a learnable unit"},
-	{Slug: "dependencies", Title: "Dependencies", Summary: "How actual prerequisites structure the curriculum"},
-	{Slug: "writing-content", Title: "Writing content", Summary: "Clear educational Markdown with optional LaTeX"},
+	{Slug: "curriculum-units", Title: "Curriculum units", Summary: "Complete, focused and reusable learnable concepts"},
+	{Slug: "dependencies", Title: "Dependencies", Summary: "How genuine prerequisites factor shared knowledge"},
+	{Slug: "writing-content", Title: "Writing content", Summary: "The editorial contract for finished learning content"},
 	{Slug: "proposals", Title: "Proposals", Summary: "Describe the intended curriculum change"},
 	{Slug: "recognitions", Title: "Recognitions", Summary: "Preserve progress as the curriculum changes"},
 	{Slug: "learning-paths", Title: "Learning paths", Summary: "Private goals over the shared curriculum"},

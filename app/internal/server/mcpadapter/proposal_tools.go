@@ -44,14 +44,14 @@ type updateProposalInput struct {
 type createProposalUnitInput struct {
 	ProposalID int64  `json:"proposal_id" jsonschema:"Editable draft proposal ID."`
 	Name       string `json:"name" jsonschema:"Published-facing unit name, at most 200 characters."`
-	Content    string `json:"content" jsonschema:"Complete learning content for the proposed unit. Supports Markdown and LaTeX using $...$ inline or $$...$$ for display math."`
+	Content    string `json:"content" jsonschema:"Final learner-facing microlesson for this concept, complete given its genuine prerequisites rather than an outline or teaching plan. Supports Markdown and LaTeX using $...$ inline or $$...$$ for display math."`
 }
 
 type updateProposalUnitInput struct {
 	ProposalID int64  `json:"proposal_id" jsonschema:"Editable draft proposal ID."`
 	UnitID     int64  `json:"unit_id" jsonschema:"Existing or proposal-created unit ID."`
 	Name       string `json:"name" jsonschema:"Complete replacement unit name, at most 200 characters."`
-	Content    string `json:"content" jsonschema:"Complete replacement learning content. Supports Markdown and LaTeX using $...$ inline or $$...$$ for display math."`
+	Content    string `json:"content" jsonschema:"Complete replacement with final learner-facing content that teaches the concept given its genuine prerequisites, not an outline or teaching plan. Supports Markdown and LaTeX using $...$ inline or $$...$$ for display math."`
 }
 
 type proposalUnitIDInput struct {
@@ -106,8 +106,8 @@ func (application *adapter) addProposalTools(server *mcp.Server) {
 	addTool(server, "create_proposal", "Create curriculum proposal", "Creates an empty draft through which curriculum changes can be prepared. Not safe to retry after an ambiguous transport failure.", mutation("Create curriculum proposal", false, false), application.createProposal)
 	addTool(server, "update_proposal", "Update proposal metadata", "Replaces the title and rationale of an authored draft.", mutation("Update proposal metadata", true, false), application.updateProposal)
 	addTool(server, "delete_proposal", "Delete curriculum proposal", "Deletes an authored draft and all of its unaccepted changes.", mutation("Delete curriculum proposal", true, true), application.deleteProposal)
-	addTool(server, "create_proposal_unit", "Create unit in proposal", "Proposes one new unit. Search published units first when an equivalent may exist.", mutation("Create unit in proposal", false, false), application.createProposalUnit)
-	addTool(server, "update_proposal_unit", "Update unit in proposal", "Converges the name and content on the proposed final state. For a unit created in this proposal, it updates the existing creation rather than adding edit history.", mutation("Update unit in proposal", true, false), application.updateProposalUnit)
+	addTool(server, "create_proposal_unit", "Create unit in proposal", "Proposes one new unit. First search for existing and overlapping knowledge, then apply the curriculum-units, dependencies, and writing-content documentation.", mutation("Create unit in proposal", false, false), application.createProposalUnit)
+	addTool(server, "update_proposal_unit", "Update unit in proposal", "Converges the name and learner-facing content on the proposed final state after applying the canonical curriculum writing guidance. For a unit created in this proposal, it updates the existing creation rather than adding edit history.", mutation("Update unit in proposal", true, false), application.updateProposalUnit)
 	addTool(server, "delete_proposal_unit", "Delete unit in proposal", "Proposes deletion of a unit, or discards a unit created in the same draft.", mutation("Delete unit in proposal", true, true), application.deleteProposalUnit)
 	addTool(server, "set_proposal_dependency", "Set proposal dependency", "Idempotently ensures a prerequisite relationship is present or absent; cycles are rejected.", mutation("Set proposal dependency", true, true), application.setProposalDependency)
 	addTool(server, "add_proposal_recognition", "Add proposal recognition", "Ensures an identical recognition exists. Recognitions preserve progress across curriculum changes and do not constitute ordinary public curriculum content.", mutation("Add proposal recognition", true, false), application.addProposalRecognition)
