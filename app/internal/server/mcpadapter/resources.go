@@ -73,7 +73,7 @@ func (application *adapter) readCurriculumResource(
 	if err != nil {
 		return nil, fmt.Errorf("load curriculum publication: %w", err)
 	}
-	return jsonResource(request.Params.URI, curriculumRepresentation(graph, proposalID))
+	return jsonResource(request.Params.URI, curriculumOverviewRepresentation(graph, proposalID))
 }
 
 func (application *adapter) readUnitResource(
@@ -87,17 +87,18 @@ func (application *adapter) readUnitResource(
 	if err != nil || unitID <= 0 {
 		return nil, mcp.ResourceNotFoundError(request.Params.URI)
 	}
-	graph, err := db.GetCurriculumGraph(application.database)
+	unit, err := db.GetUnit(application.database, unitID)
 	if err != nil {
 		return nil, fmt.Errorf("load published curriculum unit: %w", err)
 	}
-	representation := curriculumRepresentation(graph, nil)
-	for _, item := range representation.Units {
-		if item.ID == unitID {
-			return jsonResource(request.Params.URI, item)
-		}
+	if unit == nil {
+		return nil, mcp.ResourceNotFoundError(request.Params.URI)
 	}
-	return nil, mcp.ResourceNotFoundError(request.Params.URI)
+	dependencies, err := db.GetUnitDependencies(application.database, unitID)
+	if err != nil {
+		return nil, fmt.Errorf("load published curriculum unit relationships: %w", err)
+	}
+	return jsonResource(request.Params.URI, unitRepresentation(*unit, dependencies))
 }
 
 func jsonResource(uri string, value any) (*mcp.ReadResourceResult, error) {

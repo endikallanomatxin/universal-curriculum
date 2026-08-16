@@ -79,7 +79,7 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 		t.Fatalf("cycle between proposed units error = %v, want %v", err, ErrDependencyCycle)
 	}
 	// Draft changes do not mutate the published projection.
-	graph, err := db.GetCurriculumGraph(database)
+	graph, err := db.GetCurriculumGraphWithContent(database)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,6 +90,14 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	// Publish the unit creations first: later proposals can refer to their stable IDs.
 	if _, err := submitAndAcceptCurriculumProposal(database, authorID, proposal.ID); err != nil {
 		t.Fatal(err)
+	}
+	overview, err := db.GetCurriculumGraph(database)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(overview.Units) != 2 || overview.Units[0].Content != "" || overview.Units[1].Content != "" ||
+		!overview.Units[0].CreatedAt.IsZero() || !overview.Units[1].UpdatedAt.IsZero() || len(overview.Dependencies) != 1 {
+		t.Fatalf("lightweight curriculum graph = %#v", overview)
 	}
 	learningPath, err := CreateLearningPath(
 		database, authorID, "Algebra goal", []int64{algebra.ID},
@@ -269,7 +277,7 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if _, err := submitAndAcceptCurriculumProposal(database, authorID, staleProposal.ID); err != nil {
 		t.Fatalf("publish automatically rebased proposal: %v", err)
 	}
-	graph, err = db.GetCurriculumGraph(database)
+	graph, err = db.GetCurriculumGraphWithContent(database)
 	if err != nil {
 		t.Fatal(err)
 	}

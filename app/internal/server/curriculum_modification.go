@@ -31,7 +31,7 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 		http.Error(writer, "Unable to load curriculum editor", http.StatusInternalServerError)
 		return
 	}
-	graph, err := db.GetCurriculumGraph(server.Database)
+	graph, err := db.GetCurriculumGraphWithContent(server.Database)
 	if err != nil {
 		log.Printf("load curriculum graph: %v", err)
 		http.Error(writer, "Unable to load curriculum", http.StatusInternalServerError)

@@ -116,13 +116,45 @@ func TestExperimentalAPIEndToEnd(t *testing.T) {
 	apiIntegrationRequest(t, application, token.Token, http.MethodDelete,
 		fmt.Sprintf("/api/proposals/%d/dependencies/%d/%d", proposal.ID, unit.ID, prerequisite.ID),
 		nil, http.StatusNoContent)
+	apiIntegrationRequest(t, application, token.Token, http.MethodPost,
+		fmt.Sprintf("/api/proposals/%d/dependencies", proposal.ID), map[string]any{
+			"unit_id": unit.ID, "prerequisite_id": prerequisite.ID,
+		}, http.StatusNoContent)
 
 	apiIntegrationRequest(t, application, token.Token, http.MethodPost,
 		fmt.Sprintf("/api/proposals/%d/submit", proposal.ID), nil, http.StatusOK)
 	apiIntegrationRequest(t, application, token.Token, http.MethodPost,
 		fmt.Sprintf("/api/proposals/%d/accept", proposal.ID), nil, http.StatusOK)
-	apiIntegrationRequest(t, application, "", http.MethodGet,
+	curriculumResponse := apiIntegrationRequest(t, application, "", http.MethodGet, "/api/curriculum", nil, http.StatusOK)
+	var curriculumOverview struct {
+		Units []map[string]any `json:"units"`
+	}
+	decodeAPIIntegrationResponse(t, curriculumResponse, &curriculumOverview)
+	for _, summary := range curriculumOverview.Units {
+		if _, present := summary["content"]; present {
+			t.Fatalf("curriculum overview exposed unit content: %#v", summary)
+		}
+	}
+	searchResponse := apiIntegrationRequest(t, application, "", http.MethodGet,
+		"/api/units?query=design+the+final", nil, http.StatusOK)
+	var searchResult struct {
+		Units []map[string]any `json:"units"`
+	}
+	decodeAPIIntegrationResponse(t, searchResponse, &searchResult)
+	if len(searchResult.Units) != 1 || searchResult.Units[0]["id"] != float64(unit.ID) {
+		t.Fatalf("content search summaries = %#v", searchResult.Units)
+	}
+	if _, present := searchResult.Units[0]["content"]; present {
+		t.Fatalf("content search exposed unit content: %#v", searchResult.Units[0])
+	}
+	unitDetailResponse := apiIntegrationRequest(t, application, "", http.MethodGet,
 		fmt.Sprintf("/api/units/%d", unit.ID), nil, http.StatusOK)
+	var unitDetail apiUnit
+	decodeAPIIntegrationResponse(t, unitDetailResponse, &unitDetail)
+	if unitDetail.Content != "Learn how to design the final API." ||
+		len(unitDetail.PrerequisiteIDs) != 1 || unitDetail.PrerequisiteIDs[0] != prerequisite.ID {
+		t.Fatalf("unit detail = %#v", unitDetail)
+	}
 	apiIntegrationRequest(t, application, token.Token, http.MethodPost, "/api/learning-paths", map[string]any{
 		"name": "API path", "target_unit_ids": []int64{unit.ID},
 	}, http.StatusCreated)

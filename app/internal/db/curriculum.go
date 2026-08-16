@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"universal-curriculum/internal/models"
 )
@@ -14,20 +15,34 @@ type curriculumExecutor interface {
 }
 
 func GetCurriculumGraph(database curriculumExecutor) (*models.CurriculumGraph, error) {
+	return getCurriculumGraph(database, false)
+}
+
+func GetCurriculumGraphWithContent(database curriculumExecutor) (*models.CurriculumGraph, error) {
+	return getCurriculumGraph(database, true)
+}
+
+func getCurriculumGraph(database curriculumExecutor, includeContent bool) (*models.CurriculumGraph, error) {
 	graph := &models.CurriculumGraph{}
-	rows, err := database.Query(`
-		SELECT id, name, content, created_at, updated_at
-		FROM units
-		ORDER BY lower(name), id
-	`)
+	query := `SELECT id, name FROM units ORDER BY lower(name), id`
+	if includeContent {
+		query = `SELECT id, name, content, created_at, updated_at FROM units ORDER BY lower(name), id`
+	}
+	rows, err := database.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("list curriculum units: %w", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var unit models.Unit
-		if err := rows.Scan(&unit.ID, &unit.Name, &unit.Content, &unit.CreatedAt, &unit.UpdatedAt); err != nil {
-			return nil, fmt.Errorf("scan curriculum unit: %w", err)
+		var scanErr error
+		if includeContent {
+			scanErr = rows.Scan(&unit.ID, &unit.Name, &unit.Content, &unit.CreatedAt, &unit.UpdatedAt)
+		} else {
+			scanErr = rows.Scan(&unit.ID, &unit.Name)
+		}
+		if scanErr != nil {
+			return nil, fmt.Errorf("scan curriculum unit: %w", scanErr)
 		}
 		graph.Units = append(graph.Units, unit)
 	}
@@ -76,6 +91,73 @@ func GetUnit(q curriculumExecutor, unitID int64) (*models.Unit, error) {
 		return nil, fmt.Errorf("get curriculum unit: %w", err)
 	}
 	return &unit, nil
+}
+
+func GetUnitDependencies(q curriculumExecutor, unitID int64) ([]models.UnitDependency, error) {
+	rows, err := q.Query(`
+		SELECT unit_id, prerequisite_id
+		FROM unit_dependencies
+		WHERE unit_id = $1 OR prerequisite_id = $1
+		ORDER BY unit_id, prerequisite_id
+	`, unitID)
+	if err != nil {
+		return nil, fmt.Errorf("list curriculum unit dependencies: %w", err)
+	}
+	defer rows.Close()
+	var dependencies []models.UnitDependency
+	for rows.Next() {
+		var dependency models.UnitDependency
+		if err := rows.Scan(&dependency.UnitID, &dependency.PrerequisiteID); err != nil {
+			return nil, fmt.Errorf("scan curriculum unit dependency: %w", err)
+		}
+		dependencies = append(dependencies, dependency)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate curriculum unit dependencies: %w", err)
+	}
+	return dependencies, nil
+}
+
+func SearchCurriculumUnits(
+	q curriculumExecutor, query string, limit, offset int,
+) ([]models.Unit, int, error) {
+	query = strings.TrimSpace(query)
+	rows, err := q.Query(`
+		SELECT id, name, count(*) OVER ()
+		FROM units
+		WHERE $1 = '' OR strpos(lower(name), lower($1)) > 0 OR strpos(lower(content), lower($1)) > 0
+		ORDER BY lower(name), id
+		LIMIT $2 OFFSET $3
+	`, query, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("search curriculum units: %w", err)
+	}
+	defer rows.Close()
+	units := make([]models.Unit, 0)
+	var total int
+	for rows.Next() {
+		var unit models.Unit
+		if err := rows.Scan(&unit.ID, &unit.Name, &total); err != nil {
+			return nil, 0, fmt.Errorf("scan curriculum unit summary: %w", err)
+		}
+		units = append(units, unit)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("iterate curriculum unit summaries: %w", err)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, 0, fmt.Errorf("close curriculum unit summaries: %w", err)
+	}
+	if len(units) == 0 {
+		if err := q.QueryRow(`
+			SELECT count(*)
+			FROM units
+			WHERE $1 = '' OR strpos(lower(name), lower($1)) > 0 OR strpos(lower(content), lower($1)) > 0
+		`, query).Scan(&total); err != nil {
+			return nil, 0, fmt.Errorf("count matching curriculum units: %w", err)
+		}
+	}
+	return units, total, nil
 }
 
 func LockCurriculumGraph(tx *sql.Tx) error {

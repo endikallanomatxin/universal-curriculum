@@ -162,9 +162,14 @@ func (server *Server) learn(writer http.ResponseWriter, request *http.Request) {
 			http.Error(writer, "Invalid curriculum unit", http.StatusBadRequest)
 			return
 		}
-		for index := range visibleGraph.Units {
-			if visibleGraph.Units[index].ID == contentID {
-				data.ContentUnit = &visibleGraph.Units[index]
+		for _, unit := range visibleGraph.Units {
+			if unit.ID == contentID {
+				data.ContentUnit, err = db.GetUnit(server.Database, contentID)
+				if err != nil {
+					log.Printf("load curriculum unit content: %v", err)
+					http.Error(writer, "Unable to load curriculum unit", http.StatusInternalServerError)
+					return
+				}
 				break
 			}
 		}

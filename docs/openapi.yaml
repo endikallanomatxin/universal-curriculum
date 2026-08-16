@@ -770,7 +770,8 @@ components:
           format: int64
         units:
           type: array
-          items: {$ref: '#/components/schemas/Unit'}
+          description: Unit summaries; retrieve an individual unit for its content and relationships.
+          items: {$ref: '#/components/schemas/UnitSummary'}
         dependencies:
           type: array
           items: {$ref: '#/components/schemas/Dependency'}

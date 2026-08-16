@@ -114,7 +114,7 @@ func PlanCurriculumProposalRebase(
 	if err != nil {
 		return nil, err
 	}
-	graph, err := db.GetCurriculumGraph(tx)
+	graph, err := db.GetCurriculumGraphWithContent(tx)
 	if err != nil {
 		return nil, err
 	}
@@ -321,7 +321,7 @@ func loadProposalRebaseState(
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	graph, err := db.GetCurriculumGraph(tx)
+	graph, err := db.GetCurriculumGraphWithContent(tx)
 	if err != nil {
 		return nil, nil, nil, err
 	}

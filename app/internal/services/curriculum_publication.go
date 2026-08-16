@@ -30,7 +30,7 @@ func SubmitCurriculumProposal(
 	if err != nil {
 		return err
 	}
-	graph, err := db.GetCurriculumGraph(tx)
+	graph, err := db.GetCurriculumGraphWithContent(tx)
 	if err != nil {
 		return err
 	}
@@ -87,7 +87,7 @@ func AcceptCurriculumProposal(database *sql.DB, proposalID int64) (CurriculumPro
 	if !sameOptionalID(proposal.BaseProposalID, currentProposalID) {
 		return summary, ErrProposalOutdated
 	}
-	graph, err := db.GetCurriculumGraph(tx)
+	graph, err := db.GetCurriculumGraphWithContent(tx)
 	if err != nil {
 		return summary, err
 	}

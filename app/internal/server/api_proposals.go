@@ -528,21 +528,19 @@ func (server *Server) writeAPIProposalUnit(writer http.ResponseWriter, proposalI
 		return
 	}
 	working := services.CurriculumGraphWithProposal(base, proposal)
-	units, _ := apiCurriculumResources(working)
-	for _, unit := range units {
-		if unit.ID != unitID {
-			continue
-		}
-		if unit.CreatedAt.IsZero() {
-			unit.CreatedAt = proposal.CreatedAt
-		}
-		if unit.UpdatedAt.IsZero() {
-			unit.UpdatedAt = proposal.CreatedAt
-		}
-		writeAPIJSON(writer, status, unit)
+	unit := working.Unit(unitID)
+	if unit == nil {
+		writeAPIError(writer, http.StatusNotFound, "unit_not_found", "The proposed unit was not found.", nil)
 		return
 	}
-	writeAPIError(writer, http.StatusNotFound, "unit_not_found", "The proposed unit was not found.", nil)
+	resource := apiUnitResource(*unit, working.Dependencies)
+	if resource.CreatedAt.IsZero() {
+		resource.CreatedAt = proposal.CreatedAt
+	}
+	if resource.UpdatedAt.IsZero() {
+		resource.UpdatedAt = proposal.CreatedAt
+	}
+	writeAPIJSON(writer, status, resource)
 }
 
 func newAPIRebasePlan(plan *services.CurriculumProposalRebasePlan) apiRebasePlan {
