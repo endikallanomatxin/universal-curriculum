@@ -16,6 +16,7 @@ const (
 	curriculumSecondNeighborLimit = 4
 	curriculumCoPrerequisiteLimit = 3
 	curriculumOrderSearchLimit    = 128
+	curriculumOrderNodeLimit      = 60
 )
 
 type CurriculumGraphLayoutHints struct {
@@ -270,9 +271,15 @@ func BuildCurriculumGraphLayoutWithHints(graph *models.CurriculumGraph, hints Cu
 		return nil, err
 	}
 	movementWeights := curriculumGraphMovementWeights(layout, hints.AnchorID)
-	improveCurriculumNodeOrder(layout, hints.Order, movementWeights, canonical.Nodes)
+	if shouldOptimizeCurriculumNodeOrder(layout) {
+		improveCurriculumNodeOrder(layout, hints.Order, movementWeights, canonical.Nodes)
+	}
 	assignCurriculumGraphLanes(layout, hints.Lanes, movementWeights)
 	return layout, nil
+}
+
+func shouldOptimizeCurriculumNodeOrder(layout *models.CurriculumGraphLayout) bool {
+	return layout != nil && len(layout.Nodes) <= curriculumOrderNodeLimit
 }
 
 func curriculumGraphMovementWeights(graph *models.CurriculumGraphLayout, anchorID *int64) map[int64]int {

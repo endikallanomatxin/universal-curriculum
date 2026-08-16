@@ -351,6 +351,17 @@ func TestBuildCurriculumGraphLayoutImprovesCrossingPreviousOrder(t *testing.T) {
 	}
 }
 
+func TestLargeCurriculumLayoutsSkipCombinatorialOrderSearch(t *testing.T) {
+	withinLimit := &models.CurriculumGraphLayout{Nodes: make([]models.CurriculumGraphNode, curriculumOrderNodeLimit)}
+	aboveLimit := &models.CurriculumGraphLayout{Nodes: make([]models.CurriculumGraphNode, curriculumOrderNodeLimit+1)}
+	if !shouldOptimizeCurriculumNodeOrder(withinLimit) {
+		t.Fatal("layout at the node limit skipped order optimization")
+	}
+	if shouldOptimizeCurriculumNodeOrder(aboveLimit) {
+		t.Fatal("large layout retained combinatorial order optimization")
+	}
+}
+
 func TestBuildCurriculumGraphLayoutOptimizesDenseNeighborhood(t *testing.T) {
 	graph := &models.CurriculumGraph{
 		Units: []models.Unit{
