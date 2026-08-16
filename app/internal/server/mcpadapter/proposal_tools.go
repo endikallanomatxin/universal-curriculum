@@ -265,7 +265,7 @@ func (application *adapter) deleteProposalChange(_ context.Context, request *mcp
 	return application.reloadProposal(input.ProposalID)
 }
 
-func (application *adapter) getProposalRebase(_ context.Context, request *mcp.CallToolRequest, input proposalIDInput) (*mcp.CallToolResult, toolOutput[rebasePlan], error) {
+func (application *adapter) getProposalRebase(ctx context.Context, request *mcp.CallToolRequest, input proposalIDInput) (*mcp.CallToolResult, toolOutput[rebasePlan], error) {
 	result, output, authErr, user := requireContributor[rebasePlan](request)
 	if user == nil {
 		return result, output, authErr
@@ -274,14 +274,14 @@ func (application *adapter) getProposalRebase(_ context.Context, request *mcp.Ca
 	if err != nil {
 		return curriculumFailure[rebasePlan]("get proposal rebase", err)
 	}
-	plan, err := services.PlanCurriculumProposalRebase(application.database, model)
+	plan, err := services.PlanCurriculumProposalRebase(ctx, application.database, model)
 	if err != nil {
 		return curriculumFailure[rebasePlan]("get proposal rebase", err)
 	}
 	return ok(newRebasePlan(plan))
 }
 
-func (application *adapter) resolveProposalRebase(_ context.Context, request *mcp.CallToolRequest, input resolveRebaseInput) (*mcp.CallToolResult, toolOutput[proposal], error) {
+func (application *adapter) resolveProposalRebase(ctx context.Context, request *mcp.CallToolRequest, input resolveRebaseInput) (*mcp.CallToolResult, toolOutput[proposal], error) {
 	result, output, authErr, user := requireContributor[proposal](request)
 	if user == nil {
 		return result, output, authErr
@@ -290,7 +290,7 @@ func (application *adapter) resolveProposalRebase(_ context.Context, request *mc
 	if err != nil {
 		return curriculumFailure[proposal]("inspect proposal rebase", err)
 	}
-	plan, err := services.PlanCurriculumProposalRebase(application.database, model)
+	plan, err := services.PlanCurriculumProposalRebase(ctx, application.database, model)
 	if err != nil {
 		return curriculumFailure[proposal]("inspect proposal rebase", err)
 	}

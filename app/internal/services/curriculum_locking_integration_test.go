@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -56,7 +57,7 @@ func TestCurriculumProposalLocksAreScopedByDraft(t *testing.T) {
 	}
 	result = make(chan error, 1)
 	go func() {
-		plan, err := PlanCurriculumProposalRebase(database, second)
+		plan, err := PlanCurriculumProposalRebase(context.Background(), database, second)
 		if err == nil && (plan == nil || plan.Status != ProposalRebaseCurrent) {
 			err = errors.New("unexpected current proposal rebase plan")
 		}
@@ -111,5 +112,38 @@ func TestConcurrentDependencyChangesOnOneDraftAreSerialized(t *testing.T) {
 	}
 	if successes != 1 || cycles != 1 {
 		t.Fatalf("concurrent dependency results: successes=%d cycles=%d", successes, cycles)
+	}
+}
+
+func TestPlanCurriculumProposalRebaseHonorsContextCancellation(t *testing.T) {
+	fixtureDatabase := openPostgresIntegrationDatabase(t, "proposal_rebase_context")
+	database := openConcurrentPostgresIntegrationDatabase(t, fixtureDatabase)
+	var authorID int64
+	if err := database.QueryRow(`INSERT INTO users (full_name) VALUES ('Patient Editor') RETURNING id`).Scan(&authorID); err != nil {
+		t.Fatal(err)
+	}
+	proposal, err := CreateCurriculumProposal(database, authorID, "Cancelable plan", "Allow abandoned reads to stop.")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	held, err := database.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer held.Rollback()
+	if _, err := held.Exec(`LOCK TABLE curriculum_proposals IN ACCESS EXCLUSIVE MODE`); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	started := time.Now()
+	_, err = PlanCurriculumProposalRebase(ctx, database, proposal)
+	if err == nil || !errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		t.Fatalf("canceled rebase plan error = %v, context error = %v", err, ctx.Err())
+	}
+	if elapsed := time.Since(started); elapsed > time.Second {
+		t.Fatalf("canceled rebase plan returned after %v", elapsed)
 	}
 }

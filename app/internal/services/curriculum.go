@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -679,7 +680,7 @@ func beginDraftMutation(
 	if err != nil {
 		return fail(err)
 	}
-	plan, err := planCurriculumProposalRebase(tx, proposal, currentProposalID, graph)
+	plan, err := planCurriculumProposalRebase(context.Background(), tx, proposal, currentProposalID, graph)
 	if err != nil {
 		return fail(err)
 	}

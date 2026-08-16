@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -36,7 +37,7 @@ func TestCurrentProposalRebaseDoesNotLoadCurriculumGraph(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	plan, err := PlanCurriculumProposalRebase(database, current)
+	plan, err := PlanCurriculumProposalRebase(context.Background(), database, current)
 	if err != nil || plan == nil || plan.Status != ProposalRebaseCurrent {
 		t.Fatalf("plan current proposal rebase = %#v, err=%v", plan, err)
 	}
@@ -264,7 +265,7 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 		automaticallyRebased.BaseProposalID == nil || *automaticallyRebased.BaseProposalID != proposal.ID {
 		t.Fatalf("disjoint proposal was not automatically rebased: proposal=%#v err=%v", automaticallyRebased, err)
 	}
-	rebasePlan, err := PlanCurriculumProposalRebase(database, conflictingProposal)
+	rebasePlan, err := PlanCurriculumProposalRebase(context.Background(), database, conflictingProposal)
 	if err != nil || !rebasePlan.NeedsReview() || len(rebasePlan.Conflicts) != 2 {
 		t.Fatalf("overlapping proposal rebase plan = %#v, err=%v", rebasePlan, err)
 	}

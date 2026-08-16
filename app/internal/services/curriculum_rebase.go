@@ -73,7 +73,7 @@ func CurriculumGraphAtProposal(
 		return nil, fmt.Errorf("begin historical curriculum read: %w", err)
 	}
 	defer tx.Rollback()
-	proposals, err := acceptedCurriculumProposalsSince(tx, nil, proposalID)
+	proposals, err := acceptedCurriculumProposalsSince(context.Background(), tx, nil, proposalID)
 	if err != nil {
 		return nil, err
 	}
@@ -92,13 +92,14 @@ func CurriculumGraphAtProposal(
 }
 
 func PlanCurriculumProposalRebase(
+	ctx context.Context,
 	database *sql.DB,
 	proposal *models.CurriculumProposal,
 ) (*CurriculumProposalRebasePlan, error) {
 	if proposal == nil {
 		return nil, ErrProposalNotFound
 	}
-	tx, err := database.BeginTx(context.Background(), &sql.TxOptions{
+	tx, err := database.BeginTx(ctx, &sql.TxOptions{
 		Isolation: sql.LevelRepeatableRead,
 		ReadOnly:  true,
 	})
@@ -106,7 +107,8 @@ func PlanCurriculumProposalRebase(
 		return nil, err
 	}
 	defer tx.Rollback()
-	storedProposal, err := db.GetCurriculumProposal(tx, proposal.ID)
+	q := db.WithContext(ctx, tx)
+	storedProposal, err := db.GetCurriculumProposal(q, proposal.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -114,18 +116,18 @@ func PlanCurriculumProposalRebase(
 		return nil, ErrProposalNotFound
 	}
 	proposal = storedProposal
-	currentProposalID, err := db.GetCurrentCurriculumProposalID(tx)
+	currentProposalID, err := db.GetCurrentCurriculumProposalID(q)
 	if err != nil {
 		return nil, err
 	}
 	if sameOptionalID(proposal.BaseProposalID, currentProposalID) {
 		return currentCurriculumProposalRebasePlan(currentProposalID), nil
 	}
-	graph, err := db.GetCurriculumGraphWithContent(tx)
+	graph, err := db.GetCurriculumGraphWithContent(q)
 	if err != nil {
 		return nil, err
 	}
-	return planCurriculumProposalRebase(tx, proposal, currentProposalID, graph)
+	return planCurriculumProposalRebase(ctx, tx, proposal, currentProposalID, graph)
 }
 
 func TryAutoRebaseCurriculumProposal(
@@ -148,7 +150,7 @@ func TryAutoRebaseCurriculumProposal(
 	if err != nil {
 		return nil, err
 	}
-	plan, err := planCurriculumProposalRebase(tx, proposal, currentProposalID, graph)
+	plan, err := planCurriculumProposalRebase(context.Background(), tx, proposal, currentProposalID, graph)
 	if err != nil {
 		return nil, err
 	}
@@ -221,7 +223,7 @@ func ResolveCurriculumProposalRebase(
 	if err != nil {
 		return err
 	}
-	plan, err := planCurriculumProposalRebase(tx, proposal, currentProposalID, graph)
+	plan, err := planCurriculumProposalRebase(context.Background(), tx, proposal, currentProposalID, graph)
 	if err != nil {
 		return err
 	}
@@ -338,6 +340,7 @@ func currentCurriculumProposalRebasePlan(currentProposalID *int64) *CurriculumPr
 }
 
 func planCurriculumProposalRebase(
+	ctx context.Context,
 	q *sql.Tx,
 	proposal *models.CurriculumProposal,
 	currentProposalID *int64,
@@ -347,13 +350,13 @@ func planCurriculumProposalRebase(
 	if sameOptionalID(proposal.BaseProposalID, currentProposalID) {
 		return plan, nil
 	}
-	accepted, err := acceptedCurriculumProposalsSince(q, proposal.BaseProposalID, currentProposalID)
+	accepted, err := acceptedCurriculumProposalsSince(ctx, q, proposal.BaseProposalID, currentProposalID)
 	if err != nil {
 		return nil, err
 	}
 	plan.AcceptedProposals = accepted
 	if proposal.BaseProposalID != nil {
-		plan.BaseProposal, err = db.GetCurriculumProposal(q, *proposal.BaseProposalID)
+		plan.BaseProposal, err = db.GetCurriculumProposal(db.WithContext(ctx, q), *proposal.BaseProposalID)
 		if err != nil {
 			return nil, err
 		}
@@ -438,6 +441,7 @@ func planCurriculumProposalRebase(
 }
 
 func acceptedCurriculumProposalsSince(
+	ctx context.Context,
 	q *sql.Tx,
 	baseProposalID, currentProposalID *int64,
 ) ([]models.CurriculumProposal, error) {
@@ -455,7 +459,7 @@ func acceptedCurriculumProposalsSince(
 			return nil, ErrProposalOutdated
 		}
 		visited[*cursor] = true
-		proposal, err := db.GetCurriculumProposal(q, *cursor)
+		proposal, err := db.GetCurriculumProposal(db.WithContext(ctx, q), *cursor)
 		if err != nil {
 			return nil, err
 		}

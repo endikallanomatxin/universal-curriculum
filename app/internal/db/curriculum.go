@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strings"
@@ -12,6 +13,34 @@ type curriculumExecutor interface {
 	Exec(query string, args ...any) (sql.Result, error)
 	Query(query string, args ...any) (*sql.Rows, error)
 	QueryRow(query string, args ...any) *sql.Row
+}
+
+type contextualCurriculumExecutor interface {
+	ExecContext(context.Context, string, ...any) (sql.Result, error)
+	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
+	QueryRowContext(context.Context, string, ...any) *sql.Row
+}
+
+type curriculumExecutorWithContext struct {
+	context context.Context
+	q       contextualCurriculumExecutor
+}
+
+// WithContext binds existing database operations to the lifecycle of a caller.
+func WithContext(ctx context.Context, q contextualCurriculumExecutor) curriculumExecutor {
+	return curriculumExecutorWithContext{context: ctx, q: q}
+}
+
+func (q curriculumExecutorWithContext) Exec(query string, args ...any) (sql.Result, error) {
+	return q.q.ExecContext(q.context, query, args...)
+}
+
+func (q curriculumExecutorWithContext) Query(query string, args ...any) (*sql.Rows, error) {
+	return q.q.QueryContext(q.context, query, args...)
+}
+
+func (q curriculumExecutorWithContext) QueryRow(query string, args ...any) *sql.Row {
+	return q.q.QueryRowContext(q.context, query, args...)
 }
 
 func GetCurriculumGraph(database curriculumExecutor) (*models.CurriculumGraph, error) {

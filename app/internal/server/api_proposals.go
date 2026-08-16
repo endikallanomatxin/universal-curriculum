@@ -336,7 +336,7 @@ func (server *Server) apiGetProposalRebase(writer http.ResponseWriter, request *
 	if !ok {
 		return
 	}
-	plan, err := services.PlanCurriculumProposalRebase(server.Database, proposal)
+	plan, err := services.PlanCurriculumProposalRebase(request.Context(), server.Database, proposal)
 	if err != nil {
 		server.writeAPICurriculumError(writer, err)
 		return

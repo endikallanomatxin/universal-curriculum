@@ -60,7 +60,7 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 	var rebasePlan *services.CurriculumProposalRebasePlan
 	proposalBaseGraph := graph
 	if activeProposal != nil && activeProposal.Status == "draft" {
-		rebasePlan, err = services.PlanCurriculumProposalRebase(server.Database, activeProposal)
+		rebasePlan, err = services.PlanCurriculumProposalRebase(request.Context(), server.Database, activeProposal)
 		if err != nil {
 			log.Printf("plan curriculum proposal rebase: %v", err)
 			http.Error(writer, "Unable to inspect curriculum proposal base", http.StatusInternalServerError)
@@ -174,7 +174,7 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 	for index := range draftProposals {
 		plan := rebasePlan
 		if activeProposal == nil || activeProposal.ID != draftProposals[index].ID {
-			plan, err = services.PlanCurriculumProposalRebase(server.Database, &draftProposals[index])
+			plan, err = services.PlanCurriculumProposalRebase(request.Context(), server.Database, &draftProposals[index])
 			if err != nil {
 				log.Printf("plan draft curriculum proposal rebase: %v", err)
 				http.Error(writer, "Unable to inspect draft proposals", http.StatusInternalServerError)

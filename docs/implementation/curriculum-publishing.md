@@ -110,7 +110,9 @@ Accepting a proposal takes the projection lock exclusively before locking the
 proposal row and rebuilding the projection. All workflows that need both locks
 must preserve this projection-then-proposal order. Rebase planning is a read-only
 repeatable-read snapshot and takes neither lock, so rendering proposal state does
-not wait for draft mutations or publication.
+not wait for draft mutations or publication. Web, REST and MCP adapters pass
+their request context through this planning read, and every query in the snapshot
+uses that context so abandoned requests cancel work in PostgreSQL.
 
 ## Accepted and rejected proposals
 
