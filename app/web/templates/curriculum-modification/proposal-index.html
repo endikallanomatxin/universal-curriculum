@@ -44,7 +44,7 @@
                         {{ else }}
                           <span>0 changes</span>
                         {{ end }}
-                        {{ if eq .RebaseStatus "needs_review" }}<span class="proposal-status proposal-status--warning"><span class="material-symbols-rounded" aria-hidden="true">fork_right</span>Needs rebase review</span>{{ end }}
+                        {{ if eq .RebaseStatus "needs_review" }}<span class="proposal-status proposal-status--warning"><span class="material-symbols-rounded" aria-hidden="true">fork_right</span>Needs rebase review</span>{{ else if eq .RebaseStatus "outdated" }}<span class="proposal-status proposal-status--warning"><span class="material-symbols-rounded" aria-hidden="true">fork_right</span>Outdated</span>{{ end }}
                       </span>
                     </a>
                   </article>

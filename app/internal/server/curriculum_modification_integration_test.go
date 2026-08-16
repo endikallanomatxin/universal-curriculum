@@ -45,6 +45,44 @@ func TestCurriculumModificationInitialRenderDoesNotLoadAllContentOrPickerOptions
 	}
 }
 
+func TestCurriculumModificationDraftListDoesNotPlanEveryStaleRebase(t *testing.T) {
+	database := openAPIIntegrationDatabase(t)
+	user, _ := createCurriculumModificationFixture(t, database)
+	stale, err := services.CreateCurriculumProposal(database, user.ID, "Stale draft", "List without planning its full rebase.")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := services.CreateCurriculumUnit(database, user.ID, stale.ID, "Stale addition", "Draft content."); err != nil {
+		t.Fatal(err)
+	}
+	advance, err := services.CreateCurriculumProposal(database, user.ID, "Advance curriculum", "Make the other draft outdated.")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := services.CreateCurriculumUnit(database, user.ID, advance.ID, "Published addition", "Published content."); err != nil {
+		t.Fatal(err)
+	}
+	if err := services.SubmitCurriculumProposal(database, user.ID, advance.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := services.AcceptCurriculumProposal(database, advance.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.Exec(`ALTER TABLE units RENAME COLUMN content TO unavailable_content`); err != nil {
+		t.Fatal(err)
+	}
+
+	server := &Server{Database: database, Templates: loadCurriculumModificationIntegrationTemplates(t)}
+	request := services.WithSession(httptest.NewRequest(http.MethodGet, "/curriculum-modification", nil), user.ID, "csrf")
+	response := httptest.NewRecorder()
+	server.curriculumModification(response, request)
+
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), "Stale draft") ||
+		!strings.Contains(response.Body.String(), "Outdated") {
+		t.Fatalf("stale draft list response = %d: %s", response.Code, response.Body.String())
+	}
+}
+
 func TestCurriculumModificationLoadsOnlyOpenedUnitContent(t *testing.T) {
 	database := openAPIIntegrationDatabase(t)
 	user, unit := createCurriculumModificationFixture(t, database)

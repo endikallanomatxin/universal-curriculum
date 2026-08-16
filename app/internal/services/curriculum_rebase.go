@@ -15,6 +15,7 @@ import (
 
 const (
 	ProposalRebaseCurrent     = "current"
+	ProposalRebaseOutdated    = "outdated"
 	ProposalRebaseAutomatic   = "automatic"
 	ProposalRebaseNeedsReview = "needs_review"
 )

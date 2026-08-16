@@ -224,18 +224,22 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 		return
 	}
 	draftViews := make([]curriculumDraftProposalView, 0, len(draftProposals))
+	currentProposalID, err := db.GetCurrentCurriculumProposalID(db.WithContext(request.Context(), server.Database))
+	if err != nil {
+		log.Printf("load current curriculum proposal: %v", err)
+		http.Error(writer, "Unable to inspect draft proposals", http.StatusInternalServerError)
+		return
+	}
 	for index := range draftProposals {
-		plan := rebasePlan
-		if activeProposal == nil || activeProposal.ID != draftProposals[index].ID {
-			plan, err = services.PlanCurriculumProposalRebase(request.Context(), server.Database, &draftProposals[index])
-			if err != nil {
-				log.Printf("plan draft curriculum proposal rebase: %v", err)
-				http.Error(writer, "Unable to inspect draft proposals", http.StatusInternalServerError)
-				return
-			}
+		status := services.ProposalRebaseOutdated
+		if sameCurriculumProposalID(draftProposals[index].BaseProposalID, currentProposalID) {
+			status = services.ProposalRebaseCurrent
+		}
+		if activeProposal != nil && activeProposal.ID == draftProposals[index].ID && rebasePlan != nil {
+			status = rebasePlan.Status
 		}
 		draftViews = append(draftViews, curriculumDraftProposalView{
-			CurriculumProposal: draftProposals[index], RebaseStatus: plan.Status,
+			CurriculumProposal: draftProposals[index], RebaseStatus: status,
 			ChangeSummary: curriculumProposalChangeSummary(draftProposals[index].ChangeKindCounts),
 		})
 	}
@@ -397,6 +401,10 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 		navigateURL,
 	)
 	server.renderStatus(writer, status, "curriculum-modification.html", data)
+}
+
+func sameCurriculumProposalID(left, right *int64) bool {
+	return left == nil && right == nil || left != nil && right != nil && *left == *right
 }
 
 func growingProposalLimit(request *http.Request, name string) (int, error) {
