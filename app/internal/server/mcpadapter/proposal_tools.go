@@ -104,10 +104,10 @@ func (application *adapter) addProposalTools(server *mcp.Server) {
 	addTool(server, "list_proposals", "List curriculum proposals", "Lists proposals visible to the contributor; another user's drafts and rejected proposals remain private unless the contributor is an administrator.", readOnly("List curriculum proposals"), application.listProposals)
 	addTool(server, "get_proposal", "Get curriculum proposal", "Returns proposal metadata and ordered changes. A draft is visible only to its author.", readOnly("Get curriculum proposal"), application.getProposal)
 	addTool(server, "create_proposal", "Create curriculum proposal", "Creates an empty draft through which curriculum changes can be prepared. Not safe to retry after an ambiguous transport failure.", mutation("Create curriculum proposal", false, false), application.createProposal)
-	addTool(server, "update_proposal", "Update proposal metadata", "Replaces the title and rationale of an authored draft.", mutation("Update proposal metadata", true, false), application.updateProposal)
+	addTool(server, "update_proposal", "Update proposal metadata", "Replaces the title and rationale of an authored draft.", mutation("Update proposal metadata", true, true), application.updateProposal)
 	addTool(server, "delete_proposal", "Delete curriculum proposal", "Deletes an authored draft and all of its unaccepted changes.", mutation("Delete curriculum proposal", true, true), application.deleteProposal)
 	addTool(server, "create_proposal_unit", "Create unit in proposal", "Proposes one new unit after get_authoring_guidance and a search for existing and overlapping knowledge. Content must be a final learner-facing microlesson, complete given genuine prerequisites rather than an outline or teaching plan.", mutation("Create unit in proposal", false, false), application.createProposalUnit)
-	addTool(server, "update_proposal_unit", "Update unit in proposal", "Converges the name and final learner-facing content after applying get_authoring_guidance; content must teach the concept completely given genuine prerequisites, not be an outline or teaching plan. A unit created in this proposal is updated in place rather than gaining edit history.", mutation("Update unit in proposal", true, false), application.updateProposalUnit)
+	addTool(server, "update_proposal_unit", "Update unit in proposal", "Converges the name and final learner-facing content after applying get_authoring_guidance; content must teach the concept completely given genuine prerequisites, not be an outline or teaching plan. A unit created in this proposal is updated in place rather than gaining edit history.", mutation("Update unit in proposal", true, true), application.updateProposalUnit)
 	addTool(server, "delete_proposal_unit", "Delete unit in proposal", "Proposes deletion of a unit, or discards a unit created in the same draft.", mutation("Delete unit in proposal", true, true), application.deleteProposalUnit)
 	addTool(server, "set_proposal_dependency", "Set proposal dependency", "Idempotently ensures a genuine conceptual prerequisite is present or absent; do not use dependencies merely for preferred order. Cycles are rejected.", mutation("Set proposal dependency", true, true), application.setProposalDependency)
 	addTool(server, "add_proposal_recognition", "Add proposal recognition", "Ensures an identical recognition exists. Recognitions preserve progress across curriculum changes and do not constitute ordinary public curriculum content.", mutation("Add proposal recognition", true, false), application.addProposalRecognition)
@@ -118,7 +118,7 @@ func (application *adapter) addProposalTools(server *mcp.Server) {
 }
 
 func (application *adapter) addProposalDecisionTools(server *mcp.Server) {
-	addTool(server, "accept_proposal", "Accept curriculum proposal", "Accepts a submitted proposal into the shared curriculum.", mutation("Accept curriculum proposal", true, true), application.acceptProposal)
+	addTool(server, "accept_proposal", "Accept curriculum proposal", "Accepts a submitted proposal into the shared curriculum.", openWorldMutation("Accept curriculum proposal", true, true), application.acceptProposal)
 	addTool(server, "reject_proposal", "Reject curriculum proposal", "Rejects and preserves a submitted proposal.", mutation("Reject curriculum proposal", true, true), application.rejectProposal)
 }
 

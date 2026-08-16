@@ -170,6 +170,12 @@ func mutation(title string, idempotent, destructive bool) *mcp.ToolAnnotations {
 	}
 }
 
+func openWorldMutation(title string, idempotent, destructive bool) *mcp.ToolAnnotations {
+	annotations := mutation(title, idempotent, destructive)
+	annotations.OpenWorldHint = &trueHint
+	return annotations
+}
+
 func boolPointer(value bool) *bool {
 	if value {
 		return &trueHint

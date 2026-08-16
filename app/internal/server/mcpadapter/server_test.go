@@ -119,6 +119,18 @@ func TestDiscoveryAdvertisesAgentGuidanceResourcesAndTools(t *testing.T) {
 		!*byName["submit_proposal"].Annotations.DestructiveHint {
 		t.Fatalf("submission annotations = %#v", byName["submit_proposal"].Annotations)
 	}
+	for _, name := range []string{"update_learning_path", "update_proposal", "update_proposal_unit"} {
+		annotations := byName[name].Annotations
+		if annotations == nil || annotations.DestructiveHint == nil || !*annotations.DestructiveHint ||
+			annotations.OpenWorldHint == nil || *annotations.OpenWorldHint {
+			t.Errorf("%s annotations = %#v, want destructive and closed-world", name, annotations)
+		}
+	}
+	acceptAnnotations := byName["accept_proposal"].Annotations
+	if acceptAnnotations == nil || acceptAnnotations.DestructiveHint == nil || !*acceptAnnotations.DestructiveHint ||
+		acceptAnnotations.OpenWorldHint == nil || !*acceptAnnotations.OpenWorldHint {
+		t.Errorf("accept_proposal annotations = %#v, want destructive and open-world", acceptAnnotations)
+	}
 	assertSchemaContains(t, byName["create_learning_path"].InputSchema,
 		`"maxLength":200`, `"minItems":1`, `"uniqueItems":true`)
 	assertSchemaContains(t, byName["create_proposal"].InputSchema,
