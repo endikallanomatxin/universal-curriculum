@@ -78,15 +78,22 @@
             <label for="prerequisite-unit-search">Add prerequisite</label>
             <div class="unit-search search-control">
               <span class="material-symbols-rounded unit-search__icon search-control__icon" aria-hidden="true">search</span>
-              <input id="prerequisite-unit-search" type="search" autocomplete="off" placeholder="Search units" data-unit-picker-input aria-controls="prerequisite-unit-results" aria-expanded="false">
+              <input id="prerequisite-unit-search" name="q" type="search" autocomplete="off" placeholder="Search units" data-unit-picker-input aria-controls="prerequisite-unit-results" aria-expanded="false"
+                     hx-get="/curriculum-modification/unit-search?scope=dependency"
+                     hx-trigger="input changed delay:250ms, search"
+                     hx-target="#prerequisite-unit-results"
+                     hx-swap="innerHTML"
+                     hx-include="[data-dependent-input]"
+                     hx-vals='{"proposal_id":"{{ with .ActiveProposal }}{{ .ID }}{{ end }}"}'>
               <div class="unit-search__results search-control__results" id="prerequisite-unit-results" data-unit-picker-results hidden>
-                {{ range .Units }}
+                {{ with .ContentUnit }}{{ range .Prerequisites }}
                   <button type="button" data-unit-picker-option data-unit-id="{{ .ID }}" data-unit-name="{{ .Name }}">
                     <strong>{{ .Name }}</strong>
                   </button>
-                {{ end }}
+                {{ end }}{{ end }}
                 <p class="unit-search__empty" data-unit-picker-empty hidden>No matching units.</p>
               </div>
+              <noscript><p class="editor-form__hint">Enable JavaScript to search curriculum units.</p></noscript>
             </div>
           </form>
           </div>
@@ -128,13 +135,16 @@
               <label for="recognition-source-search">Add source unit</label>
               <div class="unit-search search-control">
                 <span class="material-symbols-rounded unit-search__icon search-control__icon" aria-hidden="true">search</span>
-                <input id="recognition-source-search" type="search" autocomplete="off" placeholder="Search published units" data-unit-picker-input aria-controls="recognition-source-results" aria-expanded="false">
+                <input id="recognition-source-search" name="q" type="search" autocomplete="off" placeholder="Search published units" data-unit-picker-input aria-controls="recognition-source-results" aria-expanded="false"
+                       hx-get="/curriculum-modification/unit-search?scope=recognition-source"
+                       hx-trigger="input changed delay:250ms, search"
+                       hx-target="#recognition-source-results"
+                       hx-swap="innerHTML"
+                       hx-vals='{"proposal_id":"{{ with .ActiveProposal }}{{ .ID }}{{ end }}"}'>
                 <div class="unit-search__results search-control__results" id="recognition-source-results" data-unit-picker-results hidden>
-                  {{ range .RecognitionSources }}
-                    <button type="button" data-unit-picker-option data-unit-id="{{ .ID }}" data-unit-name="{{ .Name }}"><strong>{{ .Name }}</strong></button>
-                  {{ end }}
                   <p class="unit-search__empty" data-unit-picker-empty hidden>No matching units.</p>
                 </div>
+                <noscript><p class="editor-form__hint">Enable JavaScript to search curriculum units.</p></noscript>
               </div>
             </div>
 
@@ -152,13 +162,16 @@
               <label for="recognition-target-search">Add target unit</label>
               <div class="unit-search search-control">
                 <span class="material-symbols-rounded unit-search__icon search-control__icon" aria-hidden="true">search</span>
-                <input id="recognition-target-search" type="search" autocomplete="off" placeholder="Search resulting units" data-unit-picker-input aria-controls="recognition-target-results" aria-expanded="false">
+                <input id="recognition-target-search" name="q" type="search" autocomplete="off" placeholder="Search resulting units" data-unit-picker-input aria-controls="recognition-target-results" aria-expanded="false"
+                       hx-get="/curriculum-modification/unit-search?scope=recognition-target"
+                       hx-trigger="input changed delay:250ms, search"
+                       hx-target="#recognition-target-results"
+                       hx-swap="innerHTML"
+                       hx-vals='{"proposal_id":"{{ with .ActiveProposal }}{{ .ID }}{{ end }}"}'>
                 <div class="unit-search__results search-control__results" id="recognition-target-results" data-unit-picker-results hidden>
-                  {{ range .RecognitionTargets }}
-                    <button type="button" data-unit-picker-option data-unit-id="{{ .ID }}" data-unit-name="{{ .Name }}"><strong>{{ .Name }}</strong></button>
-                  {{ end }}
                   <p class="unit-search__empty" data-unit-picker-empty hidden>No matching units.</p>
                 </div>
+                <noscript><p class="editor-form__hint">Enable JavaScript to search curriculum units.</p></noscript>
               </div>
             </div>
 

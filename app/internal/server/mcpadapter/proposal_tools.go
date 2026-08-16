@@ -193,7 +193,7 @@ func (application *adapter) deleteProposal(_ context.Context, request *mcp.CallT
 	return ok(deleteOutput{Deleted: true})
 }
 
-func (application *adapter) createProposalUnit(_ context.Context, request *mcp.CallToolRequest, input createProposalUnitInput) (*mcp.CallToolResult, toolOutput[unit], error) {
+func (application *adapter) createProposalUnit(ctx context.Context, request *mcp.CallToolRequest, input createProposalUnitInput) (*mcp.CallToolResult, toolOutput[unit], error) {
 	result, output, authErr, user := requireContributor[unit](request)
 	if user == nil {
 		return result, output, authErr
@@ -202,10 +202,10 @@ func (application *adapter) createProposalUnit(_ context.Context, request *mcp.C
 	if err != nil {
 		return curriculumFailure[unit]("create proposal unit", err)
 	}
-	return application.proposalUnit(input.ProposalID, created.ID)
+	return application.proposalUnit(ctx, input.ProposalID, created.ID)
 }
 
-func (application *adapter) updateProposalUnit(_ context.Context, request *mcp.CallToolRequest, input updateProposalUnitInput) (*mcp.CallToolResult, toolOutput[unit], error) {
+func (application *adapter) updateProposalUnit(ctx context.Context, request *mcp.CallToolRequest, input updateProposalUnitInput) (*mcp.CallToolResult, toolOutput[unit], error) {
 	result, output, authErr, user := requireContributor[unit](request)
 	if user == nil {
 		return result, output, authErr
@@ -214,7 +214,7 @@ func (application *adapter) updateProposalUnit(_ context.Context, request *mcp.C
 	if err != nil {
 		return curriculumFailure[unit]("update proposal unit", err)
 	}
-	return application.proposalUnit(input.ProposalID, input.UnitID)
+	return application.proposalUnit(ctx, input.ProposalID, input.UnitID)
 }
 
 func (application *adapter) deleteProposalUnit(_ context.Context, request *mcp.CallToolRequest, input proposalUnitIDInput) (*mcp.CallToolResult, toolOutput[deleteOutput], error) {
@@ -365,7 +365,7 @@ func (application *adapter) reloadProposal(id int64) (*mcp.CallToolResult, toolO
 	return ok(newProposal(*model, true))
 }
 
-func (application *adapter) proposalUnit(proposalID, unitID int64) (*mcp.CallToolResult, toolOutput[unit], error) {
+func (application *adapter) proposalUnit(ctx context.Context, proposalID, unitID int64) (*mcp.CallToolResult, toolOutput[unit], error) {
 	model, err := db.GetCurriculumProposal(application.database, proposalID)
 	if err != nil {
 		return internalFailure[unit]("reload proposal unit", err)
@@ -373,11 +373,22 @@ func (application *adapter) proposalUnit(proposalID, unitID int64) (*mcp.CallToo
 	if model == nil {
 		return failed[unit]("proposal_not_found", "The proposal was not found.", nil)
 	}
-	base, err := services.CurriculumGraphAtProposal(application.database, model.BaseProposalID)
+	base, err := services.CurriculumGraphAtProposal(ctx, application.database, model.BaseProposalID)
 	if err != nil {
 		return internalFailure[unit]("load proposal base", err)
 	}
-	working := curriculumRepresentation(services.CurriculumGraphWithProposal(base, model), nil)
+	workingGraph := services.CurriculumGraphWithProposal(base, model)
+	resolved, _, historical, err := services.CurriculumProposalUnit(ctx, application.database, model, unitID)
+	if err != nil {
+		return internalFailure[unit]("load proposal unit content", err)
+	}
+	if resolved == nil || historical || workingGraph.Unit(unitID) == nil {
+		return failed[unit]("unit_not_found", "The proposed unit was not found.", nil)
+	}
+	if structural := workingGraph.Unit(unitID); structural != nil {
+		*structural = *resolved
+	}
+	working := curriculumRepresentation(workingGraph, nil)
 	for _, item := range working.Units {
 		if item.ID == unitID {
 			return ok(item)

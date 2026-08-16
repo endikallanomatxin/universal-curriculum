@@ -1,0 +1,7 @@
+{{ define "curriculum-modification-unit-search-results" -}}
+  {{ range . }}
+    <button type="button" data-unit-picker-option data-unit-id="{{ .ID }}" data-unit-name="{{ .Name }}"><strong>{{ .Name }}</strong></button>
+  {{ else }}
+    <p class="unit-search__empty" data-unit-picker-empty>No matching units.</p>
+  {{ end }}
+{{- end }}

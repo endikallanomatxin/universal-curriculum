@@ -26,6 +26,7 @@ var (
 	ErrProposalRationaleTooLong   = errors.New("proposal rationale must not exceed 1000 characters")
 	ErrProposalEmpty              = errors.New("curriculum proposal has no changes")
 	ErrProposalOutdated           = errors.New("curriculum proposal is not based on the current curriculum")
+	ErrCurriculumUnitSearchScope  = errors.New("invalid curriculum unit search scope")
 	ErrRecognitionSourcesRequired = errors.New("recognition requires at least one source")
 	ErrRecognitionTargetsRequired = errors.New("recognition requires at least one target")
 )

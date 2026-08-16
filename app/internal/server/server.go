@@ -176,6 +176,7 @@ func (server *Server) routes() http.Handler {
 	mux.Handle("POST /admin/proposals/{id}/accept", server.requireAdmin(http.HandlerFunc(server.acceptCurriculumProposal)))
 	mux.Handle("POST /admin/proposals/{id}/reject", server.requireAdmin(http.HandlerFunc(server.rejectCurriculumProposal)))
 	mux.Handle("GET /curriculum-modification", server.requireContributor(http.HandlerFunc(server.curriculumModification)))
+	mux.Handle("GET /curriculum-modification/unit-search", server.requireContributor(http.HandlerFunc(server.curriculumModificationUnitSearch)))
 	mux.Handle("POST /curriculum-modification/proposals", server.requireContributor(http.HandlerFunc(server.createCurriculumProposal)))
 	mux.Handle("POST /curriculum-modification/proposals/{id}", server.requireContributor(http.HandlerFunc(server.updateCurriculumProposal)))
 	mux.Handle("POST /curriculum-modification/proposals/{id}/delete", server.requireContributor(http.HandlerFunc(server.deleteCurriculumProposal)))

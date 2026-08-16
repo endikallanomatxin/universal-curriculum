@@ -14,12 +14,65 @@ import (
 const (
 	curriculumProposalHistoryPageSize = 10
 	curriculumProposalListPageSize    = 25
+	curriculumUnitSearchLimit         = 20
 )
 
 var errInvalidProposalListLimit = errors.New("invalid proposal list limit")
 
 func (server *Server) curriculumModification(writer http.ResponseWriter, request *http.Request) {
 	server.renderCurriculumModification(writer, request, http.StatusOK, "")
+}
+
+func (server *Server) curriculumModificationUnitSearch(writer http.ResponseWriter, request *http.Request) {
+	userID, _ := services.SessionUserID(request)
+	proposalID, err := parsePositiveID(request.URL.Query().Get("proposal_id"))
+	if err != nil {
+		http.Error(writer, "Invalid curriculum proposal", http.StatusBadRequest)
+		return
+	}
+	proposal, err := services.GetEditableCurriculumProposal(server.Database, userID, proposalID)
+	if err != nil {
+		status := http.StatusInternalServerError
+		if errors.Is(err, services.ErrProposalNotFound) {
+			status = http.StatusNotFound
+		}
+		http.Error(writer, "Unable to search curriculum units", status)
+		return
+	}
+	scope := request.URL.Query().Get("scope")
+	units, err := services.SearchCurriculumProposalUnits(
+		request.Context(), server.Database, proposal, scope,
+		request.URL.Query().Get("q"), curriculumUnitSearchLimit,
+	)
+	if errors.Is(err, services.ErrCurriculumUnitSearchScope) {
+		http.Error(writer, "Invalid curriculum unit search scope", http.StatusBadRequest)
+		return
+	}
+	if err != nil {
+		log.Printf("search curriculum modification units: %v", err)
+		http.Error(writer, "Unable to search curriculum units", http.StatusInternalServerError)
+		return
+	}
+	if scope == services.CurriculumUnitSearchDependency {
+		if unitValue := request.URL.Query().Get("unit_id"); unitValue != "" {
+			unitID, parseErr := parsePositiveID(unitValue)
+			if parseErr != nil {
+				http.Error(writer, "Invalid curriculum unit", http.StatusBadRequest)
+				return
+			}
+			filtered := units[:0]
+			for _, unit := range units {
+				if unit.ID != unitID {
+					filtered = append(filtered, unit)
+				}
+			}
+			units = filtered
+		}
+	}
+	writer.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := server.Templates.ExecuteTemplate(writer, "curriculum-modification-unit-search-results", units); err != nil {
+		log.Printf("render curriculum unit search: %v", err)
+	}
 }
 
 func (server *Server) renderCurriculumModification(writer http.ResponseWriter, request *http.Request, status int, message string) {
@@ -31,7 +84,7 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 		http.Error(writer, "Unable to load curriculum editor", http.StatusInternalServerError)
 		return
 	}
-	graph, err := db.GetCurriculumGraphWithContent(server.Database)
+	graph, err := db.GetCurriculumGraph(db.WithContext(request.Context(), server.Database))
 	if err != nil {
 		log.Printf("load curriculum graph: %v", err)
 		http.Error(writer, "Unable to load curriculum", http.StatusInternalServerError)
@@ -67,7 +120,7 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 			return
 		}
 		if rebasePlan.NeedsReview() {
-			proposalBaseGraph, err = services.CurriculumGraphAtProposal(server.Database, activeProposal.BaseProposalID)
+			proposalBaseGraph, err = services.CurriculumGraphAtProposal(request.Context(), server.Database, activeProposal.BaseProposalID)
 			if err != nil {
 				log.Printf("load proposal base curriculum: %v", err)
 				http.Error(writer, "Unable to load proposal base curriculum", http.StatusInternalServerError)
@@ -76,7 +129,7 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 		}
 		services.PopulateCurriculumProposalPreviousState(proposalBaseGraph, activeProposal)
 	} else if activeProposal != nil {
-		proposalBaseGraph, err = services.CurriculumGraphAtProposal(server.Database, activeProposal.BaseProposalID)
+		proposalBaseGraph, err = services.CurriculumGraphAtProposal(request.Context(), server.Database, activeProposal.BaseProposalID)
 		if err != nil {
 			log.Printf("load proposal base curriculum: %v", err)
 			http.Error(writer, "Unable to load curriculum proposal base", http.StatusInternalServerError)
@@ -109,7 +162,7 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 			http.Error(writer, "Accepted curriculum proposal not found", http.StatusNotFound)
 			return
 		}
-		reviewedGraph, graphErr := services.CurriculumGraphAtProposal(server.Database, &reviewedProposal.ID)
+		reviewedGraph, graphErr := services.CurriculumGraphAtProposal(request.Context(), server.Database, &reviewedProposal.ID)
 		if graphErr != nil {
 			log.Printf("load related proposal curriculum: %v", graphErr)
 			http.Error(writer, "Unable to load related curriculum proposal", http.StatusInternalServerError)
@@ -117,7 +170,7 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 		}
 		applyCurriculumChangeLabels(reviewedProposal, reviewedGraph)
 		if showProposalHistory {
-			reviewedBaseGraph, err = services.CurriculumGraphAtProposal(server.Database, reviewedProposal.BaseProposalID)
+			reviewedBaseGraph, err = services.CurriculumGraphAtProposal(request.Context(), server.Database, reviewedProposal.BaseProposalID)
 			if err != nil {
 				log.Printf("load accepted proposal base curriculum: %v", err)
 				http.Error(writer, "Unable to load accepted proposal base", http.StatusInternalServerError)
@@ -260,8 +313,6 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 		ProposalHistoryNext:     historyLimit + curriculumProposalHistoryPageSize,
 		CanEditProposal:         activeProposal != nil && activeProposal.Status == "draft" && (rebasePlan == nil || !rebasePlan.NeedsReview()),
 		ViewingAcceptedProposal: reviewedWorkingGraph != nil,
-		RecognitionSources:      proposalBaseGraph.Units,
-		RecognitionTargets:      workingGraph.Units,
 		Error:                   message,
 	}
 	data.PublishWarning = curriculumRecognitionPublishWarning(activeProposal)
@@ -272,21 +323,36 @@ func (server *Server) renderCurriculumModification(writer http.ResponseWriter, r
 			http.Error(writer, "Invalid curriculum unit", http.StatusBadRequest)
 			return
 		}
+		var contentView *curriculumUnitView
 		for index := range data.Units {
 			if data.Units[index].ID == contentID {
-				data.ContentUnit = &data.Units[index]
+				contentView = &data.Units[index]
 				break
 			}
 		}
-		if data.ContentUnit == nil {
-			if historical := proposalBaseGraph.Unit(contentID); historical != nil {
-				data.ContentUnit = &curriculumUnitView{Unit: *historical, Historical: true}
-			} else {
-				http.Error(writer, "Curriculum unit not found", http.StatusNotFound)
-				return
-			}
+		resolved, previous, historical, resolveErr := services.CurriculumProposalUnit(
+			request.Context(), server.Database, graphProposal, contentID,
+		)
+		if resolveErr != nil {
+			log.Printf("load curriculum unit content: %v", resolveErr)
+			http.Error(writer, "Unable to load curriculum unit content", http.StatusInternalServerError)
+			return
 		}
+		if resolved == nil {
+			http.Error(writer, "Curriculum unit not found", http.StatusNotFound)
+			return
+		}
+		if contentView == nil {
+			contentView = &curriculumUnitView{Historical: historical}
+			contentView.Prerequisites, contentView.Dependents = curriculumUnitRelations(proposalBaseGraph, contentID)
+		}
+		contentView.Unit = *resolved
+		contentView.Historical = historical
+		data.ContentUnit = contentView
 		applyUnitContentDiff(data.ContentUnit, graphProposal)
+		if data.ContentUnit.HasContentDiff && previous != nil {
+			data.ContentUnit.PreviousContent = previous.Content
+		}
 	}
 	graphQuery := ""
 	if activeProposal != nil {

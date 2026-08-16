@@ -98,6 +98,22 @@ count precede the rationale as a compact vertical definition list. Submission
 and deletion are terminal draft actions and therefore remain at the end of the
 full proposal workspace rather than alongside frequently edited metadata.
 
+The workspace builds navigation, proposal previews and graph diffs from unit
+summaries and dependencies. Unit Markdown is loaded only when its document is
+opened. Current content comes from the published projection; proposal content
+is resolved over its frozen base; and historical content follows the accepted
+lineage while replaying only changes for the requested unit. A content update
+loads that same focused base unit to produce its previous-content diff.
+
+Dependency and recognition pickers do not embed the curriculum catalog in the
+workspace HTML. Debounced HTMX searches return at most 20 name matches. Searches
+against the current projection are evaluated in PostgreSQL over the draft's
+effective names and membership, including creations, renames and deletions.
+Recognition sources search the frozen base instead, while dependency candidates
+and recognition targets search the proposal's resulting curriculum. Historical
+bases retain the same semantics by searching their reconstructed lightweight
+structure.
+
 ## Concurrency
 
 Draft mutations lock the published projection state for shared access and then

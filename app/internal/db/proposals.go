@@ -1,9 +1,12 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
+	"sort"
+	"strings"
 
 	"github.com/lib/pq"
 
@@ -121,6 +124,169 @@ func GetCurriculumProposal(q curriculumExecutor, proposalID int64) (*models.Curr
 	}
 	proposal.Changes = changes
 	return &proposal, nil
+}
+
+func GetCurriculumUnitAtProposal(
+	ctx context.Context,
+	q contextualCurriculumExecutor,
+	proposalID, unitID int64,
+) (*models.Unit, error) {
+	rows, err := q.QueryContext(ctx, `
+		WITH RECURSIVE lineage AS (
+			SELECT id, base_proposal_id, 0 AS depth
+			FROM curriculum_proposals
+			WHERE id = $1 AND status = 'accepted'
+			UNION ALL
+			SELECT proposal.id, proposal.base_proposal_id, lineage.depth + 1
+			FROM curriculum_proposals proposal
+			JOIN lineage ON proposal.id = lineage.base_proposal_id
+			WHERE proposal.status = 'accepted'
+		)
+		SELECT change.kind, COALESCE(change.unit_name, ''), COALESCE(change.unit_content, '')
+		FROM lineage
+		JOIN curriculum_proposal_change_details change ON change.proposal_id = lineage.id
+		WHERE change.unit_id = $2
+		  AND change.kind IN ('create_unit', 'rename_unit', 'update_content', 'delete_unit')
+		ORDER BY lineage.depth DESC,
+		         CASE change.kind
+		           WHEN 'create_unit' THEN 1
+		           WHEN 'rename_unit' THEN 2
+		           WHEN 'update_content' THEN 2
+		           WHEN 'delete_unit' THEN 6
+		         END,
+		         change.id
+	`, proposalID, unitID)
+	if err != nil {
+		return nil, fmt.Errorf("load curriculum unit history: %w", err)
+	}
+	defer rows.Close()
+	var unit *models.Unit
+	for rows.Next() {
+		var kind, name, content string
+		if err := rows.Scan(&kind, &name, &content); err != nil {
+			return nil, fmt.Errorf("scan curriculum unit history: %w", err)
+		}
+		switch kind {
+		case "create_unit":
+			unit = &models.Unit{ID: unitID, Name: name, Content: content}
+		case "rename_unit":
+			if unit != nil {
+				unit.Name = name
+			}
+		case "update_content":
+			if unit != nil {
+				unit.Content = content
+			}
+		case "delete_unit":
+			unit = nil
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate curriculum unit history: %w", err)
+	}
+	return unit, nil
+}
+
+func GetCurriculumGraphAtProposal(
+	ctx context.Context,
+	q contextualCurriculumExecutor,
+	proposalID int64,
+) (*models.CurriculumGraph, error) {
+	rows, err := q.QueryContext(ctx, `
+		WITH RECURSIVE lineage AS (
+			SELECT id, base_proposal_id, 0 AS depth
+			FROM curriculum_proposals
+			WHERE id = $1 AND status = 'accepted'
+			UNION ALL
+			SELECT proposal.id, proposal.base_proposal_id, lineage.depth + 1
+			FROM curriculum_proposals proposal
+			JOIN lineage ON proposal.id = lineage.base_proposal_id
+			WHERE proposal.status = 'accepted'
+		)
+		SELECT change.kind, change.unit_id,
+		       COALESCE(change.unit_name, ''), COALESCE(change.prerequisite_id, 0)
+		FROM lineage
+		JOIN curriculum_proposal_change_details change ON change.proposal_id = lineage.id
+		WHERE change.kind IN (
+			'create_unit', 'rename_unit', 'remove_dependency',
+			'add_dependency', 'delete_unit'
+		)
+		ORDER BY lineage.depth DESC,
+		         CASE change.kind
+		           WHEN 'create_unit' THEN 1
+		           WHEN 'rename_unit' THEN 2
+		           WHEN 'remove_dependency' THEN 3
+		           WHEN 'add_dependency' THEN 4
+		           WHEN 'delete_unit' THEN 6
+		         END,
+		         change.unit_id, change.prerequisite_id NULLS LAST, change.id
+	`, proposalID)
+	if err != nil {
+		return nil, fmt.Errorf("load historical curriculum graph: %w", err)
+	}
+	defer rows.Close()
+	units := make(map[int64]models.Unit)
+	dependencies := make(map[[2]int64]bool)
+	for rows.Next() {
+		var kind, name string
+		var unitID, prerequisiteID int64
+		if err := rows.Scan(&kind, &unitID, &name, &prerequisiteID); err != nil {
+			return nil, fmt.Errorf("scan historical curriculum graph: %w", err)
+		}
+		switch kind {
+		case "create_unit":
+			units[unitID] = models.Unit{ID: unitID, Name: name}
+		case "rename_unit":
+			if unit, exists := units[unitID]; exists {
+				unit.Name = name
+				units[unitID] = unit
+			}
+		case "remove_dependency":
+			delete(dependencies, [2]int64{unitID, prerequisiteID})
+		case "add_dependency":
+			dependencies[[2]int64{unitID, prerequisiteID}] = true
+		case "delete_unit":
+			delete(units, unitID)
+			for edge := range dependencies {
+				if edge[0] == unitID || edge[1] == unitID {
+					delete(dependencies, edge)
+				}
+			}
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate historical curriculum graph: %w", err)
+	}
+	graph := &models.CurriculumGraph{Units: make([]models.Unit, 0, len(units))}
+	for _, unit := range units {
+		graph.Units = append(graph.Units, unit)
+	}
+	sort.Slice(graph.Units, func(i, j int) bool {
+		left, right := strings.ToLower(graph.Units[i].Name), strings.ToLower(graph.Units[j].Name)
+		if left == right {
+			return graph.Units[i].ID < graph.Units[j].ID
+		}
+		return left < right
+	})
+	for edge := range dependencies {
+		dependent, dependentExists := units[edge[0]]
+		prerequisite, prerequisiteExists := units[edge[1]]
+		if !dependentExists || !prerequisiteExists {
+			continue
+		}
+		graph.Dependencies = append(graph.Dependencies, models.UnitDependency{
+			UnitID: edge[0], UnitName: dependent.Name,
+			PrerequisiteID: edge[1], PrerequisiteName: prerequisite.Name,
+		})
+	}
+	sort.Slice(graph.Dependencies, func(i, j int) bool {
+		left, right := graph.Dependencies[i], graph.Dependencies[j]
+		if left.UnitID == right.UnitID {
+			return left.PrerequisiteID < right.PrerequisiteID
+		}
+		return left.UnitID < right.UnitID
+	})
+	return graph, nil
 }
 
 func UpdateDraftCurriculumProposal(q curriculumExecutor, proposalID, authorID int64, title, rationale string) (bool, error) {

@@ -61,34 +61,14 @@ type CurriculumProposalRebaseSummary struct {
 }
 
 func CurriculumGraphAtProposal(
+	ctx context.Context,
 	database *sql.DB,
 	proposalID *int64,
 ) (*models.CurriculumGraph, error) {
-	graph := &models.CurriculumGraph{}
 	if proposalID == nil {
-		return graph, nil
+		return &models.CurriculumGraph{}, nil
 	}
-	tx, err := database.Begin()
-	if err != nil {
-		return nil, fmt.Errorf("begin historical curriculum read: %w", err)
-	}
-	defer tx.Rollback()
-	proposals, err := acceptedCurriculumProposalsSince(context.Background(), tx, nil, proposalID)
-	if err != nil {
-		return nil, err
-	}
-	for index := range proposals {
-		graph = CurriculumGraphWithProposal(graph, &proposals[index])
-	}
-	names := make(map[int64]string, len(graph.Units))
-	for _, unit := range graph.Units {
-		names[unit.ID] = unit.Name
-	}
-	for index := range graph.Dependencies {
-		graph.Dependencies[index].UnitName = names[graph.Dependencies[index].UnitID]
-		graph.Dependencies[index].PrerequisiteName = names[graph.Dependencies[index].PrerequisiteID]
-	}
-	return graph, nil
+	return db.GetCurriculumGraphAtProposal(ctx, database, *proposalID)
 }
 
 func PlanCurriculumProposalRebase(

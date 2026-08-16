@@ -188,3 +188,77 @@ func SearchCurriculumUnits(
 	}
 	return units, total, nil
 }
+
+func SearchCurriculumUnitNames(
+	ctx context.Context, q contextualCurriculumExecutor, query string, limit int,
+) ([]models.Unit, error) {
+	return searchCurriculumUnitNames(ctx, q, `
+		SELECT id, name
+		FROM units
+		WHERE strpos(lower(name), lower($1)) > 0
+		ORDER BY lower(name), id
+		LIMIT $2
+	`, query, limit)
+}
+
+func SearchDraftCurriculumUnitNames(
+	ctx context.Context, q contextualCurriculumExecutor, proposalID int64, query string, limit int,
+) ([]models.Unit, error) {
+	return searchCurriculumUnitNames(ctx, q, `
+		WITH candidates AS (
+			SELECT unit.id,
+			       COALESCE(rename.unit_name, unit.name) AS name
+			FROM units unit
+			LEFT JOIN curriculum_proposal_change_details rename
+			  ON rename.proposal_id = $3
+			 AND rename.kind = 'rename_unit'
+			 AND rename.unit_id = unit.id
+			WHERE NOT EXISTS (
+				SELECT 1
+				FROM curriculum_proposal_change_details deletion
+				WHERE deletion.proposal_id = $3
+				  AND deletion.kind = 'delete_unit'
+				  AND deletion.unit_id = unit.id
+			)
+			UNION ALL
+			SELECT creation.unit_id, creation.unit_name
+			FROM curriculum_proposal_change_details creation
+			WHERE creation.proposal_id = $3
+			  AND creation.kind = 'create_unit'
+		)
+		SELECT id, name
+		FROM candidates
+		WHERE strpos(lower(name), lower($1)) > 0
+		ORDER BY lower(name), id
+		LIMIT $2
+	`, query, limit, proposalID)
+}
+
+func searchCurriculumUnitNames(
+	ctx context.Context,
+	q contextualCurriculumExecutor,
+	sqlQuery string,
+	query string,
+	limit int,
+	extra ...any,
+) ([]models.Unit, error) {
+	args := []any{query, limit}
+	args = append(args, extra...)
+	rows, err := q.QueryContext(ctx, sqlQuery, args...)
+	if err != nil {
+		return nil, fmt.Errorf("search curriculum unit names: %w", err)
+	}
+	defer rows.Close()
+	var units []models.Unit
+	for rows.Next() {
+		var unit models.Unit
+		if err := rows.Scan(&unit.ID, &unit.Name); err != nil {
+			return nil, fmt.Errorf("scan curriculum unit name search: %w", err)
+		}
+		units = append(units, unit)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate curriculum unit name search: %w", err)
+	}
+	return units, nil
+}

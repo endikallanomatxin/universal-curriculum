@@ -54,8 +54,6 @@ type curriculumModificationPageData struct {
 	ViewingAcceptedProposal bool
 	GraphURL                string
 	UnitContentCloseURL     string
-	RecognitionSources      []models.Unit
-	RecognitionTargets      []models.Unit
 	PublishWarning          string
 	Error                   string
 }
@@ -148,6 +146,25 @@ func applyUnitContentDiff(unit *curriculumUnitView, proposal *models.CurriculumP
 			return
 		}
 	}
+}
+
+func curriculumUnitRelations(graph *models.CurriculumGraph, unitID int64) (prerequisites, dependents []models.Unit) {
+	if graph == nil {
+		return nil, nil
+	}
+	for _, dependency := range graph.Dependencies {
+		switch {
+		case dependency.UnitID == unitID:
+			if unit := graph.Unit(dependency.PrerequisiteID); unit != nil {
+				prerequisites = append(prerequisites, *unit)
+			}
+		case dependency.PrerequisiteID == unitID:
+			if unit := graph.Unit(dependency.UnitID); unit != nil {
+				dependents = append(dependents, *unit)
+			}
+		}
+	}
+	return prerequisites, dependents
 }
 
 func curriculumGraphWithProposal(graph *models.CurriculumGraph, proposal *models.CurriculumProposal) *models.CurriculumGraph {
