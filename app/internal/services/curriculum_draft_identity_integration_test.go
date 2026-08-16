@@ -68,6 +68,9 @@ func TestDraftUnitIdentityCleanupAndAutomaticRebase(t *testing.T) {
 	if _, err := submitAndAcceptCurriculumProposal(database, authorID, upstreamRevision.ID); err != nil {
 		t.Fatal(err)
 	}
+	if plan, err := TryAutoRebaseCurriculumProposal(database, rebasedCreation.ID); err != nil || plan.Status != ProposalRebaseCurrent {
+		t.Fatalf("lazy automatic rebase = %#v err=%v", plan, err)
+	}
 	rebasedCreation, err = db.GetCurriculumProposal(database, rebasedCreation.ID)
 	if err != nil || rebasedCreation == nil || rebasedCreation.BaseProposalID == nil ||
 		*rebasedCreation.BaseProposalID != upstreamRevision.ID || len(rebasedCreation.Changes) != 1 ||

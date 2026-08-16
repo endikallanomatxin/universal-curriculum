@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"slices"
 	"strings"
 
@@ -193,7 +192,7 @@ func (application *adapter) deleteProposal(_ context.Context, request *mcp.CallT
 	return ok(deleteOutput{Deleted: true})
 }
 
-func (application *adapter) createProposalUnit(_ context.Context, request *mcp.CallToolRequest, input createProposalUnitInput) (*mcp.CallToolResult, toolOutput[unit], error) {
+func (application *adapter) createProposalUnit(ctx context.Context, request *mcp.CallToolRequest, input createProposalUnitInput) (*mcp.CallToolResult, toolOutput[unit], error) {
 	result, output, authErr, user := requireContributor[unit](request)
 	if user == nil {
 		return result, output, authErr
@@ -202,10 +201,10 @@ func (application *adapter) createProposalUnit(_ context.Context, request *mcp.C
 	if err != nil {
 		return curriculumFailure[unit]("create proposal unit", err)
 	}
-	return application.proposalUnit(input.ProposalID, created.ID)
+	return application.proposalUnit(ctx, input.ProposalID, created.ID)
 }
 
-func (application *adapter) updateProposalUnit(_ context.Context, request *mcp.CallToolRequest, input updateProposalUnitInput) (*mcp.CallToolResult, toolOutput[unit], error) {
+func (application *adapter) updateProposalUnit(ctx context.Context, request *mcp.CallToolRequest, input updateProposalUnitInput) (*mcp.CallToolResult, toolOutput[unit], error) {
 	result, output, authErr, user := requireContributor[unit](request)
 	if user == nil {
 		return result, output, authErr
@@ -214,7 +213,7 @@ func (application *adapter) updateProposalUnit(_ context.Context, request *mcp.C
 	if err != nil {
 		return curriculumFailure[unit]("update proposal unit", err)
 	}
-	return application.proposalUnit(input.ProposalID, input.UnitID)
+	return application.proposalUnit(ctx, input.ProposalID, input.UnitID)
 }
 
 func (application *adapter) deleteProposalUnit(_ context.Context, request *mcp.CallToolRequest, input proposalUnitIDInput) (*mcp.CallToolResult, toolOutput[deleteOutput], error) {
@@ -265,7 +264,7 @@ func (application *adapter) deleteProposalChange(_ context.Context, request *mcp
 	return application.reloadProposal(input.ProposalID)
 }
 
-func (application *adapter) getProposalRebase(_ context.Context, request *mcp.CallToolRequest, input proposalIDInput) (*mcp.CallToolResult, toolOutput[rebasePlan], error) {
+func (application *adapter) getProposalRebase(ctx context.Context, request *mcp.CallToolRequest, input proposalIDInput) (*mcp.CallToolResult, toolOutput[rebasePlan], error) {
 	result, output, authErr, user := requireContributor[rebasePlan](request)
 	if user == nil {
 		return result, output, authErr
@@ -274,14 +273,14 @@ func (application *adapter) getProposalRebase(_ context.Context, request *mcp.Ca
 	if err != nil {
 		return curriculumFailure[rebasePlan]("get proposal rebase", err)
 	}
-	plan, err := services.PlanCurriculumProposalRebase(application.database, model)
+	plan, err := services.PlanCurriculumProposalRebase(ctx, application.database, model)
 	if err != nil {
 		return curriculumFailure[rebasePlan]("get proposal rebase", err)
 	}
 	return ok(newRebasePlan(plan))
 }
 
-func (application *adapter) resolveProposalRebase(_ context.Context, request *mcp.CallToolRequest, input resolveRebaseInput) (*mcp.CallToolResult, toolOutput[proposal], error) {
+func (application *adapter) resolveProposalRebase(ctx context.Context, request *mcp.CallToolRequest, input resolveRebaseInput) (*mcp.CallToolResult, toolOutput[proposal], error) {
 	result, output, authErr, user := requireContributor[proposal](request)
 	if user == nil {
 		return result, output, authErr
@@ -290,7 +289,7 @@ func (application *adapter) resolveProposalRebase(_ context.Context, request *mc
 	if err != nil {
 		return curriculumFailure[proposal]("inspect proposal rebase", err)
 	}
-	plan, err := services.PlanCurriculumProposalRebase(application.database, model)
+	plan, err := services.PlanCurriculumProposalRebase(ctx, application.database, model)
 	if err != nil {
 		return curriculumFailure[proposal]("inspect proposal rebase", err)
 	}
@@ -365,7 +364,7 @@ func (application *adapter) reloadProposal(id int64) (*mcp.CallToolResult, toolO
 	return ok(newProposal(*model, true))
 }
 
-func (application *adapter) proposalUnit(proposalID, unitID int64) (*mcp.CallToolResult, toolOutput[unit], error) {
+func (application *adapter) proposalUnit(ctx context.Context, proposalID, unitID int64) (*mcp.CallToolResult, toolOutput[unit], error) {
 	model, err := db.GetCurriculumProposal(application.database, proposalID)
 	if err != nil {
 		return internalFailure[unit]("reload proposal unit", err)
@@ -373,17 +372,18 @@ func (application *adapter) proposalUnit(proposalID, unitID int64) (*mcp.CallToo
 	if model == nil {
 		return failed[unit]("proposal_not_found", "The proposal was not found.", nil)
 	}
-	base, err := services.CurriculumGraphAtProposal(application.database, model.BaseProposalID)
+	resolved, _, historical, err := services.CurriculumProposalUnit(ctx, application.database, model, unitID)
 	if err != nil {
-		return internalFailure[unit]("load proposal base", err)
+		return internalFailure[unit]("load proposal unit content", err)
 	}
-	working := curriculumRepresentation(services.CurriculumGraphWithProposal(base, model), nil)
-	for _, item := range working.Units {
-		if item.ID == unitID {
-			return ok(item)
-		}
+	if resolved == nil || historical {
+		return failed[unit]("unit_not_found", "The proposed unit was not found.", nil)
 	}
-	return failed[unit]("unit_not_found", "The proposed unit was not found.", nil)
+	dependencies, err := services.CurriculumProposalUnitDependencies(ctx, application.database, model, unitID)
+	if err != nil {
+		return internalFailure[unit]("load proposal unit dependencies", err)
+	}
+	return ok(unitRepresentation(*resolved, dependencies))
 }
 
 func newRebasePlan(model *services.CurriculumProposalRebasePlan) rebasePlan {
@@ -446,8 +446,4 @@ func curriculumFailure[T any](operation string, err error) (*mcp.CallToolResult,
 	default:
 		return internalFailure[T](operation, err)
 	}
-}
-
-func logRebaseFailures(proposalID int64, err error) {
-	log.Printf("MCP rebase drafts after publishing proposal %d: %v", proposalID, err)
 }

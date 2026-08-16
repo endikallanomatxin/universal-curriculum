@@ -3,6 +3,7 @@ package services
 import (
 	"database/sql"
 	"fmt"
+	"net/url"
 	"os"
 	"regexp"
 	"testing"
@@ -43,4 +44,30 @@ func openPostgresIntegrationDatabase(t *testing.T, prefix string) *sql.DB {
 		t.Fatal(err)
 	}
 	return database
+}
+
+func openConcurrentPostgresIntegrationDatabase(t *testing.T, database *sql.DB) *sql.DB {
+	t.Helper()
+	var schema string
+	if err := database.QueryRow(`SELECT current_schema()`).Scan(&schema); err != nil {
+		t.Fatal(err)
+	}
+	connectionURL, err := url.Parse(os.Getenv("TEST_DATABASE_URL"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	query := connectionURL.Query()
+	query.Set("search_path", schema)
+	connectionURL.RawQuery = query.Encode()
+	concurrent, err := sql.Open("postgres", connectionURL.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	concurrent.SetMaxOpenConns(4)
+	if err := concurrent.Ping(); err != nil {
+		_ = concurrent.Close()
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = concurrent.Close() })
+	return concurrent
 }

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -25,6 +26,7 @@ var (
 	ErrProposalRationaleTooLong   = errors.New("proposal rationale must not exceed 1000 characters")
 	ErrProposalEmpty              = errors.New("curriculum proposal has no changes")
 	ErrProposalOutdated           = errors.New("curriculum proposal is not based on the current curriculum")
+	ErrCurriculumUnitSearchScope  = errors.New("invalid curriculum unit search scope")
 	ErrRecognitionSourcesRequired = errors.New("recognition requires at least one source")
 	ErrRecognitionTargetsRequired = errors.New("recognition requires at least one target")
 )
@@ -90,12 +92,12 @@ func CreateCurriculumProposal(database *sql.DB, authorID int64, title, rationale
 	if err != nil {
 		return nil, err
 	}
-	tx, err := beginCurriculumProposal(database)
+	tx, err := database.Begin()
 	if err != nil {
 		return nil, err
 	}
 	defer tx.Rollback()
-	baseProposalID, err := db.LockCurrentCurriculumProposal(tx)
+	baseProposalID, err := db.GetCurrentCurriculumProposalID(tx)
 	if err != nil {
 		return nil, err
 	}
@@ -146,17 +148,11 @@ func CreateCurriculumUnit(database *sql.DB, authorID, proposalID int64, name, co
 	if content == "" {
 		return nil, ErrUnitContentRequired
 	}
-	if err := EnsureCurriculumProposalReady(database, authorID, proposalID); err != nil {
-		return nil, err
-	}
-	tx, err := beginCurriculumProposal(database)
+	tx, _, err := beginDraftMutation(database, authorID, proposalID)
 	if err != nil {
 		return nil, err
 	}
 	defer tx.Rollback()
-	if _, err := currentDraftCurriculumProposal(tx, authorID, proposalID); err != nil {
-		return nil, err
-	}
 	change := &models.CurriculumProposalChange{
 		Kind: "create_unit", UnitName: name, UnitContent: content,
 	}
@@ -208,18 +204,11 @@ func UpdateCurriculumUnitAndContent(
 func updateCurriculumUnitFields(
 	database *sql.DB, authorID, proposalID, unitID int64, name, content *string,
 ) error {
-	if err := EnsureCurriculumProposalReady(database, authorID, proposalID); err != nil {
-		return err
-	}
-	tx, err := beginCurriculumProposal(database)
+	tx, proposal, err := beginDraftMutation(database, authorID, proposalID)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
-	proposal, err := currentDraftCurriculumProposal(tx, authorID, proposalID)
-	if err != nil {
-		return err
-	}
 	var creation *models.CurriculumProposalChange
 	var deleted bool
 	for _, change := range proposal.Changes {
@@ -330,18 +319,11 @@ func updateCurriculumUnitFields(
 }
 
 func DeleteCurriculumUnit(database *sql.DB, authorID, proposalID, unitID int64) error {
-	if err := EnsureCurriculumProposalReady(database, authorID, proposalID); err != nil {
-		return err
-	}
-	tx, err := beginCurriculumProposal(database)
+	tx, proposal, err := beginDraftMutation(database, authorID, proposalID)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
-	proposal, err := currentDraftCurriculumProposal(tx, authorID, proposalID)
-	if err != nil {
-		return err
-	}
 	for _, change := range proposal.Changes {
 		if change.Kind == "create_unit" && change.UnitID == unitID {
 			if err := deleteDraftCreatedUnit(tx, proposal, authorID, change); err != nil {
@@ -472,18 +454,11 @@ func SetUnitDependency(
 }
 
 func setUnitDependency(database *sql.DB, authorID, proposalID, unitID, prerequisiteID int64, desired bool) error {
-	if err := EnsureCurriculumProposalReady(database, authorID, proposalID); err != nil {
-		return err
-	}
-	tx, err := beginCurriculumProposal(database)
+	tx, proposal, err := beginDraftMutation(database, authorID, proposalID)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
-	proposal, err := currentDraftCurriculumProposal(tx, authorID, proposalID)
-	if err != nil {
-		return err
-	}
 	graph, err := db.GetCurriculumGraph(tx)
 	if err != nil {
 		return err
@@ -495,12 +470,18 @@ func setUnitDependency(database *sql.DB, authorID, proposalID, unitID, prerequis
 	exists := workingGraph.HasDependency(unitID, prerequisiteID)
 	if desired {
 		if exists {
+			if err := tx.Commit(); err != nil {
+				return fmt.Errorf("commit current curriculum dependency: %w", err)
+			}
 			return ErrDependencyExists
 		}
 		if curriculumDependencyCreatesCycle(workingGraph, unitID, prerequisiteID) {
 			return ErrDependencyCycle
 		}
 	} else if !exists {
+		if err := tx.Commit(); err != nil {
+			return fmt.Errorf("commit current curriculum dependency: %w", err)
+		}
 		return ErrDependencyNotFound
 	}
 	for _, change := range proposal.Changes {
@@ -536,18 +517,11 @@ func setUnitDependency(database *sql.DB, authorID, proposalID, unitID, prerequis
 }
 
 func DeleteCurriculumProposalChange(database *sql.DB, authorID, proposalID, changeID int64) error {
-	if err := EnsureCurriculumProposalReady(database, authorID, proposalID); err != nil {
-		return err
-	}
-	tx, err := beginCurriculumProposal(database)
+	tx, proposal, err := beginDraftMutation(database, authorID, proposalID)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
-	proposal, err := currentDraftCurriculumProposal(tx, authorID, proposalID)
-	if err != nil {
-		return err
-	}
 	var target *models.CurriculumProposalChange
 	for index := range proposal.Changes {
 		if proposal.Changes[index].ID == changeID {
@@ -664,30 +638,63 @@ func beginCurriculumProposal(database *sql.DB) (*sql.Tx, error) {
 	if err != nil {
 		return nil, fmt.Errorf("begin curriculum proposal: %w", err)
 	}
-	if err := db.LockCurriculumGraph(tx); err != nil {
-		_ = tx.Rollback()
-		return nil, err
-	}
 	return tx, nil
 }
 
-func currentDraftCurriculumProposal(
-	tx *sql.Tx,
+// beginDraftMutation locks resources in the invariant order: the published
+// projection first (shared), then the draft proposal (exclusive). Different
+// drafts can therefore mutate concurrently while publication remains atomic.
+func beginDraftMutation(
+	database *sql.DB,
 	authorID, proposalID int64,
-) (*models.CurriculumProposal, error) {
+) (*sql.Tx, *models.CurriculumProposal, error) {
+	tx, err := beginCurriculumProposal(database)
+	if err != nil {
+		return nil, nil, err
+	}
+	fail := func(err error) (*sql.Tx, *models.CurriculumProposal, error) {
+		_ = tx.Rollback()
+		return nil, nil, err
+	}
+	currentProposalID, err := db.LockCurrentCurriculumProposalShared(tx)
+	if err != nil {
+		return fail(err)
+	}
+	locked, err := db.LockCurriculumProposal(tx, proposalID)
+	if err != nil {
+		return fail(err)
+	}
+	if !locked {
+		return fail(ErrProposalNotFound)
+	}
 	proposal, err := db.GetCurriculumProposal(tx, proposalID)
 	if err != nil {
-		return nil, err
+		return fail(err)
 	}
 	if proposal == nil || proposal.Status != "draft" || !proposal.HasAuthor(authorID) {
-		return nil, ErrProposalNotFound
+		return fail(ErrProposalNotFound)
 	}
-	currentProposalID, err := db.LockCurrentCurriculumProposal(tx)
+	if sameOptionalID(proposal.BaseProposalID, currentProposalID) {
+		return tx, proposal, nil
+	}
+	graph, err := db.GetCurriculumGraphWithContent(tx)
 	if err != nil {
-		return nil, err
+		return fail(err)
 	}
-	if !sameOptionalID(proposal.BaseProposalID, currentProposalID) {
-		return nil, ErrProposalRebaseRequired
+	plan, err := planCurriculumProposalRebase(context.Background(), tx, proposal, currentProposalID, graph)
+	if err != nil {
+		return fail(err)
 	}
-	return proposal, nil
+	if plan.Status != ProposalRebaseAutomatic {
+		return fail(ErrProposalRebaseRequired)
+	}
+	updated, err := db.SetDraftCurriculumProposalBase(tx, proposal.ID, proposal.BaseProposalID, currentProposalID)
+	if err != nil {
+		return fail(err)
+	}
+	if !updated {
+		return fail(ErrProposalOutdated)
+	}
+	proposal.BaseProposalID = currentProposalID
+	return tx, proposal, nil
 }

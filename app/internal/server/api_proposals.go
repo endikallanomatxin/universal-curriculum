@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"log"
 	"net/http"
@@ -171,7 +172,7 @@ func (server *Server) apiCreateProposalUnit(writer http.ResponseWriter, request 
 		server.writeAPICurriculumError(writer, err)
 		return
 	}
-	server.writeAPIProposalUnit(writer, proposalID, unit.ID, http.StatusCreated)
+	server.writeAPIProposalUnit(request.Context(), writer, proposalID, unit.ID, http.StatusCreated)
 }
 
 func (server *Server) apiUpdateProposalUnit(writer http.ResponseWriter, request *http.Request) {
@@ -207,7 +208,7 @@ func (server *Server) apiUpdateProposalUnit(writer http.ResponseWriter, request 
 		server.writeAPICurriculumError(writer, err)
 		return
 	}
-	server.writeAPIProposalUnit(writer, proposalID, unitID, http.StatusOK)
+	server.writeAPIProposalUnit(request.Context(), writer, proposalID, unitID, http.StatusOK)
 }
 
 func (server *Server) apiDeleteProposalUnit(writer http.ResponseWriter, request *http.Request) {
@@ -336,7 +337,7 @@ func (server *Server) apiGetProposalRebase(writer http.ResponseWriter, request *
 	if !ok {
 		return
 	}
-	plan, err := services.PlanCurriculumProposalRebase(server.Database, proposal)
+	plan, err := services.PlanCurriculumProposalRebase(request.Context(), server.Database, proposal)
 	if err != nil {
 		server.writeAPICurriculumError(writer, err)
 		return
@@ -510,7 +511,7 @@ func (server *Server) writeReloadedAPIProposal(writer http.ResponseWriter, propo
 	writeAPIJSON(writer, status, newAPIProposal(*proposal, true))
 }
 
-func (server *Server) writeAPIProposalUnit(writer http.ResponseWriter, proposalID, unitID int64, status int) {
+func (server *Server) writeAPIProposalUnit(ctx context.Context, writer http.ResponseWriter, proposalID, unitID int64, status int) {
 	proposal, err := db.GetCurriculumProposal(server.Database, proposalID)
 	if err != nil {
 		log.Printf("API reload proposal unit: %v", err)
@@ -521,28 +522,31 @@ func (server *Server) writeAPIProposalUnit(writer http.ResponseWriter, proposalI
 		writeAPIError(writer, http.StatusNotFound, "proposal_not_found", "The proposal was not found.", nil)
 		return
 	}
-	base, err := services.CurriculumGraphAtProposal(server.Database, proposal.BaseProposalID)
+	base, err := services.CurriculumGraphAtProposal(ctx, server.Database, proposal.BaseProposalID)
 	if err != nil {
 		log.Printf("API load proposal unit base: %v", err)
 		writeAPIInternalError(writer)
 		return
 	}
 	working := services.CurriculumGraphWithProposal(base, proposal)
-	units, _ := apiCurriculumResources(working)
-	for _, unit := range units {
-		if unit.ID != unitID {
-			continue
-		}
-		if unit.CreatedAt.IsZero() {
-			unit.CreatedAt = proposal.CreatedAt
-		}
-		if unit.UpdatedAt.IsZero() {
-			unit.UpdatedAt = proposal.CreatedAt
-		}
-		writeAPIJSON(writer, status, unit)
+	unit, _, historical, err := services.CurriculumProposalUnit(ctx, server.Database, proposal, unitID)
+	if err != nil {
+		log.Printf("API load proposal unit content: %v", err)
+		writeAPIInternalError(writer)
 		return
 	}
-	writeAPIError(writer, http.StatusNotFound, "unit_not_found", "The proposed unit was not found.", nil)
+	if unit == nil || historical || working.Unit(unitID) == nil {
+		writeAPIError(writer, http.StatusNotFound, "unit_not_found", "The proposed unit was not found.", nil)
+		return
+	}
+	resource := apiUnitResource(*unit, working.Dependencies)
+	if resource.CreatedAt.IsZero() {
+		resource.CreatedAt = proposal.CreatedAt
+	}
+	if resource.UpdatedAt.IsZero() {
+		resource.UpdatedAt = proposal.CreatedAt
+	}
+	writeAPIJSON(writer, status, resource)
 }
 
 func newAPIRebasePlan(plan *services.CurriculumProposalRebasePlan) apiRebasePlan {

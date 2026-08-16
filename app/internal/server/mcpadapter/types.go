@@ -51,13 +51,40 @@ type curriculumOverview struct {
 	Dependencies []dependency  `json:"dependencies"`
 }
 
-func newCurriculumOverview(value curriculum) curriculumOverview {
+func curriculumOverviewRepresentation(graph *models.CurriculumGraph, proposalID *int64) curriculumOverview {
 	result := curriculumOverview{
-		ProposalID: value.ProposalID, Units: make([]unitSummary, 0, len(value.Units)),
-		Dependencies: value.Dependencies,
+		ProposalID: proposalID, Units: make([]unitSummary, 0, len(graph.Units)),
+		Dependencies: make([]dependency, 0, len(graph.Dependencies)),
 	}
-	for _, item := range value.Units {
-		result.Units = append(result.Units, item.unitSummary)
+	for _, model := range graph.Units {
+		result.Units = append(result.Units, newUnitSummary(model))
+	}
+	for _, model := range graph.Dependencies {
+		result.Dependencies = append(result.Dependencies, dependency{
+			UnitID: model.UnitID, PrerequisiteID: model.PrerequisiteID,
+		})
+	}
+	return result
+}
+
+func unitRepresentation(model models.Unit, dependencies []models.UnitDependency) unit {
+	result := unit{
+		unitSummary: newUnitSummary(model), Content: model.Content,
+		PrerequisiteIDs: []int64{}, DependentIDs: []int64{},
+	}
+	if !model.CreatedAt.IsZero() {
+		result.CreatedAt = model.CreatedAt.UTC().Format(time.RFC3339)
+	}
+	if !model.UpdatedAt.IsZero() {
+		result.UpdatedAt = model.UpdatedAt.UTC().Format(time.RFC3339)
+	}
+	for _, relationship := range dependencies {
+		if relationship.UnitID == model.ID {
+			result.PrerequisiteIDs = append(result.PrerequisiteIDs, relationship.PrerequisiteID)
+		}
+		if relationship.PrerequisiteID == model.ID {
+			result.DependentIDs = append(result.DependentIDs, relationship.UnitID)
+		}
 	}
 	return result
 }

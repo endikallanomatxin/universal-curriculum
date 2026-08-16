@@ -14,9 +14,11 @@ their old and new positions.
 
 The server produces two deterministic topological seeds: one follows the
 previous visible order and one ignores it in favour of graph structure. A
-single shared budget explores at most 512 states in total, reachable through
+single shared budget explores at most 128 states in total, reachable through
 adjacent independent units, so multi-start continuity does not multiply the
-request cost.
+request cost. Views above 60 visible nodes keep the deterministic topological
+order and skip this combinatorial search; lane assignment still produces a
+complete usable layout.
 
 Candidates first establish the minimum crossing count and edge span. Orders
 with that crossing count and an edge span within a small deterministic quality

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Universal Curriculum experimental API
-  version: 0.3.1
+  version: 0.3.2
   description: |
     Experimental API for the 0.x release line. This unversioned contract may
     change between minor releases and does not yet provide compatibility
@@ -714,7 +714,7 @@ components:
       required: [name, release, status, documentation]
       properties:
         name: {type: string, const: Universal Curriculum API}
-        release: {type: string, const: 0.3.1}
+        release: {type: string, const: 0.3.2}
         status: {type: string, const: experimental}
         documentation: {type: string, const: /api/openapi.yaml}
     Page:
@@ -770,7 +770,8 @@ components:
           format: int64
         units:
           type: array
-          items: {$ref: '#/components/schemas/Unit'}
+          description: Unit summaries; retrieve an individual unit for its content and relationships.
+          items: {$ref: '#/components/schemas/UnitSummary'}
         dependencies:
           type: array
           items: {$ref: '#/components/schemas/Dependency'}

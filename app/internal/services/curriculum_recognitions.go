@@ -14,6 +14,15 @@ func AddCurriculumRecognition(
 	authorID, proposalID int64,
 	sourceUnitIDs, targetUnitIDs []int64,
 ) error {
+	return addCurriculumRecognition(database, authorID, proposalID, sourceUnitIDs, targetUnitIDs, false)
+}
+
+func addCurriculumRecognition(
+	database *sql.DB,
+	authorID, proposalID int64,
+	sourceUnitIDs, targetUnitIDs []int64,
+	idempotent bool,
+) error {
 	sourceUnitIDs = uniquePositiveIDs(sourceUnitIDs)
 	targetUnitIDs = uniquePositiveIDs(targetUnitIDs)
 	if len(sourceUnitIDs) == 0 {
@@ -22,17 +31,17 @@ func AddCurriculumRecognition(
 	if len(targetUnitIDs) == 0 {
 		return ErrRecognitionTargetsRequired
 	}
-	if err := EnsureCurriculumProposalReady(database, authorID, proposalID); err != nil {
-		return err
-	}
-	tx, err := beginCurriculumProposal(database)
+	tx, proposal, err := beginDraftMutation(database, authorID, proposalID)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
-	proposal, err := currentDraftCurriculumProposal(tx, authorID, proposalID)
-	if err != nil {
-		return err
+	if idempotent {
+		for _, change := range proposal.Changes {
+			if sameRecognitionUnitIDs(change.Recognition, sourceUnitIDs, targetUnitIDs) {
+				return tx.Commit()
+			}
+		}
 	}
 	base, err := db.GetCurriculumGraph(tx)
 	if err != nil {
@@ -85,22 +94,7 @@ func EnsureCurriculumRecognition(
 	if len(targets) == 0 {
 		return ErrRecognitionTargetsRequired
 	}
-	if err := EnsureCurriculumProposalReady(database, authorID, proposalID); err != nil {
-		return err
-	}
-	proposal, err := db.GetCurriculumProposal(database, proposalID)
-	if err != nil {
-		return err
-	}
-	if proposal == nil || proposal.Status != "draft" || !proposal.HasAuthor(authorID) {
-		return ErrProposalNotFound
-	}
-	for _, change := range proposal.Changes {
-		if sameRecognitionUnitIDs(change.Recognition, sources, targets) {
-			return nil
-		}
-	}
-	return AddCurriculumRecognition(database, authorID, proposalID, sources, targets)
+	return addCurriculumRecognition(database, authorID, proposalID, sources, targets, true)
 }
 
 func sameRecognitionUnitIDs(recognition *models.Recognition, sourceIDs, targetIDs []int64) bool {

@@ -10,13 +10,20 @@
     picker.unitPickerInitialized = true;
     const input = picker.querySelector("[data-unit-picker-input]");
     const results = picker.querySelector("[data-unit-picker-results]");
-    const empty = picker.querySelector("[data-unit-picker-empty]");
     const current = picker.querySelector("[data-unit-picker-current]");
     const count = picker.querySelector("[data-unit-picker-count]");
-    const options = Array.from(picker.querySelectorAll("[data-unit-picker-option]"));
     let selectedIDs = new Set();
+    let selectedNames = new Map();
     let excludedIDs = new Set();
     if (!input || !results || !current) return;
+
+    function options() {
+      return Array.from(results.querySelectorAll("[data-unit-picker-option]"));
+    }
+
+    function emptyMessage() {
+      return results.querySelector("[data-unit-picker-empty]");
+    }
 
     function closeResults() {
       results.hidden = true;
@@ -26,7 +33,7 @@
     function filterOptions() {
       const query = normalized(input.value.trim());
       let matches = 0;
-      options.forEach(function (option) {
+      options().forEach(function (option) {
         const unavailable = option.dataset.unitRetired === "true" ||
           selectedIDs.has(option.dataset.unitId) ||
           excludedIDs.has(option.dataset.unitId);
@@ -34,6 +41,7 @@
         option.classList.toggle("is-filtered", unavailable || !matchesQuery);
         if (!unavailable && matchesQuery) matches += 1;
       });
+      const empty = emptyMessage();
       if (empty) empty.hidden = matches > 0;
       results.hidden = false;
       input.setAttribute("aria-expanded", "true");
@@ -41,13 +49,12 @@
 
     function renderSelection() {
       current.replaceChildren();
-      options.forEach(function (option) {
-        if (!selectedIDs.has(option.dataset.unitId)) return;
+      selectedIDs.forEach(function (id) {
         const row = document.createElement("div");
         const title = document.createElement("strong");
         const remove = document.createElement("button");
         row.className = "selection-list__row";
-        title.textContent = option.dataset.unitName;
+        title.textContent = selectedNames.get(id) || "Selected unit";
         remove.type = "button";
         remove.className = "secondary-button";
         remove.textContent = "Remove";
@@ -61,10 +68,11 @@
           const event = new CustomEvent("unit-picker:remove", {
             bubbles: true,
             cancelable: true,
-            detail: { id: option.dataset.unitId, name: option.dataset.unitName }
+            detail: { id: id, name: selectedNames.get(id) || "" }
           });
           if (!picker.dispatchEvent(event)) return;
-          selectedIDs.delete(option.dataset.unitId);
+          selectedIDs.delete(id);
+          selectedNames.delete(id);
           renderSelection();
           filterOptions();
           notifyChange();
@@ -74,7 +82,7 @@
           const hiddenInput = document.createElement("input");
           hiddenInput.type = "hidden";
           hiddenInput.name = picker.dataset.unitPickerInputName;
-          hiddenInput.value = option.dataset.unitId;
+          hiddenInput.value = id;
           row.append(hiddenInput);
         }
         current.append(row);
@@ -94,28 +102,33 @@
 
     function configure(configuration) {
       selectedIDs = new Set(configuration.selectedIDs || []);
+      selectedNames = new Map();
       excludedIDs = new Set(configuration.excludedIDs || []);
+      options().forEach(function (option) {
+        if (selectedIDs.has(option.dataset.unitId)) selectedNames.set(option.dataset.unitId, option.dataset.unitName);
+      });
       input.value = "";
       closeResults();
-      options.forEach(function (option) { option.classList.remove("is-filtered"); });
+      options().forEach(function (option) { option.classList.remove("is-filtered"); });
       renderSelection();
     }
 
-    options.forEach(function (option) {
-      option.addEventListener("click", function () {
-        const event = new CustomEvent("unit-picker:add", {
-          bubbles: true,
-          cancelable: true,
-          detail: { id: option.dataset.unitId, name: option.dataset.unitName }
-        });
-        if (!picker.dispatchEvent(event)) return;
-        selectedIDs.add(option.dataset.unitId);
-        renderSelection();
-        input.value = "";
-        closeResults();
-        input.focus();
-        notifyChange();
+    results.addEventListener("click", function (clickEvent) {
+      const option = clickEvent.target.closest("[data-unit-picker-option]");
+      if (!option || !results.contains(option)) return;
+      const event = new CustomEvent("unit-picker:add", {
+        bubbles: true,
+        cancelable: true,
+        detail: { id: option.dataset.unitId, name: option.dataset.unitName }
       });
+      if (!picker.dispatchEvent(event)) return;
+      selectedIDs.add(option.dataset.unitId);
+      selectedNames.set(option.dataset.unitId, option.dataset.unitName);
+      renderSelection();
+      input.value = "";
+      closeResults();
+      input.focus();
+      notifyChange();
     });
     input.addEventListener("focus", filterOptions);
     input.addEventListener("input", filterOptions);
@@ -124,7 +137,7 @@
         closeResults();
         input.blur();
       } else if (event.key === "ArrowDown") {
-        const first = options.find(function (option) {
+        const first = options().find(function (option) {
           return !option.classList.contains("is-filtered");
         });
         if (first) {
@@ -150,6 +163,10 @@
     configure({
       selectedIDs: (picker.dataset.unitPickerSelectedIds || "").split(",").filter(Boolean),
       excludedIDs: []
+    });
+    document.addEventListener("htmx:afterSwap", function (event) {
+      if (event.detail.target !== results) return;
+      filterOptions();
     });
   }
 

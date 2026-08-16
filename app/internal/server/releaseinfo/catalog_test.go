@@ -4,7 +4,7 @@ import "testing"
 
 func TestCatalogsFollowReleaseOrder(t *testing.T) {
 	published := Releases()
-	if len(published) == 0 || published[0].Version != "0.3.1" || published[0].Date != "2026-08-15" || published[0].Summary == "" {
+	if len(published) == 0 || published[0].Version != "0.3.2" || published[0].Date != "2026-08-16" || published[0].Summary == "" {
 		t.Fatalf("latest release = %#v", published)
 	}
 	planned := Roadmap()

@@ -7,6 +7,67 @@ import (
 	"universal-curriculum/internal/models"
 )
 
+// ApplyCurriculumProposalToProjection advances the materialized curriculum by
+// applying one accepted proposal to its current base. RebuildCurriculumProjection
+// remains available for recovery and verification, but publication should use
+// this incremental path.
+func ApplyCurriculumProposalToProjection(
+	q curriculumExecutor,
+	proposalID int64,
+	changes []models.CurriculumProposalChange,
+) error {
+	for _, change := range changes {
+		var err error
+		switch change.Kind {
+		case "create_unit":
+			_, err = q.Exec(`
+				INSERT INTO units (id, name, content)
+				VALUES ($1, $2, $3)
+			`, change.UnitID, change.UnitName, change.UnitContent)
+		case "rename_unit":
+			_, err = q.Exec(`
+				UPDATE units SET name = $2, updated_at = NOW() WHERE id = $1
+			`, change.UnitID, change.UnitName)
+		case "update_content":
+			_, err = q.Exec(`
+				UPDATE units SET content = $2, updated_at = NOW() WHERE id = $1
+			`, change.UnitID, change.UnitContent)
+		case "remove_dependency":
+			_, err = q.Exec(`
+				DELETE FROM unit_dependencies
+				WHERE unit_id = $1 AND prerequisite_id = $2
+			`, change.UnitID, change.PrerequisiteID)
+		case "add_dependency":
+			_, err = q.Exec(`
+				INSERT INTO unit_dependencies (unit_id, prerequisite_id)
+				VALUES ($1, $2)
+			`, change.UnitID, change.PrerequisiteID)
+		case "delete_unit":
+			_, err = q.Exec(`DELETE FROM units WHERE id = $1`, change.UnitID)
+		case "recognition":
+			continue
+		default:
+			return fmt.Errorf("project unsupported curriculum change %q", change.Kind)
+		}
+		if err != nil {
+			return fmt.Errorf("apply %s curriculum change: %w", change.Kind, err)
+		}
+	}
+	result, err := q.Exec(`
+		UPDATE curriculum_projection_state
+		SET proposal_id = $1
+		WHERE singleton = TRUE
+	`, proposalID)
+	if err != nil {
+		return fmt.Errorf("update curriculum projection: %w", err)
+	}
+	updated, err := result.RowsAffected()
+	if err != nil || updated != 1 {
+		return fmt.Errorf("update curriculum projection: affected %d rows: %w", updated, err)
+	}
+	return nil
+}
+
 func RebuildCurriculumProjection(q curriculumExecutor, proposalID int64) error {
 	rows, err := q.Query(`
 		WITH RECURSIVE proposal_lineage AS (

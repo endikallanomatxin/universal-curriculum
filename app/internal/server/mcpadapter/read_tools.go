@@ -2,7 +2,6 @@ package mcpadapter
 
 import (
 	"context"
-	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"universal-curriculum/internal/db"
@@ -76,7 +75,7 @@ func (application *adapter) getCurriculum(
 	if err != nil {
 		return internalFailure[curriculumOverview]("get curriculum proposal", err)
 	}
-	return ok(newCurriculumOverview(curriculumRepresentation(graph, proposalID)))
+	return ok(curriculumOverviewRepresentation(graph, proposalID))
 }
 
 func (application *adapter) searchUnits(
@@ -85,42 +84,33 @@ func (application *adapter) searchUnits(
 	if input.Limit == 0 {
 		input.Limit = 25
 	}
-	graph, err := db.GetCurriculumGraph(application.database)
+	models, total, err := db.SearchCurriculumUnits(application.database, input.Query, input.Limit, input.Offset)
 	if err != nil {
 		return internalFailure[searchUnitsOutput]("search units", err)
 	}
-	query := strings.ToLower(strings.TrimSpace(input.Query))
-	items := make([]unitSummary, 0, len(graph.Units))
-	for _, model := range graph.Units {
-		if query != "" && !strings.Contains(strings.ToLower(model.Name), query) &&
-			!strings.Contains(strings.ToLower(model.Content), query) {
-			continue
-		}
+	items := make([]unitSummary, 0, len(models))
+	for _, model := range models {
 		items = append(items, newUnitSummary(model))
 	}
-	total := len(items)
-	page := []unitSummary{}
-	if input.Offset < total {
-		end := min(input.Offset+input.Limit, total)
-		page = items[input.Offset:end]
-	}
 	return ok(searchUnitsOutput{
-		Units: page, Total: total, Offset: input.Offset,
-		HasMore: input.Offset+len(page) < total,
+		Units: items, Total: total, Offset: input.Offset,
+		HasMore: input.Offset+len(items) < total,
 	})
 }
 
 func (application *adapter) getUnit(
 	_ context.Context, _ *mcp.CallToolRequest, input getUnitInput,
 ) (*mcp.CallToolResult, toolOutput[unit], error) {
-	graph, err := db.GetCurriculumGraph(application.database)
+	model, err := db.GetUnit(application.database, input.UnitID)
 	if err != nil {
 		return internalFailure[unit]("get unit", err)
 	}
-	for _, item := range curriculumRepresentation(graph, nil).Units {
-		if item.ID == input.UnitID {
-			return ok(item)
-		}
+	if model == nil {
+		return failed[unit]("unit_not_found", "The published curriculum unit was not found.", nil)
 	}
-	return failed[unit]("unit_not_found", "The published curriculum unit was not found.", nil)
+	dependencies, err := db.GetUnitDependencies(application.database, input.UnitID)
+	if err != nil {
+		return internalFailure[unit]("get unit relationships", err)
+	}
+	return ok(unitRepresentation(*model, dependencies))
 }

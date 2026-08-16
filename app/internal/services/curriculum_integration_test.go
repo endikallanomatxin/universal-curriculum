@@ -1,12 +1,54 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"testing"
 
 	"universal-curriculum/internal/db"
 	"universal-curriculum/internal/models"
 )
+
+func TestCurrentProposalRebaseDoesNotLoadCurriculumGraph(t *testing.T) {
+	database := openPostgresIntegrationDatabase(t, "current_proposal_rebase")
+	var authorID int64
+	if err := database.QueryRow(`
+		INSERT INTO users (full_name, is_admin) VALUES ('Curriculum Editor', TRUE) RETURNING id
+	`).Scan(&authorID); err != nil {
+		t.Fatal(err)
+	}
+
+	accepted, err := CreateCurriculumProposal(database, authorID, "Published foundations", "Establish the current curriculum version.")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := CreateCurriculumUnit(database, authorID, accepted.ID, "Foundations", "Teach the foundations."); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := submitAndAcceptCurriculumProposal(database, authorID, accepted.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	current, err := CreateCurriculumProposal(database, authorID, "Current draft", "Remain based on the current curriculum version.")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.Exec(`ALTER TABLE units RENAME COLUMN content TO unavailable_content`); err != nil {
+		t.Fatal(err)
+	}
+
+	plan, err := PlanCurriculumProposalRebase(context.Background(), database, current)
+	if err != nil || plan == nil || plan.Status != ProposalRebaseCurrent {
+		t.Fatalf("plan current proposal rebase = %#v, err=%v", plan, err)
+	}
+	plan, err = TryAutoRebaseCurriculumProposal(database, current.ID)
+	if err != nil || plan == nil || plan.Status != ProposalRebaseCurrent {
+		t.Fatalf("auto-rebase current proposal = %#v, err=%v", plan, err)
+	}
+	if err := ResolveCurriculumProposalRebase(database, authorID, current.ID, nil); err != nil {
+		t.Fatalf("resolve current proposal rebase: %v", err)
+	}
+}
 
 func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	database := openPostgresIntegrationDatabase(t, "curriculum")
@@ -79,7 +121,7 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 		t.Fatalf("cycle between proposed units error = %v, want %v", err, ErrDependencyCycle)
 	}
 	// Draft changes do not mutate the published projection.
-	graph, err := db.GetCurriculumGraph(database)
+	graph, err := db.GetCurriculumGraphWithContent(database)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,6 +132,14 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	// Publish the unit creations first: later proposals can refer to their stable IDs.
 	if _, err := submitAndAcceptCurriculumProposal(database, authorID, proposal.ID); err != nil {
 		t.Fatal(err)
+	}
+	overview, err := db.GetCurriculumGraph(database)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(overview.Units) != 2 || overview.Units[0].Content != "" || overview.Units[1].Content != "" ||
+		!overview.Units[0].CreatedAt.IsZero() || !overview.Units[1].UpdatedAt.IsZero() || len(overview.Dependencies) != 1 {
+		t.Fatalf("lightweight curriculum graph = %#v", overview)
 	}
 	learningPath, err := CreateLearningPath(
 		database, authorID, "Algebra goal", []int64{algebra.ID},
@@ -210,12 +260,15 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if _, err := submitAndAcceptCurriculumProposal(database, authorID, proposal.ID); err != nil {
 		t.Fatal(err)
 	}
+	if plan, err := TryAutoRebaseCurriculumProposal(database, staleProposal.ID); err != nil || plan.Status != ProposalRebaseCurrent {
+		t.Fatalf("lazy automatic rebase = %#v err=%v", plan, err)
+	}
 	automaticallyRebased, err := db.GetCurriculumProposal(database, staleProposal.ID)
 	if err != nil || automaticallyRebased == nil ||
 		automaticallyRebased.BaseProposalID == nil || *automaticallyRebased.BaseProposalID != proposal.ID {
 		t.Fatalf("disjoint proposal was not automatically rebased: proposal=%#v err=%v", automaticallyRebased, err)
 	}
-	rebasePlan, err := PlanCurriculumProposalRebase(database, conflictingProposal)
+	rebasePlan, err := PlanCurriculumProposalRebase(context.Background(), database, conflictingProposal)
 	if err != nil || !rebasePlan.NeedsReview() || len(rebasePlan.Conflicts) != 2 {
 		t.Fatalf("overlapping proposal rebase plan = %#v, err=%v", rebasePlan, err)
 	}
@@ -269,7 +322,7 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if _, err := submitAndAcceptCurriculumProposal(database, authorID, staleProposal.ID); err != nil {
 		t.Fatalf("publish automatically rebased proposal: %v", err)
 	}
-	graph, err = db.GetCurriculumGraph(database)
+	graph, err = db.GetCurriculumGraphWithContent(database)
 	if err != nil {
 		t.Fatal(err)
 	}

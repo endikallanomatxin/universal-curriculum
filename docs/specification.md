@@ -291,8 +291,10 @@ Starting a proposal freezes its base curriculum. Its changes remain isolated
 until accepted.
 
 If the published curriculum changes meanwhile, the platform identifies
-conflicts. Draft proposals whose affected units do not overlap the newly
-accepted work are automatically rebased onto the resulting curriculum. A
+conflicts. A draft is checked when its author next opens or modifies it rather
+than as part of accepting unrelated work. Draft proposals whose affected units
+do not overlap the newly accepted work are automatically rebased onto the
+resulting curriculum before their next mutation or submission. A
 change to a unit, either end of one of its dependencies, or one of its
 recognition relationships counts as affecting that unit. If both lines of work
 affect a unit, the draft remains on its frozen base until its author reviews the

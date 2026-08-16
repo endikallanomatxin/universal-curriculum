@@ -34,8 +34,11 @@ draft can refer to it normally.
 
 Submission freezes every change in the proposal for administrator review.
 Acceptance applies every change atomically. It succeeds only when the
-proposal's base is still the current accepted proposal. The projection
-is rebuilt by following that proposal lineage inside the same transaction.
+proposal's base is still the current accepted proposal. The normal publication
+path applies only that proposal's canonical changes to the current materialized
+projection and advances its head in the same transaction. Full lineage replay
+remains available as a recovery and verification operation, not as part of
+ordinary acceptance.
 Recognition changes also materialize the progress they grant from the evidence
 that predates the proposal before the transaction commits.
 PostgreSQL also enforces that proposal bases are accepted, that publication
@@ -60,17 +63,19 @@ name, content and outgoing-dependency changes that the deletion supersedes.
 
 ## Rebasing drafts
 
-After a proposal is accepted, every other draft is considered independently.
-The system follows the accepted lineage from the draft's frozen base to the new
-head and calculates the unit footprint of both lines of work. Unit changes touch
+Acceptance does not scan or mutate other drafts. A stale draft is identified
+cheaply by comparing its frozen base with the current projection head. Only
+when that draft is opened for inspection or used again does the system follow
+the accepted lineage to the new head and calculate the unit footprint of both
+lines of work. Unit changes touch
 their unit, dependency changes touch both endpoints, and recognitions touch all
 sources and targets.
 
 If the footprints are disjoint and replaying the complete draft over the new
-head passes publication validation, its base is advanced automatically in a
-separate transaction. A failure to inspect or rebase one draft never rolls back
-the proposal that was already accepted. The same automatic check runs before a
-later edit or publication as recovery from an interrupted maintenance pass.
+head passes publication validation, its base is advanced automatically before
+the next mutation or publication. Proposal lists report current or outdated
+state without calculating a complete plan for every draft; the full plan is
+loaded only for the opened draft.
 
 An overlapping draft remains unchanged on its historical base. Its workspace
 shows the accepted proposals responsible for each overlap and asks the author
@@ -97,6 +102,42 @@ without replacing the workspace or moving focus. Status, author and change
 count precede the rationale as a compact vertical definition list. Submission
 and deletion are terminal draft actions and therefore remain at the end of the
 full proposal workspace rather than alongside frequently edited metadata.
+
+The workspace builds navigation, proposal previews and graph diffs from unit
+summaries and dependencies. Unit Markdown is loaded only when its document is
+opened. Current content comes from the published projection; proposal content
+is resolved over its frozen base; and historical content follows the accepted
+lineage while replaying only changes for the requested unit. A content update
+loads that same focused base unit to produce its previous-content diff.
+
+Dependency and recognition pickers do not embed the curriculum catalog in the
+workspace HTML. Debounced HTMX searches return at most 20 name matches. Searches
+against the current projection are evaluated in PostgreSQL over the draft's
+effective names and membership, including creations, renames and deletions.
+Recognition sources search the frozen base instead, while dependency candidates
+and recognition targets search the proposal's resulting curriculum. Historical
+bases retain the same semantics by searching their reconstructed lightweight
+structure.
+
+## Concurrency
+
+Draft mutations lock the published projection state for shared access and then
+lock their own proposal row for exclusive access. This lets different drafts be
+edited concurrently, serializes read-modify-write operations on the same draft,
+and keeps validation against the published projection stable until the mutation
+commits. Readiness checks and automatic rebases run inside that same transaction.
+
+Accepting a proposal takes the projection lock exclusively before locking the
+proposal row and incrementally applying its changes. All workflows that need both locks
+must preserve this projection-then-proposal order. Rebase planning is a read-only
+repeatable-read snapshot and takes neither lock, so rendering proposal state does
+not wait for draft mutations or publication. Web, REST and MCP adapters pass
+their request context through this planning read, and every query in the snapshot
+uses that context so abandoned requests cancel work in PostgreSQL.
+
+The application database pool is deliberately bounded. The health endpoint
+also reports open, in-use and cumulative waiting connection counts in response
+headers so saturation can be observed without adding work to curriculum paths.
 
 ## Accepted and rejected proposals
 

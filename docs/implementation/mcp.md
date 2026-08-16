@@ -69,7 +69,8 @@ The read-only resources are:
 
 - `curriculum://about`, a compact explanation of the platform and workflows;
 - `curriculum://documentation/{slug}`, canonical guidance shared with the web;
-- `curriculum://published`, the current published graph as JSON; and
+- `curriculum://published`, current unit summaries and dependencies as JSON;
+  unit content is intentionally omitted; and
 - `curriculum://units/{unit_id}`, one unit and its immediate relationships.
 
 Parameterized reads and actions are tools. The current conceptual groups are:

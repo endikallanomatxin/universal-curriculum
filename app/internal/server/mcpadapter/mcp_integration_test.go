@@ -60,6 +60,40 @@ func TestMCPAgentWorkflowWithPostgreSQL(t *testing.T) {
 	if !curriculumResult.OK || curriculumResult.Data == nil || len(curriculumResult.Data.Units) != 2 {
 		t.Fatalf("curriculum result = %#v", curriculumResult)
 	}
+	searchResult := callIntegrationTool[searchUnitsOutput](t, learnerSession, "search_units", map[string]any{
+		"query": "build on the foundations",
+	})
+	if !searchResult.OK || searchResult.Data == nil || len(searchResult.Data.Units) != 1 || searchResult.Data.Units[0].ID != advanced.ID {
+		t.Fatalf("content search result = %#v", searchResult)
+	}
+	publishedResource, err := learnerSession.ReadResource(context.Background(), &mcp.ReadResourceParams{URI: "curriculum://published"})
+	if err != nil || len(publishedResource.Contents) != 1 {
+		t.Fatalf("published curriculum resource = %#v, %v", publishedResource, err)
+	}
+	var publishedDocument struct {
+		Units []map[string]any `json:"units"`
+	}
+	if err := json.Unmarshal([]byte(publishedResource.Contents[0].Text), &publishedDocument); err != nil {
+		t.Fatal(err)
+	}
+	for _, summary := range publishedDocument.Units {
+		if _, present := summary["content"]; present {
+			t.Fatalf("published curriculum resource exposed unit content: %#v", summary)
+		}
+	}
+	advancedResource, err := learnerSession.ReadResource(context.Background(), &mcp.ReadResourceParams{
+		URI: fmt.Sprintf("curriculum://units/%d", advanced.ID),
+	})
+	if err != nil || len(advancedResource.Contents) != 1 {
+		t.Fatalf("unit resource = %#v, %v", advancedResource, err)
+	}
+	var advancedDocument unit
+	if err := json.Unmarshal([]byte(advancedResource.Contents[0].Text), &advancedDocument); err != nil {
+		t.Fatal(err)
+	}
+	if advancedDocument.Content != "Build on the foundations." || len(advancedDocument.PrerequisiteIDs) != 1 || advancedDocument.PrerequisiteIDs[0] != foundation.ID {
+		t.Fatalf("unit resource detail = %#v", advancedDocument)
+	}
 	pathResult := callIntegrationTool[learningPath](t, learnerSession, "create_learning_path", map[string]any{
 		"name": "Agent path", "target_unit_ids": []int64{advanced.ID},
 	})
@@ -144,6 +178,14 @@ func TestMCPAgentWorkflowWithPostgreSQL(t *testing.T) {
 	if !dependencyResult.OK || !dependencyResult.Data.Present {
 		t.Fatalf("dependency result = %#v", dependencyResult)
 	}
+	updatedWithDependency := callIntegrationTool[unit](t, adminSession, "update_proposal_unit", map[string]any{
+		"proposal_id": proposalID, "unit_id": createdUnitID,
+		"name": "Final applied topic", "content": "Apply the final topic with its prerequisite.",
+	})
+	if !updatedWithDependency.OK || len(updatedWithDependency.Data.PrerequisiteIDs) != 1 ||
+		updatedWithDependency.Data.PrerequisiteIDs[0] != advanced.ID {
+		t.Fatalf("focused proposal unit dependencies = %#v", updatedWithDependency)
+	}
 	// The convergent dependency action is safe to retry.
 	dependencyResult = callIntegrationTool[dependencyState](t, adminSession, "set_proposal_dependency", map[string]any{
 		"proposal_id": proposalID, "unit_id": createdUnitID, "prerequisite_id": advanced.ID, "present": true,
@@ -200,7 +242,7 @@ func TestMCPAgentWorkflowWithPostgreSQL(t *testing.T) {
 		t.Fatalf("acceptance result = %#v", published)
 	}
 	readCreated := callIntegrationTool[unit](t, adminSession, "get_unit", map[string]any{"unit_id": createdUnitID})
-	if !readCreated.OK || readCreated.Data.Name != "Final applied topic" || readCreated.Data.Content != "Apply the final topic." {
+	if !readCreated.OK || readCreated.Data.Name != "Final applied topic" || readCreated.Data.Content != "Apply the final topic with its prerequisite." {
 		t.Fatalf("published unit = %#v", readCreated)
 	}
 }

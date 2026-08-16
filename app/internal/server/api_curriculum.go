@@ -47,11 +47,11 @@ func (server *Server) apiGetCurriculum(writer http.ResponseWriter, request *http
 		writeAPIInternalError(writer)
 		return
 	}
-	units, dependencies := apiCurriculumResources(graph)
+	units, dependencies := apiCurriculumOverviewResources(graph)
 	writeAPIJSON(writer, http.StatusOK, struct {
-		ProposalID   *int64          `json:"proposal_id"`
-		Units        []apiUnit       `json:"units"`
-		Dependencies []apiDependency `json:"dependencies"`
+		ProposalID   *int64           `json:"proposal_id"`
+		Units        []apiUnitSummary `json:"units"`
+		Dependencies []apiDependency  `json:"dependencies"`
 	}{proposalID, units, dependencies})
 }
 
@@ -70,26 +70,15 @@ func (server *Server) apiListUnits(writer http.ResponseWriter, request *http.Req
 		writeAPIError(writer, http.StatusBadRequest, "invalid_query", "query must not exceed 200 characters", nil)
 		return
 	}
-	graph, err := db.GetCurriculumGraph(server.Database)
+	units, total, err := db.SearchCurriculumUnits(server.Database, query, limit, offset)
 	if err != nil {
 		log.Printf("API list units: %v", err)
 		writeAPIInternalError(writer)
 		return
 	}
-	query = strings.ToLower(query)
-	units := make([]apiUnitSummary, 0, len(graph.Units))
-	for _, unit := range graph.Units {
-		if query != "" && !strings.Contains(strings.ToLower(unit.Name), query) &&
-			!strings.Contains(strings.ToLower(unit.Content), query) {
-			continue
-		}
-		units = append(units, apiUnitSummary{ID: unit.ID, Name: unit.Name, Retired: unit.Retired})
-	}
-	total := len(units)
-	pageUnits := make([]apiUnitSummary, 0)
-	if offset < total {
-		end := min(offset+limit, total)
-		pageUnits = units[offset:end]
+	pageUnits := make([]apiUnitSummary, 0, len(units))
+	for _, unit := range units {
+		pageUnits = append(pageUnits, apiUnitSummary{ID: unit.ID, Name: unit.Name, Retired: unit.Retired})
 	}
 	writeAPIJSON(writer, http.StatusOK, struct {
 		Units []apiUnitSummary `json:"units"`
@@ -107,20 +96,23 @@ func (server *Server) apiGetUnit(writer http.ResponseWriter, request *http.Reque
 		writeAPIError(writer, http.StatusBadRequest, "invalid_id", "unitId must be a positive integer.", nil)
 		return
 	}
-	graph, err := db.GetCurriculumGraph(server.Database)
+	unit, err := db.GetUnit(server.Database, unitID)
 	if err != nil {
 		log.Printf("API get unit: %v", err)
 		writeAPIInternalError(writer)
 		return
 	}
-	units, _ := apiCurriculumResources(graph)
-	for _, unit := range units {
-		if unit.ID == unitID {
-			writeAPIJSON(writer, http.StatusOK, unit)
-			return
-		}
+	if unit == nil {
+		writeAPIError(writer, http.StatusNotFound, "unit_not_found", "The curriculum unit was not found.", nil)
+		return
 	}
-	writeAPIError(writer, http.StatusNotFound, "unit_not_found", "The curriculum unit was not found.", nil)
+	dependencies, err := db.GetUnitDependencies(server.Database, unitID)
+	if err != nil {
+		log.Printf("API get unit relationships: %v", err)
+		writeAPIInternalError(writer)
+		return
+	}
+	writeAPIJSON(writer, http.StatusOK, apiUnitResource(*unit, dependencies))
 }
 
 func (server *Server) apiListAcceptedProposals(writer http.ResponseWriter, request *http.Request) {
@@ -172,28 +164,33 @@ func (server *Server) apiGetAcceptedProposal(writer http.ResponseWriter, request
 	writeAPIJSON(writer, http.StatusOK, newAPIProposal(*proposal, true))
 }
 
-func apiCurriculumResources(graph *models.CurriculumGraph) ([]apiUnit, []apiDependency) {
-	units := make([]apiUnit, 0, len(graph.Units))
-	indexes := make(map[int64]int, len(graph.Units))
+func apiCurriculumOverviewResources(graph *models.CurriculumGraph) ([]apiUnitSummary, []apiDependency) {
+	units := make([]apiUnitSummary, 0, len(graph.Units))
 	for _, unit := range graph.Units {
-		indexes[unit.ID] = len(units)
-		units = append(units, apiUnit{
-			apiUnitSummary: apiUnitSummary{ID: unit.ID, Name: unit.Name, Retired: unit.Retired},
-			Content:        unit.Content, PrerequisiteIDs: []int64{}, DependentIDs: []int64{},
-			CreatedAt: unit.CreatedAt, UpdatedAt: unit.UpdatedAt,
-		})
+		units = append(units, apiUnitSummary{ID: unit.ID, Name: unit.Name, Retired: unit.Retired})
 	}
 	dependencies := make([]apiDependency, 0, len(graph.Dependencies))
 	for _, dependency := range graph.Dependencies {
 		dependencies = append(dependencies, apiDependency{
 			UnitID: dependency.UnitID, PrerequisiteID: dependency.PrerequisiteID,
 		})
-		if index, ok := indexes[dependency.UnitID]; ok {
-			units[index].PrerequisiteIDs = append(units[index].PrerequisiteIDs, dependency.PrerequisiteID)
-		}
-		if index, ok := indexes[dependency.PrerequisiteID]; ok {
-			units[index].DependentIDs = append(units[index].DependentIDs, dependency.UnitID)
-		}
 	}
 	return units, dependencies
+}
+
+func apiUnitResource(unit models.Unit, dependencies []models.UnitDependency) apiUnit {
+	result := apiUnit{
+		apiUnitSummary: apiUnitSummary{ID: unit.ID, Name: unit.Name, Retired: unit.Retired},
+		Content:        unit.Content, PrerequisiteIDs: []int64{}, DependentIDs: []int64{},
+		CreatedAt: unit.CreatedAt, UpdatedAt: unit.UpdatedAt,
+	}
+	for _, relationship := range dependencies {
+		if relationship.UnitID == unit.ID {
+			result.PrerequisiteIDs = append(result.PrerequisiteIDs, relationship.PrerequisiteID)
+		}
+		if relationship.PrerequisiteID == unit.ID {
+			result.DependentIDs = append(result.DependentIDs, relationship.UnitID)
+		}
+	}
+	return result
 }
