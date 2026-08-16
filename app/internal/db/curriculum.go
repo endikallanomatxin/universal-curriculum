@@ -154,7 +154,8 @@ func SearchCurriculumUnits(
 	rows, err := q.Query(`
 		SELECT id, name, count(*) OVER ()
 		FROM units
-		WHERE $1 = '' OR strpos(lower(name), lower($1)) > 0 OR strpos(lower(content), lower($1)) > 0
+		WHERE $1 = '' OR lower(name) LIKE '%' || lower($1) || '%'
+		              OR lower(content) LIKE '%' || lower($1) || '%'
 		ORDER BY lower(name), id
 		LIMIT $2 OFFSET $3
 	`, query, limit, offset)
@@ -181,7 +182,8 @@ func SearchCurriculumUnits(
 		if err := q.QueryRow(`
 			SELECT count(*)
 			FROM units
-			WHERE $1 = '' OR strpos(lower(name), lower($1)) > 0 OR strpos(lower(content), lower($1)) > 0
+			WHERE $1 = '' OR lower(name) LIKE '%' || lower($1) || '%'
+			              OR lower(content) LIKE '%' || lower($1) || '%'
 		`, query).Scan(&total); err != nil {
 			return nil, 0, fmt.Errorf("count matching curriculum units: %w", err)
 		}
@@ -195,7 +197,7 @@ func SearchCurriculumUnitNames(
 	return searchCurriculumUnitNames(ctx, q, `
 		SELECT id, name
 		FROM units
-		WHERE strpos(lower(name), lower($1)) > 0
+		WHERE lower(name) LIKE '%' || lower($1) || '%'
 		ORDER BY lower(name), id
 		LIMIT $2
 	`, query, limit)
