@@ -159,10 +159,3 @@ func SearchCurriculumUnits(
 	}
 	return units, total, nil
 }
-
-func LockCurriculumGraph(tx *sql.Tx) error {
-	if _, err := tx.Exec(`SELECT pg_advisory_xact_lock(781924613)`); err != nil {
-		return fmt.Errorf("lock curriculum graph: %w", err)
-	}
-	return nil
-}

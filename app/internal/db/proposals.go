@@ -11,14 +11,25 @@ import (
 )
 
 func LockCurrentCurriculumProposal(q curriculumExecutor) (*int64, error) {
+	return currentCurriculumProposalID(q, "FOR UPDATE", "lock curriculum projection")
+}
+
+func LockCurrentCurriculumProposalShared(q curriculumExecutor) (*int64, error) {
+	return currentCurriculumProposalID(q, "FOR SHARE", "share curriculum projection")
+}
+
+func GetCurrentCurriculumProposalID(q curriculumExecutor) (*int64, error) {
+	return currentCurriculumProposalID(q, "", "get curriculum projection")
+}
+
+func currentCurriculumProposalID(q curriculumExecutor, lock, operation string) (*int64, error) {
 	var proposalID sql.NullInt64
 	if err := q.QueryRow(`
 		SELECT proposal_id
 		FROM curriculum_projection_state
 		WHERE singleton = TRUE
-		FOR UPDATE
-	`).Scan(&proposalID); err != nil {
-		return nil, fmt.Errorf("lock curriculum projection: %w", err)
+	` + lock).Scan(&proposalID); err != nil {
+		return nil, fmt.Errorf("%s: %w", operation, err)
 	}
 	if !proposalID.Valid {
 		return nil, nil
@@ -26,19 +37,21 @@ func LockCurrentCurriculumProposal(q curriculumExecutor) (*int64, error) {
 	return &proposalID.Int64, nil
 }
 
-func GetCurrentCurriculumProposalID(q curriculumExecutor) (*int64, error) {
-	var proposalID sql.NullInt64
-	if err := q.QueryRow(`
-		SELECT proposal_id
-		FROM curriculum_projection_state
-		WHERE singleton = TRUE
-	`).Scan(&proposalID); err != nil {
-		return nil, fmt.Errorf("get curriculum projection: %w", err)
+func LockCurriculumProposal(q curriculumExecutor, proposalID int64) (bool, error) {
+	var id int64
+	err := q.QueryRow(`
+		SELECT id
+		FROM curriculum_proposals
+		WHERE id = $1
+		FOR UPDATE
+	`, proposalID).Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
 	}
-	if !proposalID.Valid {
-		return nil, nil
+	if err != nil {
+		return false, fmt.Errorf("lock curriculum proposal: %w", err)
 	}
-	return &proposalID.Int64, nil
+	return true, nil
 }
 
 func CreateDraftCurriculumProposal(q curriculumExecutor, proposal *models.CurriculumProposal) error {

@@ -11,47 +11,17 @@ func SubmitCurriculumProposal(
 	database *sql.DB,
 	authorID, proposalID int64,
 ) error {
-	tx, err := beginCurriculumProposal(database)
+	tx, proposal, err := beginDraftMutation(database, authorID, proposalID)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
-	proposal, err := db.GetCurriculumProposal(tx, proposalID)
-	if err != nil {
-		return err
-	}
-	if proposal == nil || proposal.Status != "draft" || !proposal.HasAuthor(authorID) {
-		return ErrProposalNotFound
-	}
 	if len(proposal.Changes) == 0 {
 		return ErrProposalEmpty
-	}
-	currentProposalID, err := db.LockCurrentCurriculumProposal(tx)
-	if err != nil {
-		return err
 	}
 	graph, err := db.GetCurriculumGraphWithContent(tx)
 	if err != nil {
 		return err
-	}
-	if !sameOptionalID(proposal.BaseProposalID, currentProposalID) {
-		plan, err := planCurriculumProposalRebase(tx, proposal, currentProposalID, graph)
-		if err != nil {
-			return err
-		}
-		if plan.Status != ProposalRebaseAutomatic {
-			return ErrProposalRebaseRequired
-		}
-		updated, err := db.SetDraftCurriculumProposalBase(
-			tx, proposal.ID, proposal.BaseProposalID, currentProposalID,
-		)
-		if err != nil {
-			return err
-		}
-		if !updated {
-			return ErrProposalOutdated
-		}
-		proposal.BaseProposalID = currentProposalID
 	}
 	if err := validateCurriculumProposal(graph, proposal); err != nil {
 		return err
@@ -73,16 +43,23 @@ func AcceptCurriculumProposal(database *sql.DB, proposalID int64) (CurriculumPro
 		return summary, err
 	}
 	defer tx.Rollback()
+	currentProposalID, err := db.LockCurrentCurriculumProposal(tx)
+	if err != nil {
+		return summary, err
+	}
+	locked, err := db.LockCurriculumProposal(tx, proposalID)
+	if err != nil {
+		return summary, err
+	}
+	if !locked {
+		return summary, ErrProposalNotFound
+	}
 	proposal, err := db.GetCurriculumProposal(tx, proposalID)
 	if err != nil {
 		return summary, err
 	}
 	if proposal == nil || proposal.Status != "submitted" {
 		return summary, ErrProposalNotFound
-	}
-	currentProposalID, err := db.LockCurrentCurriculumProposal(tx)
-	if err != nil {
-		return summary, err
 	}
 	if !sameOptionalID(proposal.BaseProposalID, currentProposalID) {
 		return summary, ErrProposalOutdated
@@ -117,12 +94,24 @@ func AcceptCurriculumProposal(database *sql.DB, proposalID int64) (CurriculumPro
 }
 
 func RejectCurriculumProposal(database *sql.DB, proposalID int64) error {
-	ok, err := db.RejectSubmittedCurriculumProposal(database, proposalID)
+	tx, err := beginCurriculumProposal(database)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	locked, err := db.LockCurriculumProposal(tx, proposalID)
+	if err != nil {
+		return err
+	}
+	if !locked {
+		return ErrProposalNotFound
+	}
+	ok, err := db.RejectSubmittedCurriculumProposal(tx, proposalID)
 	if err != nil {
 		return err
 	}
 	if !ok {
 		return ErrProposalNotFound
 	}
-	return nil
+	return tx.Commit()
 }

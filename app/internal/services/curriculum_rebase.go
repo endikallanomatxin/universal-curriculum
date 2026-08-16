@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -97,7 +98,10 @@ func PlanCurriculumProposalRebase(
 	if proposal == nil {
 		return nil, ErrProposalNotFound
 	}
-	tx, err := beginCurriculumProposal(database)
+	tx, err := database.BeginTx(context.Background(), &sql.TxOptions{
+		Isolation: sql.LevelRepeatableRead,
+		ReadOnly:  true,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +114,7 @@ func PlanCurriculumProposalRebase(
 		return nil, ErrProposalNotFound
 	}
 	proposal = storedProposal
-	currentProposalID, err := db.LockCurrentCurriculumProposal(tx)
+	currentProposalID, err := db.GetCurrentCurriculumProposalID(tx)
 	if err != nil {
 		return nil, err
 	}
@@ -302,41 +306,27 @@ func ResolveCurriculumProposalRebase(
 	return commitCurriculumProposalRebase(tx)
 }
 
-func EnsureCurriculumProposalReady(
-	database *sql.DB,
-	authorID, proposalID int64,
-) error {
-	proposal, err := db.GetCurriculumProposal(database, proposalID)
-	if err != nil {
-		return err
-	}
-	if proposal == nil || !proposal.HasAuthor(authorID) || proposal.Status != "draft" {
-		return ErrProposalNotFound
-	}
-	plan, err := TryAutoRebaseCurriculumProposal(database, proposalID)
-	if err != nil {
-		return err
-	}
-	if plan.NeedsReview() {
-		return ErrProposalRebaseRequired
-	}
-	return nil
-}
-
 func loadProposalRebaseState(
 	tx *sql.Tx,
 	proposalID int64,
 ) (*models.CurriculumProposal, *int64, error) {
+	currentProposalID, err := db.LockCurrentCurriculumProposalShared(tx)
+	if err != nil {
+		return nil, nil, err
+	}
+	locked, err := db.LockCurriculumProposal(tx, proposalID)
+	if err != nil {
+		return nil, nil, err
+	}
+	if !locked {
+		return nil, nil, ErrProposalNotFound
+	}
 	proposal, err := db.GetCurriculumProposal(tx, proposalID)
 	if err != nil {
 		return nil, nil, err
 	}
 	if proposal == nil || proposal.Status != "draft" {
 		return nil, nil, ErrProposalNotFound
-	}
-	currentProposalID, err := db.LockCurrentCurriculumProposal(tx)
-	if err != nil {
-		return nil, nil, err
 	}
 	return proposal, currentProposalID, nil
 }

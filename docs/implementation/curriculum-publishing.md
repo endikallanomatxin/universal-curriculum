@@ -98,6 +98,20 @@ count precede the rationale as a compact vertical definition list. Submission
 and deletion are terminal draft actions and therefore remain at the end of the
 full proposal workspace rather than alongside frequently edited metadata.
 
+## Concurrency
+
+Draft mutations lock the published projection state for shared access and then
+lock their own proposal row for exclusive access. This lets different drafts be
+edited concurrently, serializes read-modify-write operations on the same draft,
+and keeps validation against the published projection stable until the mutation
+commits. Readiness checks and automatic rebases run inside that same transaction.
+
+Accepting a proposal takes the projection lock exclusively before locking the
+proposal row and rebuilding the projection. All workflows that need both locks
+must preserve this projection-then-proposal order. Rebase planning is a read-only
+repeatable-read snapshot and takes neither lock, so rendering proposal state does
+not wait for draft mutations or publication.
+
 ## Accepted and rejected proposals
 
 Submitted, accepted and rejected proposals and their changes are permanently
