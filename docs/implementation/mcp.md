@@ -34,6 +34,7 @@ workflow:
 
 - before designing or modifying curriculum, call `get_authoring_guidance` and
   apply the canonical documents it returns;
+- write proposal metadata, unit names and canonical unit content in English;
 - search existing units and factor shared knowledge before creating or
   substantially explaining a concept;
 - produce focused, reusable units whose learner-facing content is nevertheless

@@ -18,7 +18,7 @@ import (
 	"universal-curriculum/internal/server/appinfo"
 )
 
-const instructions = `Universal Curriculum is a shared, dependency-aware curriculum. Before designing or modifying curriculum, call get_authoring_guidance and apply the returned canonical guidance. Search the published curriculum before creating a unit or teaching substantial prerequisite knowledge. Units are focused, reusable concepts with final learner-facing content complete given their genuine prerequisites; review every changed unit from that learner perspective before submission.
+const instructions = `Universal Curriculum is a shared, dependency-aware curriculum with a canonical English source. Write proposal titles and rationales, unit names, and unit content in English. Before designing or modifying curriculum, call get_authoring_guidance and apply the returned canonical guidance. Search the published curriculum before creating a unit or teaching substantial prerequisite knowledge. Units are focused, reusable concepts with final learner-facing content complete given their genuine prerequisites; review every changed unit from that learner perspective before submission.
 
 Curriculum changes happen only through proposals. Inspect rebase state before changing a stale proposal. Never submit merely because a user asked to edit or prepare a proposal: submit only after an explicit request and confirmation. For learning guidance, use get_recommendations rather than inferring what to study next; recorded progress is authoritative. Server-side permissions always apply.`
 

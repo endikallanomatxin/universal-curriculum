@@ -3,7 +3,8 @@
 Unit content is the final material a learner studies, not an outline, syllabus,
 summary of outcomes, author note, or description of what someone else should
 teach. Write a complete microlesson for a learner who has mastered exactly the
-unit's prerequisites.
+unit's prerequisites. Write canonical curriculum content in English;
+translations are maintained separately.
 
 Teach the concept directly. Give the intuition needed to understand it and the
 formalism appropriate to the subject. Explain every new term, symbol, and piece

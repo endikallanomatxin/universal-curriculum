@@ -12,7 +12,7 @@ func TestCatalogLoadsCanonicalDocumentation(t *testing.T) {
 	}
 	writing, ok := Find("writing-content")
 	if !ok || !containsAll(writing.Content,
-		"final material a learner studies", "worked example",
+		"final material a learner studies", "canonical curriculum content in English", "worked example",
 		"Factor knowledge for reuse", "Review every created or modified unit",
 		"complement rather than replace", "$...$", "$$...$$",
 	) {
@@ -20,11 +20,15 @@ func TestCatalogLoadsCanonicalDocumentation(t *testing.T) {
 	}
 	units, unitsOK := Find("curriculum-units")
 	dependencies, dependenciesOK := Find("dependencies")
-	if !unitsOK || !containsAll(units.Content, "self-contained microlesson", "overlapping alternative", "one shared unit") {
+	if !unitsOK || !containsAll(units.Content, "self-contained microlesson", "canonical name and content in English", "overlapping alternative", "one shared unit") {
 		t.Fatalf("curriculum unit documentation = %#v", units)
 	}
 	if !dependenciesOK || !containsAll(dependencies.Content, "actual conceptual prerequisite", "explicit unit and dependency", "one shared prerequisite") {
 		t.Fatalf("dependency documentation = %#v", dependencies)
+	}
+	proposals, proposalsOK := Find("proposals")
+	if !proposalsOK || !containsAll(proposals.Content, "proposal titles and rationales in English", "canonical curriculum source") {
+		t.Fatalf("proposal documentation = %#v", proposals)
 	}
 	if index := Index(); !strings.Contains(index, "curriculum://documentation/writing-content") {
 		t.Fatalf("documentation index = %q", index)

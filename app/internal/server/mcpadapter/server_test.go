@@ -27,6 +27,7 @@ func TestDiscoveryAdvertisesAgentGuidanceResourcesAndTools(t *testing.T) {
 	}
 	for _, fragment := range []string{
 		"call get_authoring_guidance", "returned canonical guidance",
+		"canonical English source", "titles and rationales, unit names, and unit content in English",
 		"Search the published curriculum", "final learner-facing content",
 		"review every changed unit", "get_recommendations", "recorded progress",
 		"Never submit", "explicit request and confirmation",
@@ -134,19 +135,24 @@ func TestDiscoveryAdvertisesAgentGuidanceResourcesAndTools(t *testing.T) {
 	assertSchemaContains(t, byName["create_learning_path"].InputSchema,
 		`"maxLength":200`, `"minItems":1`, `"uniqueItems":true`)
 	assertSchemaContains(t, byName["create_proposal"].InputSchema,
-		`"maxLength":200`, `"maxLength":1000`)
+		`title in English`, `In English`, `"maxLength":200`, `"maxLength":1000`)
 	assertSchemaContains(t, byName["create_proposal_unit"].InputSchema,
-		`Final learner-facing microlesson`, `rather than an outline`,
+		`unit name in English`, `microlesson in English`, `rather than an outline`,
 		`Supports Markdown and LaTeX`, `$...$`, `$$...$$`)
 	assertSchemaContains(t, byName["update_proposal_unit"].InputSchema,
-		`final learner-facing content`, `not an outline`,
+		`unit name in English`, `replacement in English`, `final learner-facing content`, `not an outline`,
 		`Supports Markdown and LaTeX`, `$...$`, `$$...$$`)
 	for _, name := range []string{"create_proposal_unit", "update_proposal_unit"} {
 		description := byName[name].Description
-		for _, fragment := range []string{"get_authoring_guidance", "final learner-facing", "genuine prerequisites", "outline or teaching plan"} {
+		for _, fragment := range []string{"English", "get_authoring_guidance", "final learner-facing", "genuine prerequisites", "outline or teaching plan"} {
 			if !strings.Contains(description, fragment) {
 				t.Errorf("%s description does not contain %q: %q", name, fragment, description)
 			}
+		}
+	}
+	for _, name := range []string{"create_proposal", "update_proposal"} {
+		if !strings.Contains(byName[name].Description, "English") {
+			t.Errorf("%s description does not require English: %q", name, byName[name].Description)
 		}
 	}
 	if !strings.Contains(byName["update_proposal_unit"].Description, "rather than gaining edit history") {
