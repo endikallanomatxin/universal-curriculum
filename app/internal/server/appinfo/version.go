@@ -1,3 +1,3 @@
 package appinfo
 
-const Release = "0.3.1"
+const Release = "0.3.2"
