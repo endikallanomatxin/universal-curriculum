@@ -91,3 +91,68 @@ func TestSubmittedProposalRequiresAdministratorDecision(t *testing.T) {
 		t.Fatalf("current proposal = %v, want %d", after, proposal.ID)
 	}
 }
+
+func TestAcceptAppliesOnlyPublishedProposalAndLeavesOtherDraftsLazy(t *testing.T) {
+	database := openPostgresIntegrationDatabase(t, "incremental_proposal_acceptance")
+	author, _ := db.CreateLocalUser(database, "Contributor", "incremental@example.com", []byte("hash"))
+
+	base, err := CreateCurriculumProposal(database, author.ID, "Base", "Create the published base.")
+	if err != nil {
+		t.Fatal(err)
+	}
+	unchanged, err := CreateCurriculumUnit(database, author.ID, base.ID, "Unchanged", "Original content")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := SubmitCurriculumProposal(database, author.ID, base.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := AcceptCurriculumProposal(database, base.ID); err != nil {
+		t.Fatal(err)
+	}
+	var unchangedUpdatedAt string
+	if err := database.QueryRow(`SELECT updated_at::TEXT FROM units WHERE id = $1`, unchanged.ID).Scan(&unchangedUpdatedAt); err != nil {
+		t.Fatal(err)
+	}
+
+	staleDraft, err := CreateCurriculumProposal(database, author.ID, "Lazy draft", "Remain stale until it is used.")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := CreateCurriculumUnit(database, author.ID, staleDraft.ID, "Draft unit", "Draft content"); err != nil {
+		t.Fatal(err)
+	}
+
+	next, err := CreateCurriculumProposal(database, author.ID, "Next", "Advance the curriculum independently.")
+	if err != nil {
+		t.Fatal(err)
+	}
+	created, err := CreateCurriculumUnit(database, author.ID, next.ID, "New unit", "New content")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := SubmitCurriculumProposal(database, author.ID, next.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := AcceptCurriculumProposal(database, next.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	var storedUpdatedAt string
+	if err := database.QueryRow(`SELECT updated_at::TEXT FROM units WHERE id = $1`, unchanged.ID).Scan(&storedUpdatedAt); err != nil {
+		t.Fatal(err)
+	}
+	if storedUpdatedAt != unchangedUpdatedAt {
+		t.Fatalf("unchanged unit timestamp changed from %s to %s", unchangedUpdatedAt, storedUpdatedAt)
+	}
+	if unit, err := db.GetUnit(database, created.ID); err != nil || unit == nil || unit.Content != "New content" {
+		t.Fatalf("incrementally projected unit = %#v, err=%v", unit, err)
+	}
+	storedDraft, err := db.GetCurriculumProposal(database, staleDraft.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if storedDraft.BaseProposalID == nil || *storedDraft.BaseProposalID != base.ID {
+		t.Fatalf("draft was eagerly rebased to %#v", storedDraft.BaseProposalID)
+	}
+}

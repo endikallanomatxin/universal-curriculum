@@ -260,6 +260,9 @@ func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	if _, err := submitAndAcceptCurriculumProposal(database, authorID, proposal.ID); err != nil {
 		t.Fatal(err)
 	}
+	if plan, err := TryAutoRebaseCurriculumProposal(database, staleProposal.ID); err != nil || plan.Status != ProposalRebaseCurrent {
+		t.Fatalf("lazy automatic rebase = %#v err=%v", plan, err)
+	}
 	automaticallyRebased, err := db.GetCurriculumProposal(database, staleProposal.ID)
 	if err != nil || automaticallyRebased == nil ||
 		automaticallyRebased.BaseProposalID == nil || *automaticallyRebased.BaseProposalID != proposal.ID {

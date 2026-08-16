@@ -64,13 +64,6 @@ func AcceptCurriculumProposal(database *sql.DB, proposalID int64) (CurriculumPro
 	if !sameOptionalID(proposal.BaseProposalID, currentProposalID) {
 		return summary, ErrProposalOutdated
 	}
-	graph, err := db.GetCurriculumGraphWithContent(tx)
-	if err != nil {
-		return summary, err
-	}
-	if err := validateCurriculumProposal(graph, proposal); err != nil {
-		return summary, err
-	}
 	ok, err := db.AcceptSubmittedCurriculumProposal(tx, proposalID)
 	if err != nil {
 		return summary, err
@@ -84,13 +77,13 @@ func AcceptCurriculumProposal(database *sql.DB, proposalID int64) (CurriculumPro
 	if err := db.MigrateLearningPathTargets(tx, proposalID); err != nil {
 		return summary, err
 	}
-	if err := db.RebuildCurriculumProjection(tx, proposalID); err != nil {
+	if err := db.ApplyCurriculumProposalToProjection(tx, proposalID, proposal.Changes); err != nil {
 		return summary, err
 	}
 	if err := tx.Commit(); err != nil {
 		return summary, fmt.Errorf("commit curriculum proposal publication: %w", err)
 	}
-	return RebaseDraftCurriculumProposals(database), nil
+	return summary, nil
 }
 
 func RejectCurriculumProposal(database *sql.DB, proposalID int64) error {
