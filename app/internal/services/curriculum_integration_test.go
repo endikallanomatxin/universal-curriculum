@@ -8,6 +8,47 @@ import (
 	"universal-curriculum/internal/models"
 )
 
+func TestCurrentProposalRebaseDoesNotLoadCurriculumGraph(t *testing.T) {
+	database := openPostgresIntegrationDatabase(t, "current_proposal_rebase")
+	var authorID int64
+	if err := database.QueryRow(`
+		INSERT INTO users (full_name, is_admin) VALUES ('Curriculum Editor', TRUE) RETURNING id
+	`).Scan(&authorID); err != nil {
+		t.Fatal(err)
+	}
+
+	accepted, err := CreateCurriculumProposal(database, authorID, "Published foundations", "Establish the current curriculum version.")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := CreateCurriculumUnit(database, authorID, accepted.ID, "Foundations", "Teach the foundations."); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := submitAndAcceptCurriculumProposal(database, authorID, accepted.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	current, err := CreateCurriculumProposal(database, authorID, "Current draft", "Remain based on the current curriculum version.")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.Exec(`ALTER TABLE units RENAME COLUMN content TO unavailable_content`); err != nil {
+		t.Fatal(err)
+	}
+
+	plan, err := PlanCurriculumProposalRebase(database, current)
+	if err != nil || plan == nil || plan.Status != ProposalRebaseCurrent {
+		t.Fatalf("plan current proposal rebase = %#v, err=%v", plan, err)
+	}
+	plan, err = TryAutoRebaseCurriculumProposal(database, current.ID)
+	if err != nil || plan == nil || plan.Status != ProposalRebaseCurrent {
+		t.Fatalf("auto-rebase current proposal = %#v, err=%v", plan, err)
+	}
+	if err := ResolveCurriculumProposalRebase(database, authorID, current.ID, nil); err != nil {
+		t.Fatalf("resolve current proposal rebase: %v", err)
+	}
+}
+
 func TestCurriculumProposalCollectsChangesAndPublishesAtomically(t *testing.T) {
 	database := openPostgresIntegrationDatabase(t, "curriculum")
 	var authorID int64
