@@ -187,6 +187,77 @@ func GetCurriculumUnitAtProposal(
 	return unit, nil
 }
 
+func GetCurriculumUnitDependenciesAtProposal(
+	ctx context.Context,
+	q contextualCurriculumExecutor,
+	proposalID, unitID int64,
+) ([]models.UnitDependency, error) {
+	rows, err := q.QueryContext(ctx, `
+		WITH RECURSIVE lineage AS (
+			SELECT id, base_proposal_id, 0 AS depth
+			FROM curriculum_proposals
+			WHERE id = $1 AND status = 'accepted'
+			UNION ALL
+			SELECT proposal.id, proposal.base_proposal_id, lineage.depth + 1
+			FROM curriculum_proposals proposal
+			JOIN lineage ON proposal.id = lineage.base_proposal_id
+			WHERE proposal.status = 'accepted'
+		)
+		SELECT change.kind, change.unit_id, change.prerequisite_id
+		FROM lineage
+		JOIN curriculum_proposal_change_details change ON change.proposal_id = lineage.id
+		WHERE (change.kind IN ('add_dependency', 'remove_dependency')
+		       AND (change.unit_id = $2 OR change.prerequisite_id = $2))
+		   OR change.kind = 'delete_unit'
+		ORDER BY lineage.depth DESC,
+		         CASE change.kind
+		           WHEN 'remove_dependency' THEN 3
+		           WHEN 'add_dependency' THEN 4
+		           WHEN 'delete_unit' THEN 6
+		         END,
+		         change.id
+	`, proposalID, unitID)
+	if err != nil {
+		return nil, fmt.Errorf("load curriculum unit dependency history: %w", err)
+	}
+	defer rows.Close()
+	edges := make(map[[2]int64]bool)
+	for rows.Next() {
+		var kind string
+		var changedUnitID int64
+		var prerequisiteID sql.NullInt64
+		if err := rows.Scan(&kind, &changedUnitID, &prerequisiteID); err != nil {
+			return nil, fmt.Errorf("scan curriculum unit dependency history: %w", err)
+		}
+		switch kind {
+		case "add_dependency":
+			edges[[2]int64{changedUnitID, prerequisiteID.Int64}] = true
+		case "remove_dependency":
+			delete(edges, [2]int64{changedUnitID, prerequisiteID.Int64})
+		case "delete_unit":
+			for edge := range edges {
+				if edge[0] == changedUnitID || edge[1] == changedUnitID {
+					delete(edges, edge)
+				}
+			}
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate curriculum unit dependency history: %w", err)
+	}
+	dependencies := make([]models.UnitDependency, 0, len(edges))
+	for edge := range edges {
+		dependencies = append(dependencies, models.UnitDependency{UnitID: edge[0], PrerequisiteID: edge[1]})
+	}
+	sort.Slice(dependencies, func(i, j int) bool {
+		if dependencies[i].UnitID == dependencies[j].UnitID {
+			return dependencies[i].PrerequisiteID < dependencies[j].PrerequisiteID
+		}
+		return dependencies[i].UnitID < dependencies[j].UnitID
+	})
+	return dependencies, nil
+}
+
 func GetCurriculumGraphAtProposal(
 	ctx context.Context,
 	q contextualCurriculumExecutor,

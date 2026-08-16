@@ -373,28 +373,18 @@ func (application *adapter) proposalUnit(ctx context.Context, proposalID, unitID
 	if model == nil {
 		return failed[unit]("proposal_not_found", "The proposal was not found.", nil)
 	}
-	base, err := services.CurriculumGraphAtProposal(ctx, application.database, model.BaseProposalID)
-	if err != nil {
-		return internalFailure[unit]("load proposal base", err)
-	}
-	workingGraph := services.CurriculumGraphWithProposal(base, model)
 	resolved, _, historical, err := services.CurriculumProposalUnit(ctx, application.database, model, unitID)
 	if err != nil {
 		return internalFailure[unit]("load proposal unit content", err)
 	}
-	if resolved == nil || historical || workingGraph.Unit(unitID) == nil {
+	if resolved == nil || historical {
 		return failed[unit]("unit_not_found", "The proposed unit was not found.", nil)
 	}
-	if structural := workingGraph.Unit(unitID); structural != nil {
-		*structural = *resolved
+	dependencies, err := services.CurriculumProposalUnitDependencies(ctx, application.database, model, unitID)
+	if err != nil {
+		return internalFailure[unit]("load proposal unit dependencies", err)
 	}
-	working := curriculumRepresentation(workingGraph, nil)
-	for _, item := range working.Units {
-		if item.ID == unitID {
-			return ok(item)
-		}
-	}
-	return failed[unit]("unit_not_found", "The proposed unit was not found.", nil)
+	return ok(unitRepresentation(*resolved, dependencies))
 }
 
 func newRebasePlan(model *services.CurriculumProposalRebasePlan) rebasePlan {

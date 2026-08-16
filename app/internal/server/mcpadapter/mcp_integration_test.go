@@ -178,6 +178,14 @@ func TestMCPAgentWorkflowWithPostgreSQL(t *testing.T) {
 	if !dependencyResult.OK || !dependencyResult.Data.Present {
 		t.Fatalf("dependency result = %#v", dependencyResult)
 	}
+	updatedWithDependency := callIntegrationTool[unit](t, adminSession, "update_proposal_unit", map[string]any{
+		"proposal_id": proposalID, "unit_id": createdUnitID,
+		"name": "Final applied topic", "content": "Apply the final topic with its prerequisite.",
+	})
+	if !updatedWithDependency.OK || len(updatedWithDependency.Data.PrerequisiteIDs) != 1 ||
+		updatedWithDependency.Data.PrerequisiteIDs[0] != advanced.ID {
+		t.Fatalf("focused proposal unit dependencies = %#v", updatedWithDependency)
+	}
 	// The convergent dependency action is safe to retry.
 	dependencyResult = callIntegrationTool[dependencyState](t, adminSession, "set_proposal_dependency", map[string]any{
 		"proposal_id": proposalID, "unit_id": createdUnitID, "prerequisite_id": advanced.ID, "present": true,
@@ -234,7 +242,7 @@ func TestMCPAgentWorkflowWithPostgreSQL(t *testing.T) {
 		t.Fatalf("acceptance result = %#v", published)
 	}
 	readCreated := callIntegrationTool[unit](t, adminSession, "get_unit", map[string]any{"unit_id": createdUnitID})
-	if !readCreated.OK || readCreated.Data.Name != "Final applied topic" || readCreated.Data.Content != "Apply the final topic." {
+	if !readCreated.OK || readCreated.Data.Name != "Final applied topic" || readCreated.Data.Content != "Apply the final topic with its prerequisite." {
 		t.Fatalf("published unit = %#v", readCreated)
 	}
 }

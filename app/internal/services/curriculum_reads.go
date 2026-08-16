@@ -62,6 +62,59 @@ func CurriculumProposalUnit(
 	return unit, previous, false, nil
 }
 
+func CurriculumProposalUnitDependencies(
+	ctx context.Context,
+	database *sql.DB,
+	proposal *models.CurriculumProposal,
+	unitID int64,
+) ([]models.UnitDependency, error) {
+	var dependencies []models.UnitDependency
+	var err error
+	if proposal.BaseProposalID != nil {
+		dependencies, err = db.GetCurriculumUnitDependenciesAtProposal(
+			ctx, database, *proposal.BaseProposalID, unitID,
+		)
+		if err != nil {
+			return nil, err
+		}
+	}
+	edges := make(map[[2]int64]bool, len(dependencies))
+	for _, dependency := range dependencies {
+		edges[[2]int64{dependency.UnitID, dependency.PrerequisiteID}] = true
+	}
+	for _, change := range proposal.Changes {
+		switch change.Kind {
+		case "add_dependency", "remove_dependency":
+			if change.UnitID != unitID && (change.PrerequisiteID == nil || *change.PrerequisiteID != unitID) {
+				continue
+			}
+			edge := [2]int64{change.UnitID, *change.PrerequisiteID}
+			if change.Kind == "add_dependency" {
+				edges[edge] = true
+			} else {
+				delete(edges, edge)
+			}
+		case "delete_unit":
+			for edge := range edges {
+				if edge[0] == change.UnitID || edge[1] == change.UnitID {
+					delete(edges, edge)
+				}
+			}
+		}
+	}
+	dependencies = dependencies[:0]
+	for edge := range edges {
+		dependencies = append(dependencies, models.UnitDependency{UnitID: edge[0], PrerequisiteID: edge[1]})
+	}
+	sort.Slice(dependencies, func(i, j int) bool {
+		if dependencies[i].UnitID == dependencies[j].UnitID {
+			return dependencies[i].PrerequisiteID < dependencies[j].PrerequisiteID
+		}
+		return dependencies[i].UnitID < dependencies[j].UnitID
+	})
+	return dependencies, nil
+}
+
 func SearchCurriculumProposalUnits(
 	ctx context.Context,
 	database *sql.DB,
