@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"slices"
 	"strings"
 
@@ -447,8 +446,4 @@ func curriculumFailure[T any](operation string, err error) (*mcp.CallToolResult,
 	default:
 		return internalFailure[T](operation, err)
 	}
-}
-
-func logRebaseFailures(proposalID int64, err error) {
-	log.Printf("MCP rebase drafts after publishing proposal %d: %v", proposalID, err)
 }

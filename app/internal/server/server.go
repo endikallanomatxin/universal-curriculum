@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -201,6 +202,10 @@ func (server *Server) health(writer http.ResponseWriter, request *http.Request) 
 		http.Error(writer, "database unavailable", http.StatusServiceUnavailable)
 		return
 	}
+	stats := server.Database.Stats()
+	writer.Header().Set("X-Database-Open-Connections", strconv.Itoa(stats.OpenConnections))
+	writer.Header().Set("X-Database-In-Use-Connections", strconv.Itoa(stats.InUse))
+	writer.Header().Set("X-Database-Wait-Count", strconv.FormatInt(stats.WaitCount, 10))
 	writer.WriteHeader(http.StatusNoContent)
 }
 
