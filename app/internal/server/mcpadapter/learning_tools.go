@@ -55,7 +55,7 @@ func (application *adapter) addLearningTools(server *mcp.Server) {
 		mutation("Create learning path", false, false), application.createLearningPath)
 	addTool(server, "update_learning_path", "Update learning path",
 		"Replaces the name and target units of a path owned by the authenticated user.",
-		mutation("Update learning path", true, false), application.updateLearningPath)
+		mutation("Update learning path", true, true), application.updateLearningPath)
 	addTool(server, "delete_learning_path", "Delete learning path",
 		"Deletes one private learning path. It does not erase recorded progress.",
 		mutation("Delete learning path", true, true), application.deleteLearningPath)

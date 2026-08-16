@@ -6,6 +6,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"universal-curriculum/internal/db"
+	"universal-curriculum/internal/server/guidance"
 )
 
 type emptyInput struct{}
@@ -27,16 +28,41 @@ type getUnitInput struct {
 	UnitID int64 `json:"unit_id" jsonschema:"Stable published curriculum unit ID."`
 }
 
+type authoringGuidanceDocument struct {
+	URI     string `json:"uri"`
+	Content string `json:"content"`
+}
+
+type authoringGuidance struct {
+	Documents []authoringGuidanceDocument `json:"documents"`
+}
+
 func (application *adapter) addReadTools(server *mcp.Server) {
+	addTool(server, "get_authoring_guidance", "Get curriculum authoring guidance",
+		"Returns the canonical curriculum-unit, dependency, and writing guidance. Call before designing or modifying curriculum.",
+		readOnly("Get curriculum authoring guidance"), application.getAuthoringGuidance)
 	addTool(server, "get_curriculum", "Get published curriculum",
 		"Returns compact unit summaries and the complete prerequisite graph. Use get_unit for content and prefer search_units when looking for a topic.",
 		readOnly("Get published curriculum"), application.getCurriculum)
 	addTool(server, "search_units", "Search curriculum units",
-		"Searches published unit names and content. Use before proposing a new unit when an equivalent unit may already exist.",
+		"Searches published unit names and content. After loading get_authoring_guidance, use this to find existing and overlapping knowledge before proposing a unit.",
 		readOnly("Search curriculum units"), application.searchUnits)
 	addTool(server, "get_unit", "Get curriculum unit",
-		"Returns one published unit with content, prerequisite IDs and dependent IDs.",
+		"Returns one published unit with content, prerequisite IDs and dependent IDs. Inspect relevant search results to understand their scope and graph relationships.",
 		readOnly("Get curriculum unit"), application.getUnit)
+}
+
+func (application *adapter) getAuthoringGuidance(
+	_ context.Context, _ *mcp.CallToolRequest, _ emptyInput,
+) (*mcp.CallToolResult, toolOutput[authoringGuidance], error) {
+	pages := guidance.AuthoringPages()
+	documents := make([]authoringGuidanceDocument, 0, len(pages))
+	for _, page := range pages {
+		documents = append(documents, authoringGuidanceDocument{
+			URI: "curriculum://documentation/" + page.Slug, Content: page.Content,
+		})
+	}
+	return ok(authoringGuidance{Documents: documents})
 }
 
 func (application *adapter) getCurriculum(

@@ -17,14 +17,16 @@ type Page struct {
 }
 
 var catalog = []Page{
-	{Slug: "curriculum-units", Title: "Curriculum units", Summary: "Scope and granularity of a learnable unit"},
-	{Slug: "dependencies", Title: "Dependencies", Summary: "How actual prerequisites structure the curriculum"},
-	{Slug: "writing-content", Title: "Writing content", Summary: "Clear educational Markdown with optional LaTeX"},
+	{Slug: "curriculum-units", Title: "Curriculum units", Summary: "Complete, focused and reusable learnable concepts"},
+	{Slug: "dependencies", Title: "Dependencies", Summary: "How genuine prerequisites factor shared knowledge"},
+	{Slug: "writing-content", Title: "Writing content", Summary: "The editorial contract for finished learning content"},
 	{Slug: "proposals", Title: "Proposals", Summary: "Describe the intended curriculum change"},
 	{Slug: "recognitions", Title: "Recognitions", Summary: "Preserve progress as the curriculum changes"},
 	{Slug: "learning-paths", Title: "Learning paths", Summary: "Private goals over the shared curriculum"},
 	{Slug: "mcp-api", Title: "MCP and API", Summary: "Inspect and modify the curriculum programmatically"},
 }
+
+var authoringSlugs = []string{"curriculum-units", "dependencies", "writing-content"}
 
 func Pages() []Page {
 	pages := make([]Page, len(catalog))
@@ -46,6 +48,18 @@ func Find(slug string) (Page, bool) {
 		}
 	}
 	return Page{}, false
+}
+
+func AuthoringPages() []Page {
+	pages := make([]Page, 0, len(authoringSlugs))
+	for _, slug := range authoringSlugs {
+		page, ok := Find(slug)
+		if !ok {
+			panic(fmt.Sprintf("authoring documentation %q is not in the catalog", slug))
+		}
+		pages = append(pages, page)
+	}
+	return pages
 }
 
 func Index() string {
